@@ -53,7 +53,8 @@ class Game {
             { x: 0, y: canvas.height - 50, width: canvas.width, height: 50 }
         ];
         
-        // Level manager
+        // Level manager - ensure enemies array is initialized first
+        console.log("Initializing level manager with enemies array:", this.enemies);
         this.levelManager = new LevelManager(this);
         
         // Control state
@@ -156,6 +157,14 @@ class Game {
         // Update level manager
         this.levelManager.update();
         
+        // Log enemy count and positions occasionally
+        if (this.frameCount % 300 === 0) {
+            console.log("Current enemies:", this.enemies.length);
+            if (this.enemies.length > 0) {
+                console.log("Enemy positions:", this.enemies.map(e => `(${Math.round(e.x)},${Math.round(e.y)})`).join(', '));
+            }
+        }
+        
         // Update projectiles
         this.projectiles.forEach((proj, index) => {
             proj.x += proj.velX;
@@ -171,8 +180,8 @@ class Game {
         this.enemies.forEach((enemy, index) => {
             enemy.update(this.player, this.frameCount, this.createParticles.bind(this));
             
-            // Remove enemies that are off-screen to the left
-            if (enemy.x + enemy.width < -100) {
+            // Remove enemies that are off-screen to the left or too far to the right
+            if (enemy.x + enemy.width < -100 || enemy.x > this.canvas.width + 300) {
                 this.enemies.splice(index, 1);
                 console.log("Removed enemy that went off-screen. Remaining:", this.enemies.length);
             }

@@ -7,18 +7,20 @@ class LevelManager {
         this.game = game;
         this.currentLevel = 0;
         this.levelProgress = 0; // Progress through current level (0-1)
+        this.levelPosition = 0; // Current position in pixels
         this.levelLength = 5000; // Pixels to travel to complete a level
         this.scrollSpeed = 2; // Base scroll speed
         
         // Level elements that have been spawned
         this.spawnedElements = [];
         
-        console.log("LevelManager initialized");
+        console.log("LevelManager initialized with levelPosition:", this.levelPosition);
     }
     
     loadLevel(levelIndex) {
         this.currentLevel = levelIndex;
         this.levelProgress = 0;
+        this.levelPosition = 0; // Reset level position when loading a new level
         this.spawnedElements = [];
         
         // Get level data
@@ -49,21 +51,36 @@ class LevelManager {
     }
     
     update() {
-        // Update level progress
-        this.levelProgress += (this.scrollSpeed * this.game.gameSpeed) / this.levelLength;
+        // Update level position
+        this.levelPosition += this.scrollSpeed * this.game.gameSpeed;
         
-        // Check if level is complete
-        if (this.levelProgress >= 1) {
-            this.currentLevel++;
-            this.levelProgress = 0;
-            this.loadLevel(this.currentLevel);
+        // Calculate level progress based on position
+        this.levelProgress = this.levelPosition / this.levelLength;
+        
+        // Log progress occasionally
+        if (this.game.frameCount % 100 === 0) {
+            console.log("Level progress:", this.levelProgress.toFixed(2), "Position:", this.levelPosition.toFixed(0), "of", this.levelLength);
         }
         
-        // Update level elements based on progress
+        // Update level elements based on new progress
         this.updateLevelElements();
         
-        // Move existing obstacles
+        // Check if we need to load the next level
+        if (this.levelPosition >= this.levelLength) {
+            console.log("Level complete! Loading next level");
+            this.currentLevel = (this.currentLevel + 1) % LEVELS.length;
+            const levelData = this.loadLevel(this.currentLevel);
+            this.levelPosition = 0;
+            
+            // Update level display
+            if (this.game.levelDisplay) {
+                this.game.levelDisplay.textContent = levelData.name;
+            }
+        }
+        
+        // Update obstacles
         this.game.obstacles.forEach((obstacle, index) => {
+            // Move obstacle with level scrolling
             obstacle.x -= this.scrollSpeed * this.game.gameSpeed;
             
             // Remove obstacles that are off-screen
@@ -88,18 +105,21 @@ class LevelManager {
             });
         });
         
-        // Move existing enemies with level scrolling
-        if (this.game.enemies && this.game.enemies.length > 0) {
-            this.game.enemies.forEach(enemy => {
-                // Apply level scrolling to enemy position
-                enemy.x -= this.scrollSpeed * this.game.gameSpeed;
-            });
-        }
+        // We're removing this code that applies level scrolling to enemies
+        // since we want them to move independently of the view
+        // Enemies will now compensate for scrolling in their own update method
     }
     
     updateLevelElements() {
         const levelData = this.getLevelData(this.currentLevel);
         const currentPosition = this.levelProgress * this.levelLength;
+        
+        // Log occasionally
+        if (this.game.frameCount % 100 === 0) {
+            console.log("Checking for elements at position:", currentPosition.toFixed(0));
+            console.log("Spawn range:", currentPosition.toFixed(0), "to", (currentPosition + this.game.canvas.width + 200).toFixed(0));
+            console.log("Already spawned elements:", this.spawnedElements.length);
+        }
         
         // Check for elements that should be spawned
         levelData.elements.forEach(element => {
@@ -118,7 +138,10 @@ class LevelManager {
     }
     
     spawnElement(element) {
-        const x = this.game.canvas.width + (element.position - (this.levelProgress * this.levelLength));
+        // Calculate the x position more accurately to ensure enemies spawn at the right edge of the screen
+        // Instead of adding the full element.position, we calculate the relative position from current view
+        const relativePosition = element.position - (this.levelProgress * this.levelLength);
+        const x = this.game.canvas.width + Math.min(relativePosition, 200); // Cap at 200px beyond right edge
         
         switch (element.type) {
             case 'obstacle':
@@ -134,19 +157,35 @@ class LevelManager {
                 ];
                 
                 const typeIndex = Math.min(parseInt(element.subtype) || 0, enemyTypes.length - 1);
-                const y = element.y || Math.random() * this.game.canvas.height / 2;
+                
+                // Ensure y position is within the visible area of the canvas
+                let y;
+                if (element.y !== undefined) {
+                    // Use specified y but ensure it's within bounds
+                    y = Math.max(50, Math.min(element.y, this.game.canvas.height - 100));
+                } else {
+                    // Random y position within the top 2/3 of the screen
+                    y = Math.random() * (this.game.canvas.height * 0.67);
+                }
                 
                 console.log("Creating enemy:", typeIndex, "at", x, y);
                 
-                const enemy = new Enemy(x, y, enemyTypes[typeIndex], this.game.canvas);
-                
-                if (!this.game.enemies) {
-                    console.error("game.enemies is undefined!");
-                    this.game.enemies = [];
+                try {
+                    // Create the enemy
+                    const enemy = new Enemy(x, y, enemyTypes[typeIndex], this.game.canvas);
+                    
+                    // Ensure the enemies array exists
+                    if (!this.game.enemies) {
+                        console.error("game.enemies is undefined! Creating new array.");
+                        this.game.enemies = [];
+                    }
+                    
+                    // Add the enemy to the game
+                    this.game.enemies.push(enemy);
+                    console.log("Enemy added successfully. Total enemies:", this.game.enemies.length);
+                } catch (error) {
+                    console.error("Error creating enemy:", error);
                 }
-                
-                this.game.enemies.push(enemy);
-                console.log("Enemy added. Total enemies:", this.game.enemies.length);
                 break;
             // Add more element types as needed
         }
