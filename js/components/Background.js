@@ -2,6 +2,12 @@ class Background {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
+        
+        // Moon properties
+        this.moonSize = 80;
+        this.moonX = -this.moonSize; // Start off-screen
+        this.moonY = 100;
+        this.moonSpeed = 0.05; // Very slow movement
     }
     
     draw(frameCount) {
@@ -14,6 +20,9 @@ class Background {
         gradient.addColorStop(1, '#0d1e38'); // Dark blue horizon
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Draw the full moon
+        this.drawMoon(frameCount);
         
         // Draw distant stars/lights - increase number for larger canvas
         for (let i = 0; i < 150; i++) {
@@ -326,6 +335,68 @@ class Background {
             ctx.closePath();
             ctx.fill();
         }
+    }
+    
+    // New method to draw the moon
+    drawMoon(frameCount) {
+        const ctx = this.ctx;
+        
+        // Update moon position
+        this.moonX += this.moonSpeed;
+        
+        // Reset moon position when it goes off-screen
+        if (this.moonX > this.canvas.width + this.moonSize) {
+            this.moonX = -this.moonSize;
+        }
+        
+        // Add slight vertical movement to the moon (gentle bobbing)
+        const verticalOffset = Math.sin(frameCount * 0.001) * 5;
+        const moonY = this.moonY + verticalOffset;
+        
+        // Create moon gradient
+        const moonGradient = ctx.createRadialGradient(
+            this.moonX, moonY, 0,
+            this.moonX, moonY, this.moonSize
+        );
+        
+        // Moon colors with slight yellow tint
+        moonGradient.addColorStop(0, '#fffce8');
+        moonGradient.addColorStop(0.8, '#fff9d6');
+        moonGradient.addColorStop(1, '#e6e0c0');
+        
+        // Draw moon with glow effect
+        ctx.shadowColor = '#fffce8';
+        ctx.shadowBlur = 30;
+        ctx.fillStyle = moonGradient;
+        ctx.beginPath();
+        ctx.arc(this.moonX, moonY, this.moonSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw moon craters
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(200, 200, 180, 0.2)';
+        
+        // Draw several craters of different sizes
+        const craters = [
+            { x: -0.2, y: -0.3, size: 0.15 },
+            { x: 0.3, y: 0.1, size: 0.1 },
+            { x: -0.1, y: 0.25, size: 0.08 },
+            { x: 0.15, y: -0.15, size: 0.12 },
+            { x: -0.25, y: 0.05, size: 0.07 }
+        ];
+        
+        craters.forEach(crater => {
+            const craterX = this.moonX + crater.x * this.moonSize;
+            const craterY = moonY + crater.y * this.moonSize;
+            const craterSize = crater.size * this.moonSize;
+            
+            ctx.beginPath();
+            ctx.arc(craterX, craterY, craterSize, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        
+        // Reset shadow settings
+        ctx.shadowBlur = 0;
     }
 }
 
