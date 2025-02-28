@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallop Protocol</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Press Start 2P', cursive;
+            color: #fff;
+        }
+        canvas {
+            border: 4px solid #36f;
+            background-color: #000;
+            box-shadow: 0 0 20px #36f, 0 0 40px rgba(51, 102, 255, 0.5);
+        }
+        #game-container {
+            position: relative;
+        }
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            color: #0ff;
+            font-size: 12px;
+            text-shadow: 0 0 5px #0ff;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border: 2px solid #0ff;
+            border-radius: 5px;
+        }
+        #game-over, #start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 16px;
+            text-align: center;
+            background-color: rgba(0, 0, 30, 0.8);
+            padding: 30px;
+            border-radius: 10px;
+            border: 3px solid #36f;
+            box-shadow: 0 0 20px #36f, inset 0 0 15px rgba(51, 102, 255, 0.5);
+            display: none;
+        }
+        #start-screen {
+            display: block;
+            width: 60%;
+            max-width: 500px;
+        }
+        #start-screen h1 {
+            color: #0ff;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+            font-size: 28px;
+            margin-bottom: 30px;
+        }
+        button {
+            background: linear-gradient(to bottom, #36f, #14c);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            margin-top: 30px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px #36f;
+            transition: all 0.2s ease;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+        }
+        button:hover {
+            background: linear-gradient(to bottom, #47f, #25d);
+            transform: scale(1.05);
+            box-shadow: 0 0 15px #47f;
+        }
+        .control-key {
+            display: inline-block;
+            background-color: #36f;
+            color: #fff;
+            padding: 5px 10px;
+            margin: 0 5px;
+            border-radius: 3px;
+            box-shadow: 0 0 5px #36f;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="480"></canvas>
+        <div id="hud">HEALTH: <span id="health">100</span> | SCORE: <span id="score">0</span> | WEAPON: <span id="weapon">NEURAL BEAM</span></div>
+        <div id="game-over">
+            GAME OVER<br>
+            FINAL SCORE: <span id="final-score">0</span><br>
+            <button id="restart-button">RESTART</button>
+        </div>
+        <div id="start-screen">
+            <h1>GALLOP PROTOCOL</h1>
+            <p>Control Neigh-O-Tron, the six-legged cyber-horse<br>against the invading Cephalopod Armada!</p>
+            <p>CONTROLS:</p>
+            <p>
+                <span class="control-key">↑↓←→</span> Move<br>
+                <span class="control-key">Z</span> Jump<br>
+                <span class="control-key">X</span> Shoot<br>
+                <span class="control-key">C</span> Special Ability<br>
+                <span class="control-key">SPACE</span> Change Weapon
+            </p>
+            <button id="start-button">START MISSION</button>
+        </div>
+    </div>
+
+    <script>
+        // Game initialization
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const healthDisplay = document.getElementById('health');
+        const scoreDisplay = document.getElementById('score');
+        const weaponDisplay = document.getElementById('weapon');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const gameOverScreen = document.getElementById('game-over');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+
+        // Game state
+        let gameStarted = false;
+        let gameOver = false;
+        let score = 0;
+        let frameCount = 0;
+        let lastSpawnTime = 0;
+        let gameSpeed = 1;
+
+        // Weapons
+        const weapons = [
+            { name: "NEURAL BEAM", color: "#00f", damage: 10, fireRate: 10, projectileSpeed: 12, width: 5, height: 2 },
+            { name: "TENTACLE SCRAMBLER", color: "#f0f", damage: 20, fireRate: 20, projectileSpeed: 8, width: 8, height: 8 },
+            { name: "GALLOP CANNON", color: "#0f0", damage: 30, fireRate: 30, projectileSpeed: 10, width: 10, height: 4 },
+            { name: "LEG LAUNCHERS", color: "#ff0", damage: 5, fireRate: 5, projectileSpeed: 15, width: 3, height: 3 }
+        ];
+        let currentWeaponIndex = 0;
+
+        // Game entities
+        let player = {
+            x: 100,
+            y: canvas.height / 2,
+            width: 60,
+            height: 40,
+            speed: 5,
+            jumpPower: 12,
+            velY: 0,
+            health: 100,
+            isJumping: false,
+            isShooting: false,
+            direction: 1, // 1 = right, -1 = left
+            lastShot: 0,
+            legs: Array(6).fill().map((_, i) => ({
+                angle: i * 60,
+                length: 15,
+                phase: i * 0.5
+            }))
+        };
+
+        let enemies = [];
+        let projectiles = [];
+        let powerUps = [];
+        let particles = [];
+        let platforms = [
+            { x: 0, y: canvas.height - 50, width: canvas.width, height: 50 }
+        ];
+
+        // Control state
+        const keys = {};
+
+        // Event listeners
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            
+            // Weapon switching
+            if (e.code === 'Space' && gameStarted && !gameOver) {
+                currentWeaponIndex = (currentWeaponIndex + 1) % weapons.length;
+                weaponDisplay.textContent = weapons[currentWeaponIndex].name;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        startButton.addEventListener('click', () => {
+            startGame();
+        });
+
+        restartButton.addEventListener('click', () => {
+            resetGame();
+            startGame();
+        });
+
+        // Game functions
+        function startGame() {
+            gameStarted = true;
+            gameOver = false;
+            startScreen.style.display = 'none';
+            animate();
+        }
+
+        function resetGame() {
+            player = {
+                x: 100,
+                y: canvas.height / 2,
+                width: 60,
+                height: 40,
+                speed: 5,
+                jumpPower: 12,
+                velY: 0,
+                health: 100,
+                isJumping: false,
+                isShooting: false,
+                direction: 1,
+                lastShot: 0,
+                legs: Array(6).fill().map((_, i) => ({
+                    angle: i * 60,
+                    length: 15,
+                    phase: i * 0.5
+                }))
+            };
+            enemies = [];
+            projectiles = [];
+            powerUps = [];
+            particles = [];
+            score = 0;
+            gameSpeed = 1;
+            currentWeaponIndex = 0;
+            
+            // Update displays
+            healthDisplay.textContent = player.health;
+            scoreDisplay.textContent = score;
+            weaponDisplay.textContent = weapons[currentWeaponIndex].name;
+            gameOverScreen.style.display = 'none';
+        }
+
+        function endGame() {
+            gameOver = true;
+            finalScoreDisplay.textContent = score;
+            gameOverScreen.style.display = 'block';
+        }
+
+        function update() {
+            if (!gameStarted || gameOver) return;
+            
+            frameCount++;
+            
+            // Player movement
+            if (keys['ArrowLeft']) {
+                player.x -= player.speed;
+                player.direction = -1;
+            }
+            if (keys['ArrowRight']) {
+                player.x += player.speed;
+                player.direction = 1;
+            }
+            
+            // Jump
+            if (keys['z'] && !player.isJumping) {
+                player.velY = -player.jumpPower;
+                player.isJumping = true;
+                createParticles(player.x + player.width / 2, player.y + player.height, 10, '#777');
+            }
+            
+            // Apply gravity
+            player.velY += 0.5;
+            player.y += player.velY;
+            
+            // Floor collision
+            if (player.y + player.height > canvas.height - 50) {
+                player.y = canvas.height - 50 - player.height;
+                player.velY = 0;
+                player.isJumping = false;
+            }
+            
+            // Boundaries
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+            
+            // Shooting
+            if (keys['x'] && frameCount - player.lastShot > weapons[currentWeaponIndex].fireRate) {
+                shoot();
+                player.lastShot = frameCount;
+            }
+            
+            // Special ability (stampede mode)
+            if (keys['c'] && frameCount % 10 === 0) {
+                for (let i = 0; i < 5; i++) {
+                    const angle = -Math.PI/4 + (Math.PI/2 * i/4);
+                    const weapon = weapons[currentWeaponIndex];
+                    projectiles.push({
+                        x: player.x + player.width/2,
+                        y: player.y + player.height/2,
+                        width: weapon.width,
+                        height: weapon.height,
+                        speed: weapon.projectileSpeed,
+                        velX: Math.cos(angle) * weapon.projectileSpeed * player.direction,
+                        velY: Math.sin(angle) * weapon.projectileSpeed,
+                        damage: weapon.damage / 2,
+                        color: weapon.color,
+                        isPlayerProjectile: true
+                    });
+                }
+                createParticles(player.x + player.width/2, player.y + player.height/2, 20, weapons[currentWeaponIndex].color);
+            }
+            
+            // Update projectiles
+            projectiles.forEach((proj, index) => {
+                proj.x += proj.velX;
+                proj.y += proj.velY;
+                
+                // Remove projectiles that are out of bounds
+                if (proj.x < 0 || proj.x > canvas.width || proj.y < 0 || proj.y > canvas.height) {
+                    projectiles.splice(index, 1);
+                }
+            });
+            
+            // Spawn enemies
+            if (frameCount - lastSpawnTime > 60 / gameSpeed) {
+                spawnEnemy();
+                lastSpawnTime = frameCount;
+            }
+            
+            // Update enemies
+            enemies.forEach((enemy, index) => {
+                // Move enemy
+                enemy.x += enemy.velX;
+                enemy.y += enemy.velY;
+                
+                // Enemy AI - follow player
+                if (frameCount % 30 === 0) {
+                    const dx = player.x - enemy.x;
+                    const dy = player.y - enemy.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    enemy.velX = (dx / dist) * enemy.speed;
+                    enemy.velY = (dy / dist) * enemy.speed;
+                }
+                
+                // Enemies don't shoot anymore - just chase player
+                // Enhanced movement patterns instead
+                if (frameCount % 45 === 0) {
+                    // Add some randomness to movement for more dynamic behavior
+                    const dx = player.x - enemy.x;
+                    const dy = player.y - enemy.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    
+                    // Add slight randomness to movement direction
+                    const randomAngle = (Math.random() - 0.5) * Math.PI/4; // +/- 45 degrees
+                    const angle = Math.atan2(dy, dx) + randomAngle;
+                    
+                    enemy.velX = Math.cos(angle) * enemy.speed;
+                    enemy.velY = Math.sin(angle) * enemy.speed;
+                    
+                    // Create visual tentacle animation effect
+                    createParticles(
+                        enemy.x + enemy.width/2, 
+                        enemy.y + enemy.height/2, 
+                        3, 
+                        enemy.color
+                    );
+                }
+                
+                // Screen boundaries for enemies
+                if (enemy.x < 0 || enemy.x > canvas.width) enemy.velX *= -1;
+                if (enemy.y < 0 || enemy.y > canvas.height) enemy.velY *= -1;
+                
+                // Check collisions with player projectiles
+                projectiles.forEach((proj, projIndex) => {
+                    if (proj.isPlayerProjectile && isColliding(proj, enemy)) {
+                        enemy.health -= proj.damage;
+                        projectiles.splice(projIndex, 1);
+                        createParticles(proj.x, proj.y, 5, proj.color);
+                        
+                        if (enemy.health <= 0) {
+                            enemies.splice(index, 1);
+                            score += enemy.points;
+                            scoreDisplay.textContent = score;
+                            createParticles(enemy.x + enemy.width/2, enemy.y + enemy.height/2, 20, '#f00');
+                            
+                            // Randomly spawn power-up
+                            if (Math.random() < 0.2) {
+                                spawnPowerUp(enemy.x, enemy.y);
+                            }
+                        }
+                    }
+                });
+                
+                // Check collision with player
+                if (isColliding(enemy, player)) {
+                    player.health -= 1;
+                    healthDisplay.textContent = player.health;
+                    createParticles(player.x + player.width/2, player.y + player.height/2, 3, '#fff');
+                    
+                    if (player.health <= 0) {
+                        endGame();
+                    }
+                }
+            });
+            
+            // Handle enemy projectiles hitting player
+            projectiles.forEach((proj, index) => {
+                if (!proj.isPlayerProjectile && isColliding(proj, player)) {
+                    player.health -= proj.damage;
+                    healthDisplay.textContent = player.health;
+                    projectiles.splice(index, 1);
+                    createParticles(proj.x, proj.y, 10, proj.color);
+                    
+                    if (player.health <= 0) {
+                        endGame();
+                    }
+                }
+            });
+            
+            // Update power-ups
+            powerUps.forEach((powerUp, index) => {
+                powerUp.y += Math.sin(frameCount * 0.1) * 0.5; // Floating effect
+                
+                if (isColliding(powerUp, player)) {
+                    // Apply power-up effect
+                    if (powerUp.type === 'health') {
+                        player.health = Math.min(player.health + 30, 100);
+                        healthDisplay.textContent = player.health;
+                    } else if (powerUp.type === 'weapon') {
+                        currentWeaponIndex = Math.floor(Math.random() * weapons.length);
+                        weaponDisplay.textContent = weapons[currentWeaponIndex].name;
+                    }
+                    
+                    powerUps.splice(index, 1);
+                    createParticles(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, 15, powerUp.color);
+                }
+            });
+            
+            // Update particles
+            particles.forEach((particle, index) => {
+                particle.x += particle.velX;
+                particle.y += particle.velY;
+                particle.size -= 0.1;
+                
+                if (particle.size <= 0) {
+                    particles.splice(index, 1);
+                }
+            });
+            
+            // Animate horse legs
+            player.legs.forEach((leg, i) => {
+                leg.angle = (i * 60) + Math.sin(frameCount * 0.1 + leg.phase) * 20;
+            });
+            
+            // Increase game speed over time
+            if (frameCount % 1000 === 0) {
+                gameSpeed += 0.1;
+            }
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background
+            drawBackground();
+            
+            // Draw platforms
+            platforms.forEach(platform => {
+                ctx.fillStyle = '#444';
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+            });
+            
+            // Draw particles
+            particles.forEach(particle => {
+                ctx.fillStyle = particle.color;
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // Draw projectiles
+            projectiles.forEach(proj => {
+                ctx.fillStyle = proj.color;
+                ctx.fillRect(proj.x, proj.y, proj.width, proj.height);
+            });
+            
+            // Draw power-ups
+            powerUps.forEach(powerUp => {
+                ctx.fillStyle = powerUp.color;
+                ctx.beginPath();
+                ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, powerUp.width/2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(powerUp.type.toUpperCase(), powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2 + 3);
+            });
+            
+            // Draw player (cyber horse with 6 legs and robot head)
+            drawPlayer();
+            
+            // Draw enemies
+            enemies.forEach(enemy => {
+                drawEnemy(enemy);
+            });
+        }
+
+        function drawBackground() {
+            // Create a dark night sky gradient with neon hues
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#0c0121'); // Dark purple sky
+            gradient.addColorStop(0.5, '#1a0a35'); 
+            gradient.addColorStop(1, '#0d1e38'); // Dark blue horizon
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw distant stars/lights
+            for (let i = 0; i < 100; i++) {
+                const x = (i * 23 + frameCount * 0.01) % canvas.width;
+                const y = (i * 17) % (canvas.height * 0.5);
+                const size = (Math.sin(frameCount * 0.005 + i) + 1) * 1.5;
+                
+                // Different light colors
+                const colors = ['#fff', '#0ff', '#f0f', '#ff0', '#f77'];
+                const colorIndex = i % colors.length;
+                
+                ctx.fillStyle = colors[colorIndex];
+                ctx.shadowColor = colors[colorIndex];
+                ctx.shadowBlur = 5;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            
+            // Shinjuku Cityscape - Far background buildings (parallax effect)
+            const farBuildingColors = ['#090918', '#0d0d2b', '#09132b'];
+            const farBuildingCount = 15;
+            const farBuildingWidth = canvas.width / farBuildingCount;
+            
+            for (let i = 0; i < farBuildingCount; i++) {
+                const offsetX = (i * farBuildingWidth - (frameCount * 0.1) % farBuildingWidth);
+                const buildingHeight = 60 + Math.sin(i) * 30;
+                const colorIndex = i % farBuildingColors.length;
+                
+                ctx.fillStyle = farBuildingColors[colorIndex];
+                ctx.beginPath();
+                ctx.rect(offsetX, canvas.height - 50 - buildingHeight, farBuildingWidth, buildingHeight);
+                ctx.fill();
+                
+                // Add some small windows
+                ctx.fillStyle = 'rgba(255, 255, 150, 0.3)';
+                for (let w = 0; w < 10; w++) {
+                    const windowX = offsetX + Math.random() * farBuildingWidth;
+                    const windowY = canvas.height - 50 - Math.random() * buildingHeight;
+                    const windowSize = 1 + Math.random();
+                    
+                    ctx.beginPath();
+                    ctx.rect(windowX, windowY, windowSize, windowSize);
+                    ctx.fill();
+                }
+            }
+            
+            // Shinjuku Cityscape - Mid buildings (parallax effect)
+            const midBuildingColors = ['#131339', '#16083a', '#080a20'];
+            const midBuildingCount = 10;
+            const midBuildingWidth = canvas.width / midBuildingCount * 1.5;
+            
+            for (let i = 0; i < midBuildingCount; i++) {
+                const offsetX = (i * midBuildingWidth - (frameCount * 0.3) % (midBuildingWidth * midBuildingCount));
+                const buildingHeight = 100 + Math.sin(i * 0.8) * 40;
+                const buildingWidth = midBuildingWidth - 10;
+                const colorIndex = i % midBuildingColors.length;
+                
+                ctx.fillStyle = midBuildingColors[colorIndex];
+                ctx.beginPath();
+                // Building with slight random shape at top
+                ctx.moveTo(offsetX, canvas.height - 50);
+                ctx.lineTo(offsetX, canvas.height - 50 - buildingHeight);
+                
+                // Create building top with antenna or shape
+                if (i % 3 === 0) {
+                    // Building with antenna
+                    ctx.lineTo(offsetX + buildingWidth/2 - 10, canvas.height - 50 - buildingHeight);
+                    ctx.lineTo(offsetX + buildingWidth/2, canvas.height - 50 - buildingHeight - 20);
+                    ctx.lineTo(offsetX + buildingWidth/2 + 10, canvas.height - 50 - buildingHeight);
+                } else {
+                    // Regular building top
+                    ctx.lineTo(offsetX + buildingWidth, canvas.height - 50 - buildingHeight);
+                }
+                
+                ctx.lineTo(offsetX + buildingWidth, canvas.height - 50);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Add building details - windows in grid pattern
+                const windowRows = 10;
+                const windowCols = 5;
+                const windowSpacingX = buildingWidth / (windowCols + 1);
+                const windowSpacingY = buildingHeight / (windowRows + 1);
+                
+                for (let row = 1; row <= windowRows; row++) {
+                    for (let col = 1; col <= windowCols; col++) {
+                        // Randomly light up windows
+                        if (Math.random() > 0.3) {
+                            const windowX = offsetX + col * windowSpacingX;
+                            const windowY = canvas.height - 50 - row * windowSpacingY;
+                            const windowWidth = 4;
+                            const windowHeight = 6;
+                            
+                            // Randomize window colors
+                            const windowColors = ['rgba(255, 255, 150, 0.7)', 'rgba(150, 255, 255, 0.7)', 'rgba(255, 150, 255, 0.7)'];
+                            const windowColor = windowColors[Math.floor(Math.random() * windowColors.length)];
+                            
+                            ctx.fillStyle = windowColor;
+                            ctx.shadowColor = windowColor;
+                            ctx.shadowBlur = 3;
+                            ctx.beginPath();
+                            ctx.rect(windowX, windowY, windowWidth, windowHeight);
+                            ctx.fill();
+                            ctx.shadowBlur = 0;
+                        }
+                    }
+                }
+            }
+            
+            // Shinjuku Cityscape - Foreground detailed buildings
+            const buildingCount = 6;
+            const buildingWidth = canvas.width / buildingCount * 1.5;
+            
+            for (let i = 0; i < buildingCount; i++) {
+                const offsetX = (i * buildingWidth - (frameCount * 0.5) % (buildingWidth * buildingCount));
+                const buildingHeight = 150 + Math.sin(i * 0.5) * 40;
+                const actualWidth = buildingWidth - 20;
+                
+                // Create building silhouette
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.rect(offsetX, canvas.height - 50 - buildingHeight, actualWidth, buildingHeight);
+                ctx.fill();
+                
+                // Add neon sign outlines to buildings
+                if (i % 2 === 0) {
+                    // Draw neon sign
+                    const signWidth = actualWidth * 0.7;
+                    const signHeight = 30;
+                    const signX = offsetX + (actualWidth - signWidth) / 2;
+                    const signY = canvas.height - 50 - buildingHeight * 0.7;
+                    
+                    const neonColors = ['#f00', '#0ff', '#f0f', '#ff0', '#0f0'];
+                    const neonColor = neonColors[i % neonColors.length];
+                    
+                    // Neon sign glow effect
+                    ctx.shadowColor = neonColor;
+                    ctx.shadowBlur = 15;
+                    ctx.strokeStyle = neonColor;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(signX, signY, signWidth, signHeight);
+                    
+                    // Add some kanji-like characters (simplified representation)
+                    ctx.font = '20px Arial';
+                    ctx.fillStyle = neonColor;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('東京', signX + signWidth/2, signY + signHeight * 0.7);
+                    ctx.shadowBlur = 0;
+                }
+                
+                // Add detailed windows
+                const windowRows = 15;
+                const windowCols = Math.floor(actualWidth / 10);
+                
+                for (let row = 0; row < windowRows; row++) {
+                    for (let col = 0; col < windowCols; col++) {
+                        // Randomly light up windows
+                        if (Math.random() > 0.4) {
+                            const windowX = offsetX + col * 10 + 2;
+                            const windowY = canvas.height - 50 - buildingHeight + row * 10 + 2;
+                            const windowSize = 6;
+                            
+                            // Randomize window colors
+                            const windowColors = ['rgba(255, 255, 150, 0.8)', 'rgba(150, 255, 255, 0.8)', 'rgba(255, 150, 255, 0.8)'];
+                            const windowColor = windowColors[Math.floor(Math.random() * windowColors.length)];
+                            
+                            ctx.fillStyle = windowColor;
+                            ctx.beginPath();
+                            ctx.rect(windowX, windowY, windowSize, windowSize);
+                            ctx.fill();
+                        }
+                    }
+                }
+                
+                // Add rooftop features
+                if (i % 3 === 0) {
+                    // Add antenna/tower on top
+                    ctx.strokeStyle = '#555';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(offsetX + actualWidth/2, canvas.height - 50 - buildingHeight);
+                    ctx.lineTo(offsetX + actualWidth/2, canvas.height - 50 - buildingHeight - 30);
+                    ctx.stroke();
+                    
+                    // Add blinking light on top
+                    if (frameCount % 30 < 15) {
+                        ctx.fillStyle = '#f00';
+                        ctx.shadowColor = '#f00';
+                        ctx.shadowBlur = 10;
+                        ctx.beginPath();
+                        ctx.arc(offsetX + actualWidth/2, canvas.height - 50 - buildingHeight - 30, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            }
+            
+            // Billboard with digital display
+            const billboardWidth = 120;
+            const billboardHeight = 70;
+            const billboardX = 100 + (frameCount * 0.5) % (canvas.width * 2);
+            const billboardY = canvas.height - 50 - 180;
+            
+            // Billboard frame
+            ctx.fillStyle = '#111';
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 3;
+            ctx.fillRect(billboardX, billboardY, billboardWidth, billboardHeight);
+            ctx.strokeRect(billboardX, billboardY, billboardWidth, billboardHeight);
+            
+            // Digital display content - changing with time
+            ctx.fillStyle = '#0af';
+            ctx.shadowColor = '#0af';
+            ctx.shadowBlur = 10;
+            
+            // Display flashing ad content
+            if (frameCount % 120 < 60) {
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('CYBER', billboardX + billboardWidth/2, billboardY + 30);
+                ctx.fillText('TOKYO', billboardX + billboardWidth/2, billboardY + 55);
+            } else {
+                // Draw an abstract logo or pattern
+                for (let i = 0; i < 5; i++) {
+                    ctx.beginPath();
+                    ctx.arc(
+                        billboardX + billboardWidth/2, 
+                        billboardY + billboardHeight/2,
+                        10 + i * 5, 
+                        0, Math.PI * 2
+                    );
+                    ctx.stroke();
+                }
+            }
+            ctx.shadowBlur = 0;
+            
+            // Add flying cars/drones in the distance
+            for (let i = 0; i < 5; i++) {
+                const carX = (i * 150 + frameCount * 2) % (canvas.width + 300) - 100;
+                const carY = 100 + i * 30;
+                const carSize = 4 + i;
+                
+                // Car body
+                ctx.fillStyle = '#222';
+                ctx.fillRect(carX, carY, carSize * 3, carSize);
+                
+                // Lights
+                ctx.fillStyle = '#f00';
+                ctx.shadowColor = '#f00';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(carX + carSize * 3, carY + carSize/2, carSize/3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#ff0';
+                ctx.shadowColor = '#ff0';
+                ctx.beginPath();
+                ctx.arc(carX, carY + carSize/2, carSize/3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            
+            // Ground with techno pattern
+            const groundGradient = ctx.createLinearGradient(0, canvas.height - 50, 0, canvas.height);
+            groundGradient.addColorStop(0, '#0a0a20');
+            groundGradient.addColorStop(1, '#000000');
+            ctx.fillStyle = groundGradient;
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+            
+            // Add reflective ground effect
+            ctx.globalAlpha = 0.2;
+            ctx.translate(0, canvas.height - 50);
+            ctx.scale(1, -0.3);
+            // Draw a section of the world flipped and squished
+            ctx.drawImage(
+                canvas, 
+                0, canvas.height - 150, canvas.width, 100,  // source rectangle
+                0, -100, canvas.width, 100                  // destination rectangle
+            );
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+            ctx.globalAlpha = 1.0;
+            
+            // Add neon strips on the ground
+            ctx.strokeStyle = '#0ff';
+            ctx.shadowColor = '#0ff';
+            ctx.shadowBlur = 10;
+            ctx.lineWidth = 2;
+            
+            for (let x = 0; x < canvas.width; x += 150) {
+                const offsetX = (x + frameCount) % canvas.width;
+                
+                ctx.beginPath();
+                ctx.moveTo(offsetX, canvas.height - 48);
+                ctx.lineTo(offsetX + 80, canvas.height - 48);
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+            
+            // Add occasional vertical light beams
+            if (frameCount % 100 < 50 && Math.random() > 0.98) {
+                const beamX = Math.random() * canvas.width;
+                ctx.fillStyle = 'rgba(255, 0, 255, 0.1)';
+                ctx.beginPath();
+                ctx.moveTo(beamX - 20, 0);
+                ctx.lineTo(beamX + 20, 0);
+                ctx.lineTo(beamX + 5, canvas.height - 50);
+                ctx.lineTo(beamX - 5, canvas.height - 50);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
+        function drawPlayer() {
+            ctx.save();
+            
+            const bodyX = player.x + player.width / 2;
+            const bodyY = player.y + player.height / 2;
+            
+            // Draw shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(bodyX, canvas.height - 50, player.width * 0.8, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw leg segments with joints - positioned to look more like a horse's legs
+            player.legs.forEach((leg, index) => {
+                // Adjust angles to better simulate horse leg positioning
+                // Front legs at angles 30, 60, 330, 300 degrees
+                // Back legs at angles 120, 150, 210, 240 degrees
+                let angle = (leg.angle * Math.PI / 180) * player.direction;
+                
+                // Create more horse-like leg positioning
+                if (index < 2) {
+                    // Front legs
+                    angle = (((index === 0 ? 30 : 60) + Math.sin(frameCount * 0.1 + leg.phase) * 10) * Math.PI / 180) * player.direction;
+                } else if (index < 4) {
+                    // Middle legs
+                    angle = (((index === 2 ? 330 : 300) + Math.sin(frameCount * 0.1 + leg.phase) * 10) * Math.PI / 180) * player.direction;
+                } else {
+                    // Back legs
+                    angle = (((index === 4 ? 120 : 210) + Math.sin(frameCount * 0.1 + leg.phase) * 10) * Math.PI / 180) * player.direction;
+                }
+                
+                // Create joints for a more anatomically horse-like leg structure
+                const midLength = leg.length * 0.6;
+                const jointX = bodyX + Math.cos(angle) * midLength;
+                const jointY = bodyY + Math.sin(angle) * midLength;
+                
+                // Calculate end position with realistic horse-like movement
+                const legEndX = jointX + Math.cos(angle) * leg.length;
+                const legEndY = jointY + Math.sin(angle) * leg.length + Math.sin(frameCount * 0.1 + leg.phase) * 3;
+                
+                // Draw upper leg segment with gradient
+                const legGradient = ctx.createLinearGradient(bodyX, bodyY, jointX, jointY);
+                legGradient.addColorStop(0, '#0066aa');
+                legGradient.addColorStop(1, '#00ccff');
+                
+                ctx.strokeStyle = legGradient;
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                
+                ctx.beginPath();
+                ctx.moveTo(bodyX, bodyY);
+                ctx.lineTo(jointX, jointY);
+                ctx.stroke();
+                
+                // Draw lower leg segment
+                const lowerLegGradient = ctx.createLinearGradient(jointX, jointY, legEndX, legEndY);
+                lowerLegGradient.addColorStop(0, '#00ccff');
+                lowerLegGradient.addColorStop(1, '#00ffff');
+                
+                ctx.strokeStyle = lowerLegGradient;
+                ctx.beginPath();
+                ctx.moveTo(jointX, jointY);
+                ctx.lineTo(legEndX, legEndY);
+                ctx.stroke();
+                
+                // Draw joint
+                ctx.fillStyle = '#00ffff';
+                ctx.shadowColor = '#00ffff';
+                ctx.shadowBlur = 5;
+                ctx.beginPath();
+                ctx.arc(jointX, jointY, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw hoof with glow
+                ctx.fillStyle = '#00ffff';
+                ctx.shadowColor = '#00ffff';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                // Draw hooves instead of circular feet
+                if (player.direction > 0) {
+                    ctx.moveTo(legEndX - 4, legEndY);
+                    ctx.lineTo(legEndX + 4, legEndY);
+                    ctx.lineTo(legEndX + 4, legEndY + 6);
+                    ctx.lineTo(legEndX - 4, legEndY + 6);
+                } else {
+                    ctx.moveTo(legEndX + 4, legEndY);
+                    ctx.lineTo(legEndX - 4, legEndY);
+                    ctx.lineTo(legEndX - 4, legEndY + 6);
+                    ctx.lineTo(legEndX + 4, legEndY + 6);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+            
+            // Draw body as a more horse-shaped form (elongated oval)
+            const bodyGradient = ctx.createLinearGradient(
+                player.x, player.y, 
+                player.x + player.width, player.y + player.height
+            );
+            bodyGradient.addColorStop(0, '#092344');
+            bodyGradient.addColorStop(0.5, '#1a5b9c');
+            bodyGradient.addColorStop(1, '#092344');
+            
+            ctx.fillStyle = bodyGradient;
+            ctx.strokeStyle = '#0af';
+            ctx.lineWidth = 2;
+            
+            // Horse body shape (elongated ellipse)
+            ctx.beginPath();
+            ctx.ellipse(
+                bodyX, bodyY,
+                player.width * 0.5, player.height * 0.7,
+                0, 0, Math.PI * 2
+            );
+            ctx.fill();
+            ctx.stroke();
+            
+            // Add tech details to body - circuit pattern
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.7)';
+            ctx.lineWidth = 1;
+            
+            // Draw spine and ribs (circuit-like pattern)
+            ctx.beginPath();
+            ctx.moveTo(player.x + player.width * 0.2, bodyY);
+            ctx.lineTo(player.x + player.width * 0.8, bodyY);
+            ctx.stroke();
+            
+            for (let i = 0; i < 5; i++) {
+                const ribX = player.x + player.width * (0.3 + i * 0.1);
+                ctx.beginPath();
+                ctx.moveTo(ribX, bodyY - player.height * 0.3);
+                ctx.lineTo(ribX, bodyY + player.height * 0.3);
+                ctx.stroke();
+            }
+            
+            // Draw energy core in center
+            const coreGradient = ctx.createRadialGradient(
+                bodyX, bodyY, 2,
+                bodyX, bodyY, 10
+            );
+            coreGradient.addColorStop(0, '#fff');
+            coreGradient.addColorStop(0.3, '#0ff');
+            coreGradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+            
+            ctx.fillStyle = coreGradient;
+            ctx.beginPath();
+            ctx.arc(bodyX, bodyY, 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw horse neck (positioned based on direction)
+            const neckEndX = player.x + (player.direction > 0 ? player.width * 0.8 : player.width * 0.2);
+            const neckEndY = player.y;
+            const neckStartX = player.x + (player.direction > 0 ? player.width * 0.7 : player.width * 0.3);
+            const neckStartY = player.y + player.height * 0.3;
+            
+            const neckGradient = ctx.createLinearGradient(
+                neckStartX, neckStartY,
+                neckEndX, neckEndY
+            );
+            neckGradient.addColorStop(0, '#1a5b9c');
+            neckGradient.addColorStop(1, '#092344');
+            
+            ctx.fillStyle = neckGradient;
+            ctx.beginPath();
+            ctx.moveTo(neckStartX, neckStartY);
+            ctx.quadraticCurveTo(
+                neckStartX + (neckEndX - neckStartX) * 0.1, 
+                neckStartY - player.height * 0.4,
+                neckEndX, neckEndY
+            );
+            ctx.lineTo(neckEndX + (player.direction > 0 ? 5 : -5), neckEndY);
+            ctx.quadraticCurveTo(
+                neckStartX + (neckEndX - neckStartX) * 0.1 + (player.direction > 0 ? 5 : -5), 
+                neckStartY - player.height * 0.4,
+                neckStartX + (player.direction > 0 ? 5 : -5), neckStartY
+            );
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#0af';
+            ctx.stroke();
+            
+            // Add mane with glowing cybernetic details
+            const maneColors = ['#00ccff', '#0066ff', '#0033aa'];
+            for (let i = 0; i < 7; i++) {
+                const maneX = neckStartX + (neckEndX - neckStartX) * (i/7);
+                const maneY = neckStartY - player.height * 0.1 - (neckStartY - neckEndY) * (i/7);
+                
+                // Calculate spine curve position
+                const t = i/7;
+                const spineX = neckStartX + (neckEndX - neckStartX) * t;
+                const controlX = neckStartX + (neckEndX - neckStartX) * 0.1;
+                const controlY = neckStartY - player.height * 0.4;
+                const spineY = (1-t)*(1-t)*neckStartY + 2*(1-t)*t*controlY + t*t*neckEndY;
+                
+                const maneLength = 10 + Math.sin(frameCount * 0.1 + i) * 3;
+                const maneColor = maneColors[i % maneColors.length];
+                
+                ctx.strokeStyle = maneColor;
+                ctx.lineWidth = 2;
+                ctx.shadowColor = maneColor;
+                ctx.shadowBlur = 5;
+                
+                ctx.beginPath();
+                ctx.moveTo(spineX, spineY);
+                ctx.lineTo(
+                    spineX + (player.direction > 0 ? -maneLength : maneLength), 
+                    spineY - maneLength * 0.7
+                );
+                ctx.stroke();
+                
+                // Add glowing tips to mane
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(
+                    spineX + (player.direction > 0 ? -maneLength : maneLength), 
+                    spineY - maneLength * 0.7,
+                    2, 0, Math.PI * 2
+                );
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            
+            // Draw horse tail
+            const tailStartX = player.x + (player.direction > 0 ? player.width * 0.2 : player.width * 0.8);
+            const tailStartY = player.y + player.height * 0.3;
+            
+            // Draw tail base
+            ctx.fillStyle = '#092344';
+            ctx.beginPath();
+            ctx.moveTo(tailStartX, tailStartY);
+            ctx.quadraticCurveTo(
+                tailStartX + (player.direction > 0 ? -20 : 20), 
+                tailStartY + 15,
+                tailStartX + (player.direction > 0 ? -30 : 30), 
+                tailStartY + 40
+            );
+            ctx.lineTo(tailStartX + (player.direction > 0 ? -35 : 35), tailStartY + 40);
+            ctx.quadraticCurveTo(
+                tailStartX + (player.direction > 0 ? -25 : 25), 
+                tailStartY + 15,
+                tailStartX, tailStartY + 5
+            );
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#0af';
+            ctx.stroke();
+            
+            // Add glowing tail strands
+            for (let i = 0; i < 5; i++) {
+                const strandPhase = frameCount * 0.05 + i * 0.5;
+                const strandX = tailStartX + (player.direction > 0 ? -30 : 30) + Math.sin(strandPhase) * 5;
+                const strandY = tailStartY + 40;
+                const strandLength = 15 + i * 3;
+                
+                ctx.strokeStyle = '#00ccff';
+                ctx.shadowColor = '#00ccff';
+                ctx.shadowBlur = 5;
+                ctx.lineWidth = 2;
+                
+                ctx.beginPath();
+                ctx.moveTo(strandX, strandY);
+                ctx.quadraticCurveTo(
+                    strandX + (player.direction > 0 ? -10 : 10), 
+                    strandY + strandLength * 0.6,
+                    strandX + (player.direction > 0 ? -5 : 5), 
+                    strandY + strandLength
+                );
+                ctx.stroke();
+                
+                // Add glowing tips to tail
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(
+                    strandX + (player.direction > 0 ? -5 : 5), 
+                    strandY + strandLength,
+                    2, 0, Math.PI * 2
+                );
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            
+            // Draw robot head with metallic gradient (more horse-like proportions)
+            const headWidth = player.width * 0.4;
+            const headHeight = player.height * 0.6;
+            const headX = neckEndX + (player.direction > 0 ? 0 : -headWidth);
+            const headY = neckEndY - headHeight * 0.7;
+            
+            // Draw horse-shaped robot head
+            const headGradient = ctx.createLinearGradient(
+                headX, headY, 
+                headX + headWidth, headY + headHeight
+            );
+            headGradient.addColorStop(0, '#656565');
+            headGradient.addColorStop(0.5, '#a9a9a9');
+            headGradient.addColorStop(1, '#656565');
+            
+            ctx.fillStyle = headGradient;
+            ctx.strokeStyle = '#0af';
+            ctx.lineWidth = 2;
+            
+            // Create horse head shape
+            ctx.beginPath();
+            // Curved top of head (forehead)
+            ctx.moveTo(headX, headY + headHeight * 0.3);
+            ctx.quadraticCurveTo(
+                headX + headWidth * 0.5, 
+                headY - headHeight * 0.1,
+                headX + headWidth, 
+                headY + headHeight * 0.3
+            );
+            
+            // Back of head
+            if (player.direction > 0) {
+                ctx.lineTo(headX + headWidth, headY + headHeight * 0.8);
+                // Jaw/chin
+                ctx.quadraticCurveTo(
+                    headX + headWidth * 0.8, 
+                    headY + headHeight * 0.9,
+                    headX + headWidth * 0.6, 
+                    headY + headHeight
+                );
+                // Muzzle/nose
+                ctx.lineTo(headX + headWidth * 0.2, headY + headHeight);
+                ctx.quadraticCurveTo(
+                    headX + headWidth * 0.1, 
+                    headY + headHeight * 0.7,
+                    headX, 
+                    headY + headHeight * 0.5
+                );
+            } else {
+                ctx.lineTo(headX, headY + headHeight * 0.8);
+                // Jaw/chin
+                ctx.quadraticCurveTo(
+                    headX + headWidth * 0.2, 
+                    headY + headHeight * 0.9,
+                    headX + headWidth * 0.4, 
+                    headY + headHeight
+                );
+                // Muzzle/nose
+                ctx.lineTo(headX + headWidth * 0.8, headY + headHeight);
+                ctx.quadraticCurveTo(
+                    headX + headWidth * 0.9, 
+                    headY + headHeight * 0.7,
+                    headX + headWidth, 
+                    headY + headHeight * 0.5
+                );
+            }
+            
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Add tech details to head
+            ctx.fillStyle = '#222';
+            
+            // Draw visor/eye display
+            const visorY = headY + headHeight * 0.4;
+            const visorHeight = headHeight * 0.15;
+            
+            roundRect(
+                ctx, 
+                headX + headWidth * 0.2, 
+                visorY, 
+                headWidth * 0.6, 
+                visorHeight, 
+                3, true, false
+            );
+            
+            // Draw glowing eye in visor
+            const eyeX = headX + headWidth * (player.direction > 0 ? 0.5 : 0.5);
+            const eyeY = visorY + visorHeight * 0.5;
+            const eyeWidth = headWidth * 0.4;
+            const eyeHeight = visorHeight * 0.6;
+            
+            // Eye glow
+            ctx.fillStyle = '#f00';
+            ctx.shadowColor = '#f00';
+            ctx.shadowBlur = 15;
+            
+            // Draw scanner-like eye
+            ctx.beginPath();
+            ctx.rect(
+                eyeX - eyeWidth * 0.5, 
+                eyeY - eyeHeight * 0.5, 
+                eyeWidth, 
+                eyeHeight
+            );
+            ctx.fill();
+            
+            // Scanner animation
+            const scannerPos = (frameCount % 60) / 60;
+            const scannerX = eyeX - eyeWidth * 0.5 + eyeWidth * scannerPos;
+            
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.rect(scannerX - 1, eyeY - eyeHeight * 0.5, 2, eyeHeight);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Add ears
+            const earWidth = headWidth * 0.15;
+            const earHeight = headHeight * 0.3;
+            
+            // Left ear
+            ctx.fillStyle = '#555';
+            ctx.beginPath();
+            ctx.moveTo(headX + headWidth * 0.25, headY + headHeight * 0.1);
+            ctx.lineTo(headX + headWidth * 0.2 - earWidth, headY - earHeight);
+            ctx.lineTo(headX + headWidth * 0.3 - earWidth, headY - earHeight * 0.7);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#0af';
+            ctx.stroke();
+            
+            // Right ear
+            ctx.beginPath();
+            ctx.moveTo(headX + headWidth * 0.75, headY + headHeight * 0.1);
+            ctx.lineTo(headX + headWidth * 0.8 + earWidth, headY - earHeight);
+            ctx.lineTo(headX + headWidth * 0.7 + earWidth, headY - earHeight * 0.7);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Add small blinking ear tip lights
+            if (frameCount % 30 < 15) {
+                ctx.fillStyle = '#0ff';
+                ctx.shadowColor = '#0ff';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(
+                    headX + headWidth * 0.2 - earWidth, 
+                    headY - earHeight, 
+                    3, 0, Math.PI * 2
+                );
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(
+                    headX + headWidth * 0.8 + earWidth, 
+                    headY - earHeight, 
+                    3, 0, Math.PI * 2
+                );
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            
+            // Add nostril lights on muzzle
+            const nostrilY = headY + headHeight * 0.9;
+            const nostrilX1 = headX + headWidth * (player.direction > 0 ? 0.25 : 0.75);
+            const nostrilX2 = headX + headWidth * (player.direction > 0 ? 0.35 : 0.65);
+            
+            ctx.fillStyle = '#0ff';
+            ctx.shadowColor = '#0ff';
+            ctx.shadowBlur = 5;
+            ctx.beginPath();
+            ctx.arc(nostrilX1, nostrilY, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(nostrilX2, nostrilY, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Draw weapon with glow effect
+            const weapon = weapons[currentWeaponIndex];
+            
+            // Calculate weapon position - mounted on the side
+            const weaponY = player.y + player.height * 0.3;
+            const weaponLength = 25;
+            const weaponHeight = 8;
+            
+            let weaponX;
+            if (player.direction > 0) {
+                weaponX = player.x + player.width * 0.8;
+            } else {
+                weaponX = player.x + player.width * 0.2 - weaponLength;
+            }
+            
+            // Weapon gradient
+            const weaponGradient = ctx.createLinearGradient(
+                weaponX, weaponY, 
+                weaponX + weaponLength, weaponY
+            );
+            
+            weaponGradient.addColorStop(0, weapon.color);
+            weaponGradient.addColorStop(1, lightenColor(weapon.color, 30));
+            
+            ctx.fillStyle = weaponGradient;
+            ctx.shadowColor = weapon.color;
+            ctx.shadowBlur = 10;
+            
+            // Draw weapon
+            roundRect(ctx, weaponX, weaponY, weaponLength, weaponHeight, 3, true, false);
+            
+            // Weapon details
+            ctx.fillStyle = lightenColor(weapon.color, 50);
+            if (player.direction > 0) {
+                roundRect(ctx, weaponX + weaponLength - 5, weaponY + 1, 3, weaponHeight - 2, 1, true, false);
+            } else {
+                roundRect(ctx, weaponX + 2, weaponY + 1, 3, weaponHeight - 2, 1, true, false);
+            }
+            
+            ctx.shadowBlur = 0;
+            
+            // Add engine exhaust when moving
+            if (keys['ArrowLeft'] || keys['ArrowRight']) {
+                const exhaustX = player.x + (player.direction > 0 ? player.width * 0.2 : player.width * 0.8);
+                const exhaustY = player.y + player.height * 0.7;
+                
+                // Create random exhaust particles
+                for (let i = 0; i < 5; i++) {
+                    const particleSize = Math.random() * 5 + 3;
+                    const offsetX = -player.direction * (Math.random() * 20 + 5);
+                    const offsetY = Math.random() * 8 - 4;
+                    
+                    const exhaustGradient = ctx.createRadialGradient(
+                        exhaustX, exhaustY, 0,
+                        exhaustX, exhaustY, particleSize * 2
+                    );
+                    
+                    exhaustGradient.addColorStop(0, '#fff');
+                    exhaustGradient.addColorStop(0.2, '#0af');
+                    exhaustGradient.addColorStop(1, 'rgba(0, 170, 255, 0)');
+                    
+                    ctx.fillStyle = exhaustGradient;
+                    ctx.beginPath();
+                    ctx.arc(exhaustX + offsetX, exhaustY + offsetY, particleSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            ctx.restore();
+        }
+        
+        // Helper function for rounded rectangles
+        function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            
+            if (fill) {
+                ctx.fill();
+            }
+            
+            if (stroke) {
+                ctx.stroke();
+            }
+        }
+        
+        // Helper function to lighten colors
+        function lightenColor(color, percent) {
+            const num = parseInt(color.replace('#', ''), 16);
+            const amt = Math.round(2.55 * percent);
+            const R = (num >> 16) + amt;
+            const G = (num >> 8 & 0x00FF) + amt;
+            const B = (num & 0x0000FF) + amt;
+            
+            return '#' + (
+                0x1000000 + 
+                (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 + 
+                (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 + 
+                (B < 255 ? (B < 1 ? 0 : B) : 255)
+            ).toString(16).slice(1);
+        }
+
+        function drawEnemy(enemy) {
+            ctx.save();
+            
+            // Draw shadow under enemy
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(enemy.x + enemy.width/2, enemy.y + enemy.height + 5, 
+                      enemy.width/2, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Squid mantle (body) with gradient
+            const bodyGradient = ctx.createRadialGradient(
+                enemy.x + enemy.width/2, enemy.y + enemy.height/2, 0,
+                enemy.x + enemy.width/2, enemy.y + enemy.height/2, enemy.width/2
+            );
+            
+            // Get base color and create lighter/darker versions
+            const baseColor = enemy.color;
+            const lighterColor = lightenColor(baseColor, 30);
+            const darkerColor = lightenColor(baseColor, -20);
+            
+            bodyGradient.addColorStop(0, lighterColor);
+            bodyGradient.addColorStop(0.7, baseColor);
+            bodyGradient.addColorStop(1, darkerColor);
+            
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.ellipse(enemy.x + enemy.width/2, enemy.y + enemy.height/2 - 5, 
+                      enemy.width/2, enemy.height/2 * 0.8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add some texture/pattern to the body
+            ctx.strokeStyle = lightenColor(baseColor, 10);
+            ctx.lineWidth = 1;
+            
+            // Concentric rings on body
+            for (let i = 1; i <= 3; i++) {
+                ctx.beginPath();
+                ctx.ellipse(
+                    enemy.x + enemy.width/2, 
+                    enemy.y + enemy.height/2 - 5,
+                    enemy.width/2 * (i/3), 
+                    enemy.height/2 * 0.8 * (i/3), 
+                    0, 0, Math.PI * 2
+                );
+                ctx.stroke();
+            }
+            
+            // Draw glowing eyes
+            const eyeOffset = enemy.width/5;
+            const eyeSize = enemy.width/10 + 2;
+            const eyeY = enemy.y + enemy.height/2 - enemy.height/6;
+            
+            // Eye glow
+            ctx.shadowColor = '#f00';
+            ctx.shadowBlur = 10;
+            
+            // Left eye
+            const leftEyeGradient = ctx.createRadialGradient(
+                enemy.x + enemy.width/2 - eyeOffset, eyeY, 0,
+                enemy.x + enemy.width/2 - eyeOffset, eyeY, eyeSize
+            );
+            leftEyeGradient.addColorStop(0, '#fff');
+            leftEyeGradient.addColorStop(0.6, '#f88');
+            leftEyeGradient.addColorStop(1, '#f00');
+            
+            ctx.fillStyle = leftEyeGradient;
+            ctx.beginPath();
+            ctx.arc(enemy.x + enemy.width/2 - eyeOffset, eyeY, eyeSize, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Right eye
+            const rightEyeGradient = ctx.createRadialGradient(
+                enemy.x + enemy.width/2 + eyeOffset, eyeY, 0,
+                enemy.x + enemy.width/2 + eyeOffset, eyeY, eyeSize
+            );
+            rightEyeGradient.addColorStop(0, '#fff');
+            rightEyeGradient.addColorStop(0.6, '#f88');
+            rightEyeGradient.addColorStop(1, '#f00');
+            
+            ctx.fillStyle = rightEyeGradient;
+            ctx.beginPath();
+            ctx.arc(enemy.x + enemy.width/2 + eyeOffset, eyeY, eyeSize, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw pupils - follow player
+            const playerDir = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+            const pupilOffset = eyeSize * 0.4; // How far pupils move from center
+            
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#000';
+            
+            // Left pupil
+            const leftPupilX = enemy.x + enemy.width/2 - eyeOffset + Math.cos(playerDir) * pupilOffset;
+            const leftPupilY = eyeY + Math.sin(playerDir) * pupilOffset;
+            ctx.beginPath();
+            ctx.arc(leftPupilX, leftPupilY, eyeSize * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Right pupil
+            const rightPupilX = enemy.x + enemy.width/2 + eyeOffset + Math.cos(playerDir) * pupilOffset;
+            const rightPupilY = eyeY + Math.sin(playerDir) * pupilOffset;
+            ctx.beginPath();
+            ctx.arc(rightPupilX, rightPupilY, eyeSize * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw tentacles with curvy tentacle effect
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            
+            for (let i = 0; i < enemy.tentacles; i++) {
+                const angle = (i / enemy.tentacles) * Math.PI * 2;
+                const tentaclePhase = frameCount * 0.1 + i;
+                
+                // Create a gradient for each tentacle
+                const tentacleGradient = ctx.createLinearGradient(
+                    enemy.x + enemy.width/2,
+                    enemy.y + enemy.height/2,
+                    enemy.x + enemy.width/2 + Math.cos(angle) * enemy.width,
+                    enemy.y + enemy.height/2 + Math.sin(angle) * enemy.height
+                );
+                
+                tentacleGradient.addColorStop(0, baseColor);
+                tentacleGradient.addColorStop(1, lightenColor(baseColor, -10));
+                ctx.strokeStyle = tentacleGradient;
+                
+                // Draw the tentacle using bezier curves for more natural movement
+                ctx.beginPath();
+                ctx.moveTo(
+                    enemy.x + enemy.width/2, 
+                    enemy.y + enemy.height/2
+                );
+                
+                // Control points for the bezier curve
+                const cp1x = enemy.x + enemy.width/2 + Math.cos(angle) * enemy.width/2;
+                const cp1y = enemy.y + enemy.height/2 + Math.sin(angle) * enemy.height/2;
+                
+                const cp2x = enemy.x + enemy.width/2 + Math.cos(angle + Math.sin(tentaclePhase) * 0.3) * enemy.width * 0.8;
+                const cp2y = enemy.y + enemy.height/2 + Math.sin(angle + Math.sin(tentaclePhase) * 0.3) * enemy.height * 0.8;
+                
+                const endX = enemy.x + enemy.width/2 + Math.cos(angle + Math.sin(tentaclePhase) * 0.5) * enemy.width;
+                const endY = enemy.y + enemy.height/2 + Math.sin(angle + Math.sin(tentaclePhase) * 0.5) * enemy.height;
+                
+                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
+                ctx.stroke();
+                
+                // Add suction cups to the tentacles (small circles)
+                if (i % 2 === 0) { // Only do this for some tentacles to save on performance
+                    ctx.fillStyle = lightenColor(baseColor, 20);
+                    for (let j = 0.3; j <= 0.9; j += 0.2) {
+                        // Calculate position along the bezier curve
+                        const t = j;
+                        const suctionX = Math.pow(1-t, 3) * (enemy.x + enemy.width/2) + 
+                                        3 * Math.pow(1-t, 2) * t * cp1x + 
+                                        3 * (1-t) * Math.pow(t, 2) * cp2x + 
+                                        Math.pow(t, 3) * endX;
+                        
+                        const suctionY = Math.pow(1-t, 3) * (enemy.y + enemy.height/2) + 
+                                        3 * Math.pow(1-t, 2) * t * cp1y + 
+                                        3 * (1-t) * Math.pow(t, 2) * cp2y + 
+                                        Math.pow(t, 3) * endY;
+                        
+                        ctx.beginPath();
+                        ctx.arc(suctionX, suctionY, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+            
+            // Draw health bar with glow effect for low health
+            const healthPercent = enemy.health / enemy.maxHealth;
+            
+            // Health bar background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            roundRect(ctx, enemy.x, enemy.y - 15, enemy.width, 7, 3, true, false);
+            
+            // Health bar fill
+            let healthColor = '#0f0';
+            if (healthPercent <= 0.5 && healthPercent > 0.25) {
+                healthColor = '#ff0';
+            } else if (healthPercent <= 0.25) {
+                healthColor = '#f00';
+                // Add glow for low health
+                ctx.shadowColor = '#f00';
+                ctx.shadowBlur = 8;
+            }
+            
+            roundRect(ctx, 
+                enemy.x, enemy.y - 15, 
+                enemy.width * healthPercent, 7, 
+                3, true, false
+            );
+            
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+
+        function shoot() {
+            const weapon = weapons[currentWeaponIndex];
+            const projX = player.x + (player.direction > 0 ? player.width : 0);
+            const projY = player.y + player.height / 2 - weapon.height / 2;
+            
+            projectiles.push({
+                x: projX,
+                y: projY,
+                width: weapon.width,
+                height: weapon.height,
+                speed: weapon.projectileSpeed,
+                velX: weapon.projectileSpeed * player.direction,
+                velY: 0,
+                damage: weapon.damage,
+                color: weapon.color,
+                isPlayerProjectile: true
+            });
+            
+            // Add muzzle flash effect
+            createParticles(projX, projY, 5, weapon.color);
+        }
+
+        function spawnEnemy() {
+            // Different types of enemies
+            const enemyTypes = [
+                { color: '#f00', width: 30, height: 30, speed: 1.5, health: 30, maxHealth: 30, points: 100, tentacles: 6 },  // Scout Squid
+                { color: '#a00', width: 40, height: 40, speed: 0.8, health: 60, maxHealth: 60, points: 200, tentacles: 8 },  // Heavy Squid
+                { color: '#faa', width: 25, height: 25, speed: 2, health: 20, maxHealth: 20, points: 150, tentacles: 5 },    // Stealth Squid
+                { color: '#f55', width: 50, height: 50, speed: 0.5, health: 100, maxHealth: 100, points: 300, tentacles: 10 } // Juggernaut Squid
+            ];
+            
+            // Select a random enemy type based on game progress
+            const typeIndex = Math.min(Math.floor(score / 1000), enemyTypes.length - 1);
+            const type = enemyTypes[Math.floor(Math.random() * (typeIndex + 1))];
+            
+            // Random position outside the screen
+            let x, y;
+            if (Math.random() < 0.5) {
+                x = Math.random() < 0.5 ? -type.width : canvas.width;
+                y = Math.random() * canvas.height;
+            } else {
+                x = Math.random() * canvas.width;
+                y = -type.height;
+            }
+            
+            enemies.push({
+                x,
+                y,
+                width: type.width,
+                height: type.height,
+                velX: 0,
+                velY: 0,
+                speed: type.speed,
+                health: type.health,
+                maxHealth: type.maxHealth,
+                points: type.points,
+                color: type.color,
+                tentacles: type.tentacles
+            });
+        }
+
+        function spawnPowerUp(x, y) {
+            const types = ['health', 'weapon'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            const color = type === 'health' ? '#0f0' : '#ff0';
+            
+            powerUps.push({
+                x,
+                y,
+                width: 20,
+                height: 20,
+                type,
+                color
+            });
+        }
+
+        function createParticles(x, y, amount, color) {
+            for (let i = 0; i < amount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 3 + 1;
+                
+                particles.push({
+                    x,
+                    y,
+                    size: Math.random() * 3 + 2,
+                    velX: Math.cos(angle) * speed,
+                    velY: Math.sin(angle) * speed,
+                    color
+                });
+            }
+        }
+
+        function isColliding(a, b) {
+            return a.x < b.x + b.width &&
+                   a.x + a.width > b.x &&
+                   a.y < b.y + b.height &&
+                   a.y + a.height > b.y;
+        }
+
+        function animate() {
+            if (!gameOver) {
+                update();
+                draw();
+                requestAnimationFrame(animate);
+            }
+        }
+
+        // Initialize the game on load
+        resetGame();
+    </script>
+</body>
+</html>
