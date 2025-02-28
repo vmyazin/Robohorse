@@ -16,6 +16,11 @@ class Game {
         this.lastSpawnTime = 0;
         this.gameSpeed = 1;
         
+        // Damage flash effect
+        this.damageFlashActive = false;
+        this.damageFlashDuration = 10; // frames
+        this.damageFlashCounter = 0;
+        
         // DOM elements
         this.healthDisplay = document.getElementById('health');
         this.scoreDisplay = document.getElementById('score');
@@ -170,6 +175,10 @@ class Game {
                 this.healthDisplay.textContent = this.player.health;
                 this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 3, '#fff');
                 
+                // Activate damage flash effect
+                this.damageFlashActive = true;
+                this.damageFlashCounter = this.damageFlashDuration;
+                
                 if (this.player.health <= 0) {
                     this.endGame();
                 }
@@ -183,6 +192,10 @@ class Game {
                 this.healthDisplay.textContent = this.player.health;
                 this.projectiles.splice(index, 1);
                 this.createParticles(proj.x, proj.y, 10, proj.color);
+                
+                // Activate damage flash effect
+                this.damageFlashActive = true;
+                this.damageFlashCounter = this.damageFlashDuration;
                 
                 if (this.player.health <= 0) {
                     this.endGame();
@@ -220,6 +233,14 @@ class Game {
                 this.particles.splice(index, 1);
             }
         });
+        
+        // Update damage flash effect
+        if (this.damageFlashActive) {
+            this.damageFlashCounter--;
+            if (this.damageFlashCounter <= 0) {
+                this.damageFlashActive = false;
+            }
+        }
         
         // Increase game speed over time
         if (this.frameCount % 1000 === 0) {
@@ -274,6 +295,12 @@ class Game {
         this.enemies.forEach(enemy => {
             enemy.draw(this.ctx, this.frameCount, this.player);
         });
+        
+        // Apply damage flash effect (red overlay)
+        if (this.damageFlashActive) {
+            this.ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        }
     }
     
     animate() {
