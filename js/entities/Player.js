@@ -20,6 +20,10 @@ class Player {
         this.direction = 1; // 1 = right, -1 = left
         this.lastShot = 0;
         
+        // Special ability tokens
+        this.specialAbilityTokens = 0;
+        this.maxSpecialAbilityTokens = 5;
+        
         // Initialize legs
         this.legs = Array(6).fill().map((_, i) => ({
             angle: i * 60,
@@ -95,6 +99,11 @@ class Player {
     }
     
     specialAbility(frameCount, projectiles, createParticles) {
+        // Check if player has tokens to use special ability
+        if (this.specialAbilityTokens <= 0) {
+            return false;
+        }
+        
         if (frameCount % 10 === 0) {
             const weapon = this.weapons[this.currentWeaponIndex];
             for (let i = 0; i < 5; i++) {
@@ -113,6 +122,10 @@ class Player {
                 });
             }
             createParticles(this.x + this.width/2, this.y + this.height/2, 20, this.weapons[this.currentWeaponIndex].color);
+            
+            // Consume one token when special ability is used
+            this.specialAbilityTokens--;
+            
             return true;
         }
         return false;

@@ -25,6 +25,7 @@ class Game {
         this.healthDisplay = document.getElementById('health');
         this.scoreDisplay = document.getElementById('score');
         this.weaponDisplay = document.getElementById('weapon');
+        this.specialTokensDisplay = document.getElementById('special-tokens');
         this.finalScoreDisplay = document.getElementById('final-score');
         this.gameOverScreen = document.getElementById('game-over');
         this.startScreen = document.getElementById('start-screen');
@@ -43,6 +44,7 @@ class Game {
         this.enemies = [];
         this.projectiles = [];
         this.powerUps = [];
+        this.specialTokens = [];
         this.particles = [];
         this.platforms = [
             { x: 0, y: canvas.height - 50, width: canvas.width, height: 50 }
@@ -92,6 +94,7 @@ class Game {
         this.enemies = [];
         this.projectiles = [];
         this.powerUps = [];
+        this.specialTokens = [];
         this.particles = [];
         this.score = 0;
         this.gameSpeed = 1;
@@ -100,6 +103,7 @@ class Game {
         this.healthDisplay.textContent = this.player.health;
         this.scoreDisplay.textContent = this.score;
         this.weaponDisplay.textContent = this.weapons[0].name;
+        this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
         this.gameOverScreen.style.display = 'none';
     }
     
@@ -124,7 +128,10 @@ class Game {
         
         // Special ability (stampede mode)
         if (this.keys['c']) {
-            this.player.specialAbility(this.frameCount, this.projectiles, this.createParticles.bind(this));
+            if (this.player.specialAbility(this.frameCount, this.projectiles, this.createParticles.bind(this))) {
+                // Update special tokens display if ability was used
+                this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
+            }
         }
         
         // Update projectiles
@@ -161,9 +168,12 @@ class Game {
                         this.scoreDisplay.textContent = this.score;
                         this.createParticles(enemy.x + enemy.width/2, enemy.y + enemy.height/2, 20, '#f00');
                         
-                        // Randomly spawn power-up
-                        if (Math.random() < 0.2) {
+                        // Randomly spawn power-up or special token
+                        const rand = Math.random();
+                        if (rand < 0.2) {
                             this.spawnPowerUp(enemy.x, enemy.y);
+                        } else if (rand < 0.5) {
+                            this.spawnSpecialToken(enemy.x, enemy.y);
                         }
                     }
                 }
@@ -220,6 +230,21 @@ class Game {
                 
                 this.powerUps.splice(index, 1);
                 this.createParticles(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, 15, powerUp.color);
+            }
+        });
+        
+        // Update special tokens
+        this.specialTokens.forEach((token, index) => {
+            token.y += Math.sin(this.frameCount * 0.1) * 0.5; // Floating effect
+            
+            if (isColliding(token, this.player)) {
+                // Add token to player's count if not at max
+                if (this.player.specialAbilityTokens < this.player.maxSpecialAbilityTokens) {
+                    this.player.specialAbilityTokens++;
+                    this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
+                    this.specialTokens.splice(index, 1);
+                    this.createParticles(token.x + token.width/2, token.y + token.height/2, 15, token.color);
+                }
             }
         });
         
@@ -288,6 +313,20 @@ class Game {
             this.ctx.fillText(powerUp.type.toUpperCase(), powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2 + 3);
         });
         
+        // Draw special tokens
+        this.specialTokens.forEach(token => {
+            this.ctx.fillStyle = token.color;
+            this.ctx.beginPath();
+            this.ctx.arc(token.x + token.width/2, token.y + token.height/2, token.width/2, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Draw star symbol inside
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = '15px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('★', token.x + token.width/2, token.y + token.height/2 + 5);
+        });
+        
         // Draw player
         this.player.draw(this.ctx, this.frameCount, this.keys);
         
@@ -349,6 +388,16 @@ class Game {
             height: 20,
             type,
             color
+        });
+    }
+    
+    spawnSpecialToken(x, y) {
+        this.specialTokens.push({
+            x,
+            y,
+            width: 20,
+            height: 20,
+            color: '#ff00ff'
         });
     }
     
