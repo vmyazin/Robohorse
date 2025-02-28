@@ -1,0 +1,97 @@
+/* css/styles.css */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: 'Press Start 2P', cursive;
+    color: #fff;
+}
+
+canvas {
+    border: 4px solid #36f;
+    background-color: #000;
+    box-shadow: 0 0 20px #36f, 0 0 40px rgba(51, 102, 255, 0.5);
+}
+
+#game-container {
+    position: relative;
+}
+
+#hud {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    color: #0ff;
+    font-size: 12px;
+    text-shadow: 0 0 5px #0ff;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 5px 10px;
+    border: 2px solid #0ff;
+    border-radius: 5px;
+}
+
+#game-over, #start-screen {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 16px;
+    text-align: center;
+    background-color: rgba(0, 0, 30, 0.8);
+    padding: 30px;
+    border-radius: 10px;
+    border: 3px solid #36f;
+    box-shadow: 0 0 20px #36f, inset 0 0 15px rgba(51, 102, 255, 0.5);
+    display: none;
+}
+
+#start-screen {
+    display: block;
+    width: 60%;
+    max-width: 500px;
+}
+
+#start-screen h1 {
+    color: #0ff;
+    text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+    font-size: 28px;
+    margin-bottom: 30px;
+}
+
+button {
+    background: linear-gradient(to bottom, #36f, #14c);
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    margin-top: 30px;
+    cursor: pointer;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 14px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px #36f;
+    transition: all 0.2s ease;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+button:hover {
+    background: linear-gradient(to bottom, #47f, #25d);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px #47f;
+}
+
+.control-key {
+    display: inline-block;
+    background-color: #36f;
+    color: #fff;
+    padding: 5px 10px;
+    margin: 0 5px;
+    border-radius: 3px;
+    box-shadow: 0 0 5px #36f;
+} 
