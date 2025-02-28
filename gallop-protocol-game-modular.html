@@ -9,7 +9,7 @@
 <body>
     <div id="game-container">
         <canvas id="gameCanvas" width="1000" height="600"></canvas>
-        <div id="hud">HEALTH: <span id="health">100</span> | SCORE: <span id="score">0</span> | WEAPON: <span id="weapon">NEURAL BEAM</span> | SPECIAL: <span id="special-tokens">0</span></div>
+        <div id="hud">HEALTH: <span id="health">100</span> | SCORE: <span id="score">0</span> | WEAPON: <span id="weapon">NEURAL BEAM</span> | SPECIAL: <span id="special-tokens">0</span> | LEVEL: <span id="level">Training Grounds</span></div>
         <div id="game-over">
             GAME OVER<br>
             FINAL SCORE: <span id="final-score">0</span><br>
@@ -27,6 +27,8 @@
                 <span class="control-key">SPACE</span> Change Weapon
             </p>
             <p>Collect special ability tokens (★) from defeated enemies to use your special ability!</p>
+            <p>Special ability now lasts longer and consumes tokens gradually over time.</p>
+            <p>Jump over obstacles like cars and boxes to progress through levels.</p>
             <button id="start-button">START MISSION</button>
         </div>
     </div>

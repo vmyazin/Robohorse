@@ -1,6 +1,7 @@
 import Player from './entities/Player.js';
 import Enemy from './entities/Enemy.js';
 import Background from './components/Background.js';
+import LevelManager from './levels/LevelManager.js';
 import { isColliding } from './utils/helpers.js';
 
 class Game {
@@ -29,6 +30,7 @@ class Game {
         this.finalScoreDisplay = document.getElementById('final-score');
         this.gameOverScreen = document.getElementById('game-over');
         this.startScreen = document.getElementById('start-screen');
+        this.levelDisplay = document.getElementById('level');
         
         // Weapons
         this.weapons = [
@@ -45,10 +47,14 @@ class Game {
         this.projectiles = [];
         this.powerUps = [];
         this.specialTokens = [];
+        this.obstacles = [];
         this.particles = [];
         this.platforms = [
             { x: 0, y: canvas.height - 50, width: canvas.width, height: 50 }
         ];
+        
+        // Level manager
+        this.levelManager = new LevelManager(this);
         
         // Control state
         this.keys = {};
@@ -95,15 +101,22 @@ class Game {
         this.projectiles = [];
         this.powerUps = [];
         this.specialTokens = [];
+        this.obstacles = [];
         this.particles = [];
         this.score = 0;
         this.gameSpeed = 1;
+        
+        // Load first level
+        const levelData = this.levelManager.loadLevel(0);
         
         // Update displays
         this.healthDisplay.textContent = this.player.health;
         this.scoreDisplay.textContent = this.score;
         this.weaponDisplay.textContent = this.weapons[0].name;
         this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
+        if (this.levelDisplay) {
+            this.levelDisplay.textContent = levelData.name;
+        }
         this.gameOverScreen.style.display = 'none';
     }
     
@@ -129,10 +142,19 @@ class Game {
         // Special ability (stampede mode)
         if (this.keys['c']) {
             if (this.player.specialAbility(this.frameCount, this.projectiles, this.createParticles.bind(this))) {
-                // Update special tokens display if ability was used
+                // Update special tokens display
+                this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
+            }
+        } else if (this.player.specialAbilityActive) {
+            // Continue special ability if it's active, even if key is released
+            if (this.player.specialAbility(this.frameCount, this.projectiles, this.createParticles.bind(this))) {
+                // Update special tokens display
                 this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
             }
         }
+        
+        // Update level manager
+        this.levelManager.update();
         
         // Update projectiles
         this.projectiles.forEach((proj, index) => {
@@ -145,15 +167,15 @@ class Game {
             }
         });
         
-        // Spawn enemies - adjust spawn rate for larger canvas
-        if (this.frameCount - this.lastSpawnTime > 50 / this.gameSpeed) {
-            this.spawnEnemy();
-            this.lastSpawnTime = this.frameCount;
-        }
-        
         // Update enemies
         this.enemies.forEach((enemy, index) => {
             enemy.update(this.player, this.frameCount, this.createParticles.bind(this));
+            
+            // Remove enemies that are off-screen to the left
+            if (enemy.x + enemy.width < -100) {
+                this.enemies.splice(index, 1);
+                console.log("Removed enemy that went off-screen. Remaining:", this.enemies.length);
+            }
             
             // Check collisions with player projectiles
             this.projectiles.forEach((proj, projIndex) => {
@@ -191,6 +213,30 @@ class Game {
                 
                 if (this.player.health <= 0) {
                     this.endGame();
+                }
+            }
+        });
+        
+        // Check collision with obstacles
+        this.obstacles.forEach(obstacle => {
+            // Check if player is colliding with obstacle
+            if (isColliding(this.player, obstacle)) {
+                // If player is above the obstacle and falling, place them on top
+                if (this.player.y + this.player.height < obstacle.y + obstacle.height / 2 && this.player.velY > 0) {
+                    this.player.y = obstacle.y - this.player.height;
+                    this.player.velY = 0;
+                    this.player.isJumping = false;
+                } 
+                // Otherwise push player back (horizontal collision)
+                else if (this.player.x + this.player.width > obstacle.x && this.player.x < obstacle.x + obstacle.width) {
+                    // Coming from left
+                    if (this.player.x < obstacle.x) {
+                        this.player.x = obstacle.x - this.player.width;
+                    } 
+                    // Coming from right
+                    else {
+                        this.player.x = obstacle.x + obstacle.width;
+                    }
                 }
             }
         });
@@ -286,6 +332,11 @@ class Game {
             this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
         });
         
+        // Draw obstacles
+        this.obstacles.forEach(obstacle => {
+            obstacle.draw(this.ctx, this.frameCount, this.player);
+        });
+        
         // Draw particles
         this.particles.forEach(particle => {
             this.ctx.fillStyle = particle.color;
@@ -335,10 +386,34 @@ class Game {
             enemy.draw(this.ctx, this.frameCount, this.player);
         });
         
-        // Apply damage flash effect (red overlay)
+        // Draw damage flash effect
         if (this.damageFlashActive) {
-            this.ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+            this.ctx.fillStyle = `rgba(255, 0, 0, ${this.damageFlashCounter / this.damageFlashDuration * 0.3})`;
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+        
+        // Draw special ability status indicator
+        if (this.player.specialAbilityActive) {
+            // Draw duration bar at the top of the screen
+            const barWidth = 200;
+            const barHeight = 10;
+            const x = (this.canvas.width - barWidth) / 2;
+            const y = 20;
+            
+            // Background
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            this.ctx.fillRect(x, y, barWidth, barHeight);
+            
+            // Duration remaining
+            const durationPercentage = 1 - (this.player.specialAbilityDuration / this.player.specialAbilityMaxDuration);
+            this.ctx.fillStyle = this.player.specialAbilityTokens > 0 ? '#ffff00' : '#ff00ff';
+            this.ctx.fillRect(x, y, barWidth * durationPercentage, barHeight);
+            
+            // Text
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = '12px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('SPECIAL ACTIVE', x + barWidth / 2, y + barHeight + 12);
         }
     }
     

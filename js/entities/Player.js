@@ -24,6 +24,13 @@ class Player {
         this.specialAbilityTokens = 0;
         this.maxSpecialAbilityTokens = 5;
         
+        // Special ability duration tracking
+        this.specialAbilityActive = false;
+        this.specialAbilityDuration = 0;
+        this.specialAbilityMaxDuration = 300; // 5 seconds at 60fps
+        this.specialAbilityConsumptionRate = 100; // Consume token every 100 frames
+        this.specialAbilityLastConsumption = 0;
+        
         // Initialize legs
         this.legs = Array(6).fill().map((_, i) => ({
             angle: i * 60,
@@ -100,34 +107,68 @@ class Player {
     
     specialAbility(frameCount, projectiles, createParticles) {
         // Check if player has tokens to use special ability
-        if (this.specialAbilityTokens <= 0) {
+        if (this.specialAbilityTokens <= 0 && !this.specialAbilityActive) {
             return false;
         }
         
-        if (frameCount % 10 === 0) {
-            const weapon = this.weapons[this.currentWeaponIndex];
-            for (let i = 0; i < 5; i++) {
-                const angle = -Math.PI/4 + (Math.PI/2 * i/4);
-                projectiles.push({
-                    x: this.x + this.width/2,
-                    y: this.y + this.height/2,
-                    width: weapon.width,
-                    height: weapon.height,
-                    speed: weapon.projectileSpeed,
-                    velX: Math.cos(angle) * weapon.projectileSpeed * this.direction,
-                    velY: Math.sin(angle) * weapon.projectileSpeed,
-                    damage: weapon.damage / 2,
-                    color: weapon.color,
-                    isPlayerProjectile: true
-                });
-            }
-            createParticles(this.x + this.width/2, this.y + this.height/2, 20, this.weapons[this.currentWeaponIndex].color);
+        // Activate special ability if not already active
+        if (!this.specialAbilityActive && this.specialAbilityTokens > 0) {
+            this.specialAbilityActive = true;
+            this.specialAbilityDuration = 0;
+            this.specialAbilityLastConsumption = frameCount;
             
-            // Consume one token when special ability is used
+            // Consume one token to start
             this.specialAbilityTokens--;
+            
+            // Create initial particle burst
+            createParticles(this.x + this.width/2, this.y + this.height/2, 30, this.weapons[this.currentWeaponIndex].color);
+        }
+        
+        // If special ability is active
+        if (this.specialAbilityActive) {
+            // Increment duration counter
+            this.specialAbilityDuration++;
+            
+            // Check if we need to consume another token
+            if (frameCount - this.specialAbilityLastConsumption >= this.specialAbilityConsumptionRate) {
+                if (this.specialAbilityTokens > 0) {
+                    this.specialAbilityTokens--;
+                    this.specialAbilityLastConsumption = frameCount;
+                    // Reset duration when consuming a new token to extend the ability
+                    this.specialAbilityDuration = 0;
+                }
+            }
+            
+            // Check if special ability should end
+            if (this.specialAbilityDuration >= this.specialAbilityMaxDuration && this.specialAbilityTokens <= 0) {
+                this.specialAbilityActive = false;
+                return false;
+            }
+            
+            // Fire special ability projectiles
+            if (frameCount % 10 === 0) {
+                const weapon = this.weapons[this.currentWeaponIndex];
+                for (let i = 0; i < 5; i++) {
+                    const angle = -Math.PI/4 + (Math.PI/2 * i/4);
+                    projectiles.push({
+                        x: this.x + this.width/2,
+                        y: this.y + this.height/2,
+                        width: weapon.width,
+                        height: weapon.height,
+                        speed: weapon.projectileSpeed,
+                        velX: Math.cos(angle) * weapon.projectileSpeed * this.direction,
+                        velY: Math.sin(angle) * weapon.projectileSpeed,
+                        damage: weapon.damage / 2,
+                        color: weapon.color,
+                        isPlayerProjectile: true
+                    });
+                }
+                createParticles(this.x + this.width/2, this.y + this.height/2, 10, this.weapons[this.currentWeaponIndex].color);
+            }
             
             return true;
         }
+        
         return false;
     }
     
@@ -141,6 +182,17 @@ class Player {
         
         const bodyX = this.x + this.width / 2;
         const bodyY = this.y + this.height / 2;
+        
+        // Draw special ability aura if active
+        if (this.specialAbilityActive) {
+            const auraSize = 10 + Math.sin(frameCount * 0.1) * 5;
+            const auraColor = this.weapons[this.currentWeaponIndex].color;
+            
+            ctx.fillStyle = `rgba(${parseInt(auraColor.slice(1, 3), 16)}, ${parseInt(auraColor.slice(3, 5), 16)}, ${parseInt(auraColor.slice(5, 7), 16)}, 0.3)`;
+            ctx.beginPath();
+            ctx.ellipse(bodyX, bodyY, this.width * 0.7 + auraSize, this.height * 0.9 + auraSize, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
         
         // Draw shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';

@@ -1,0 +1,20 @@
+{
+    "name": "Training Grounds",
+    "description": "Learn the basics of movement and combat",
+    "background": "city",
+    "length": 5000,
+    "elements": [
+        { "id": 1, "type": "obstacle", "subtype": "box", "position": 500 },
+        { "id": 2, "type": "obstacle", "subtype": "box", "position": 800 },
+        { "id": 3, "type": "enemy", "subtype": "0", "position": 1200, "y": 200 },
+        { "id": 4, "type": "obstacle", "subtype": "car", "position": 1500 },
+        { "id": 5, "type": "enemy", "subtype": "0", "position": 1800, "y": 150 },
+        { "id": 6, "type": "obstacle", "subtype": "box", "position": 2200 },
+        { "id": 7, "type": "obstacle", "subtype": "box", "position": 2300 },
+        { "id": 8, "type": "enemy", "subtype": "1", "position": 2600, "y": 100 },
+        { "id": 9, "type": "obstacle", "subtype": "car", "position": 3000 },
+        { "id": 10, "type": "enemy", "subtype": "0", "position": 3500, "y": 250 },
+        { "id": 11, "type": "obstacle", "subtype": "box", "position": 4000 },
+        { "id": 12, "type": "enemy", "subtype": "2", "position": 4500, "y": 180 }
+    ]
+} 

@@ -15,12 +15,21 @@ class Enemy {
         this.points = type.points;
         this.color = type.color;
         this.tentacles = type.tentacles;
+        
+        console.log("Enemy created at", x, y, "with health", this.health);
     }
     
     update(player, frameCount, createParticles) {
-        // Move enemy
-        this.x += this.velX;
-        this.y += this.velY;
+        // Move enemy - but don't let them move off-screen too quickly
+        if (this.x > 0 && this.x < this.canvas.width) {
+            this.x += this.velX;
+            this.y += this.velY;
+        } else {
+            // If enemy is off-screen, only allow movement back on screen
+            if (this.x <= 0 && this.velX > 0) this.x += this.velX;
+            if (this.x >= this.canvas.width && this.velX < 0) this.x += this.velX;
+            this.y += this.velY;
+        }
         
         // Enemy AI - follow player
         if (frameCount % 30 === 0) {
@@ -55,8 +64,10 @@ class Enemy {
         }
         
         // Screen boundaries for enemies
-        if (this.x < 0 || this.x > this.canvas.width) this.velX *= -1;
-        if (this.y < 0 || this.y > this.canvas.height) this.velY *= -1;
+        if (this.x < 0) this.velX = Math.abs(this.velX) * 0.5; // Bounce back with reduced speed
+        if (this.x > this.canvas.width) this.velX = -Math.abs(this.velX) * 0.5; // Bounce back with reduced speed
+        if (this.y < 0) this.velY = Math.abs(this.velY) * 0.5; // Bounce back with reduced speed
+        if (this.y > this.canvas.height) this.velY = -Math.abs(this.velY) * 0.5; // Bounce back with reduced speed
     }
     
     takeDamage(damage) {
