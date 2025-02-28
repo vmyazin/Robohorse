@@ -8,9 +8,11 @@ class Obstacle {
         // Set properties based on obstacle type
         switch(this.type) {
             case 'car':
-                this.width = 80;
-                this.height = 40;
-                this.color = '#3366cc';
+                this.width = 120;
+                this.height = 60;
+                // Generate a random car color
+                const carColors = ['#3366cc', '#cc3333', '#33cc33', '#9933cc', '#cc9933', '#3399cc'];
+                this.color = carColors[Math.floor(Math.random() * carColors.length)];
                 this.points = 0;
                 this.health = Infinity; // Cars can't be destroyed
                 break;
@@ -53,7 +55,14 @@ class Obstacle {
             ctx.fillRect(this.x, this.y, this.width, this.height * 0.7);
             
             // Draw car top/cabin
-            ctx.fillStyle = '#225599';
+            // Derive a darker shade for the cabin
+            const cabinColor = this.color.replace('#', '');
+            const r = parseInt(cabinColor.substr(0, 2), 16) * 0.7;
+            const g = parseInt(cabinColor.substr(2, 2), 16) * 0.7;
+            const b = parseInt(cabinColor.substr(4, 2), 16) * 0.7;
+            const darkerColor = `#${Math.floor(r).toString(16).padStart(2, '0')}${Math.floor(g).toString(16).padStart(2, '0')}${Math.floor(b).toString(16).padStart(2, '0')}`;
+            
+            ctx.fillStyle = darkerColor;
             ctx.fillRect(this.x + this.width * 0.3, this.y - this.height * 0.3, this.width * 0.4, this.height * 0.3);
             
             // Draw windows
@@ -69,10 +78,32 @@ class Obstacle {
             ctx.arc(this.x + this.width * 0.8, this.y + this.height * 0.7, this.height * 0.2, 0, Math.PI * 2);
             ctx.fill();
             
+            // Draw wheel rims
+            ctx.fillStyle = '#999';
+            ctx.beginPath();
+            ctx.arc(this.x + this.width * 0.2, this.y + this.height * 0.7, this.height * 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(this.x + this.width * 0.8, this.y + this.height * 0.7, this.height * 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            
             // Draw headlights
             ctx.fillStyle = '#ffff00';
-            ctx.fillRect(this.x, this.y + this.height * 0.2, 5, 10);
-            ctx.fillRect(this.x + this.width - 5, this.y + this.height * 0.2, 5, 10);
+            ctx.shadowColor = '#ffff00';
+            ctx.shadowBlur = 10;
+            ctx.fillRect(this.x, this.y + this.height * 0.2, 8, 15);
+            ctx.fillRect(this.x + this.width - 8, this.y + this.height * 0.2, 8, 15);
+            ctx.shadowBlur = 0;
+            
+            // Draw license plate
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(this.x + this.width * 0.4, this.y + this.height * 0.6, this.width * 0.2, this.height * 0.1);
+            
+            // Add license text
+            ctx.fillStyle = '#000000';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('CYBER', this.x + this.width * 0.5, this.y + this.height * 0.67);
             
         } else if (this.type === 'box') {
             // Draw cardboard box

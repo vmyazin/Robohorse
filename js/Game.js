@@ -226,6 +226,9 @@ class Game {
                     this.player.y = obstacle.y - this.player.height;
                     this.player.velY = 0;
                     this.player.isJumping = false;
+                    
+                    // Store reference to the obstacle the player is standing on
+                    this.player.standingOnObstacle = obstacle;
                 } 
                 // Otherwise push player back (horizontal collision)
                 else if (this.player.x + this.player.width > obstacle.x && this.player.x < obstacle.x + obstacle.width) {
@@ -238,6 +241,25 @@ class Game {
                         this.player.x = obstacle.x + obstacle.width;
                     }
                 }
+            } else if (this.player.standingOnObstacle === obstacle) {
+                // Check if player is still above the obstacle
+                const playerBottom = this.player.y + this.player.height;
+                const onObstacle = 
+                    this.player.x + this.player.width > obstacle.x && 
+                    this.player.x < obstacle.x + obstacle.width &&
+                    Math.abs(playerBottom - obstacle.y) < 5; // Small tolerance
+                
+                if (!onObstacle) {
+                    // Player has moved off the obstacle
+                    this.player.standingOnObstacle = null;
+                }
+            }
+            
+            // Move obstacles with level scrolling (already handled by LevelManager)
+            // But we need to move the player if they're standing on an obstacle
+            if (this.player.standingOnObstacle === obstacle) {
+                // Move player with the obstacle (same amount as level scrolling)
+                this.player.x -= this.levelManager.scrollSpeed * this.gameSpeed;
             }
         });
         

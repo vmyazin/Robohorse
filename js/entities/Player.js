@@ -20,6 +20,9 @@ class Player {
         this.direction = 1; // 1 = right, -1 = left
         this.lastShot = 0;
         
+        // Track which obstacle the player is standing on (if any)
+        this.standingOnObstacle = null;
+        
         // Special ability tokens
         this.specialAbilityTokens = 0;
         this.maxSpecialAbilityTokens = 5;
@@ -54,6 +57,7 @@ class Player {
         if ((keys['z'] || keys['ArrowUp']) && !this.isJumping) {
             this.velY = -this.jumpPower;
             this.isJumping = true;
+            this.standingOnObstacle = null; // Clear obstacle reference when jumping
             createParticles(this.x + this.width / 2, this.y + this.height, 10, '#777');
         }
         
@@ -66,6 +70,7 @@ class Player {
             this.y = this.canvas.height - 50 - this.height;
             this.velY = 0;
             this.isJumping = false;
+            this.standingOnObstacle = null; // Clear obstacle reference when on the ground
         }
         
         // Boundaries
