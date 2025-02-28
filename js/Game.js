@@ -133,8 +133,8 @@ class Game {
             }
         });
         
-        // Spawn enemies
-        if (this.frameCount - this.lastSpawnTime > 60 / this.gameSpeed) {
+        // Spawn enemies - adjust spawn rate for larger canvas
+        if (this.frameCount - this.lastSpawnTime > 50 / this.gameSpeed) {
             this.spawnEnemy();
             this.lastSpawnTime = this.frameCount;
         }

@@ -39,8 +39,8 @@ class Player {
             this.direction = 1;
         }
         
-        // Jump
-        if (keys['z'] && !this.isJumping) {
+        // Jump - allow both 'z' key and 'ArrowUp' key
+        if ((keys['z'] || keys['ArrowUp']) && !this.isJumping) {
             this.velY = -this.jumpPower;
             this.isJumping = true;
             createParticles(this.x + this.width / 2, this.y + this.height, 10, '#777');

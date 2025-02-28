@@ -15,8 +15,8 @@ class Background {
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Draw distant stars/lights
-        for (let i = 0; i < 100; i++) {
+        // Draw distant stars/lights - increase number for larger canvas
+        for (let i = 0; i < 150; i++) {
             const x = (i * 23 + frameCount * 0.01) % this.canvas.width;
             const y = (i * 17) % (this.canvas.height * 0.5);
             const size = (Math.sin(frameCount * 0.005 + i) + 1) * 1.5;
@@ -36,7 +36,7 @@ class Background {
         
         // Shinjuku Cityscape - Far background buildings (parallax effect)
         const farBuildingColors = ['#090918', '#0d0d2b', '#09132b'];
-        const farBuildingCount = 15;
+        const farBuildingCount = 20;
         const farBuildingWidth = this.canvas.width / farBuildingCount;
         
         for (let i = 0; i < farBuildingCount; i++) {
@@ -64,7 +64,7 @@ class Background {
         
         // Shinjuku Cityscape - Mid buildings (parallax effect)
         const midBuildingColors = ['#131339', '#16083a', '#080a20'];
-        const midBuildingCount = 10;
+        const midBuildingCount = 15;
         const midBuildingWidth = this.canvas.width / midBuildingCount * 1.5;
         
         for (let i = 0; i < midBuildingCount; i++) {
@@ -126,7 +126,7 @@ class Background {
         }
         
         // Shinjuku Cityscape - Foreground detailed buildings
-        const buildingCount = 6;
+        const buildingCount = 8;
         const buildingWidth = this.canvas.width / buildingCount * 1.5;
         
         for (let i = 0; i < buildingCount; i++) {

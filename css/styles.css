@@ -17,10 +17,15 @@ canvas {
     border: 4px solid #36f;
     background-color: #000;
     box-shadow: 0 0 20px #36f, 0 0 40px rgba(51, 102, 255, 0.5);
+    max-width: 100%;
+    max-height: 90vh;
 }
 
 #game-container {
     position: relative;
+    width: 1000px;
+    height: 600px;
+    margin: 0 auto;
 }
 
 #hud {
@@ -55,7 +60,7 @@ canvas {
 #start-screen {
     display: block;
     width: 60%;
-    max-width: 500px;
+    max-width: 600px;
 }
 
 #start-screen h1 {
