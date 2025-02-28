@@ -83,6 +83,9 @@ class LevelManager {
             // Move obstacle with level scrolling
             obstacle.x -= this.scrollSpeed * this.game.gameSpeed;
             
+            // Update obstacle state
+            obstacle.update();
+            
             // Remove obstacles that are off-screen
             if (obstacle.x + obstacle.width < 0) {
                 this.game.obstacles.splice(index, 1);

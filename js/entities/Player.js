@@ -34,6 +34,11 @@ class Player {
         this.specialAbilityConsumptionRate = 100; // Consume token every 100 frames
         this.specialAbilityLastConsumption = 0;
         
+        // Box smashing properties
+        this.isLanding = false;
+        this.lastVelY = 0;
+        this.smashDamage = 30; // Damage dealt when smashing a box
+        
         // Initialize legs
         this.legs = Array(6).fill().map((_, i) => ({
             angle: i * 60,
@@ -43,6 +48,9 @@ class Player {
     }
     
     update(keys, frameCount, createParticles) {
+        // Store previous velocity for landing detection
+        this.lastVelY = this.velY;
+        
         // Player movement
         if (keys['ArrowLeft']) {
             this.x -= this.speed;
@@ -65,6 +73,9 @@ class Player {
         this.velY += 0.5;
         this.y += this.velY;
         
+        // Detect landing (when velocity changes from positive to near zero)
+        this.isLanding = this.lastVelY > 5 && this.velY <= 0.5;
+        
         // Floor collision
         if (this.y + this.height > this.canvas.height - 50) {
             this.y = this.canvas.height - 50 - this.height;
@@ -81,6 +92,33 @@ class Player {
         this.legs.forEach((leg, i) => {
             leg.angle = (i * 60) + Math.sin(frameCount * 0.1 + leg.phase) * 20;
         });
+    }
+    
+    // Check if player is landing on a box and smash it
+    checkBoxSmash(obstacles, createParticles) {
+        if (!this.isLanding || !this.standingOnObstacle) return false;
+        
+        // Only smash boxes, not other obstacle types
+        if (this.standingOnObstacle.type === 'box') {
+            // Apply smash damage
+            const isDestroyed = this.standingOnObstacle.takeDamage(this.smashDamage);
+            
+            // Create particles for visual effect
+            createParticles(
+                this.standingOnObstacle.x + this.standingOnObstacle.width/2, 
+                this.standingOnObstacle.y, 
+                15, 
+                '#a67c52'
+            );
+            
+            // Add a small upward bounce when smashing a box
+            this.velY = -2;
+            
+            // Return true if box was destroyed
+            return isDestroyed;
+        }
+        
+        return false;
     }
     
     shoot(frameCount, projectiles, createParticles) {

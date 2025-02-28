@@ -23,7 +23,8 @@ class Game {
         this.damageFlashCounter = 0;
         
         // DOM elements
-        this.healthDisplay = document.getElementById('health');
+        this.healthBar = document.getElementById('health-bar');
+        this.healthValue = document.getElementById('health-value');
         this.scoreDisplay = document.getElementById('score');
         this.weaponDisplay = document.getElementById('weapon');
         this.specialTokensDisplay = document.getElementById('special-tokens');
@@ -111,7 +112,7 @@ class Game {
         const levelData = this.levelManager.loadLevel(0);
         
         // Update displays
-        this.healthDisplay.textContent = this.player.health;
+        this.updateHealthDisplay();
         this.scoreDisplay.textContent = this.score;
         this.weaponDisplay.textContent = this.weapons[0].name;
         this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
@@ -156,6 +157,11 @@ class Game {
         
         // Update level manager
         this.levelManager.update();
+        
+        // Update obstacles
+        this.obstacles.forEach(obstacle => {
+            obstacle.update();
+        });
         
         // Log enemy count and positions occasionally
         if (this.frameCount % 300 === 0) {
@@ -213,7 +219,7 @@ class Game {
             // Check collision with player
             if (isColliding(enemy, this.player)) {
                 this.player.health -= 1;
-                this.healthDisplay.textContent = this.player.health;
+                this.updateHealthDisplay();
                 this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 3, '#fff');
                 
                 // Activate damage flash effect
@@ -238,6 +244,27 @@ class Game {
                     
                     // Store reference to the obstacle the player is standing on
                     this.player.standingOnObstacle = obstacle;
+                    
+                    // Check if player is landing on a box and should smash it
+                    const isBoxDestroyed = this.player.checkBoxSmash(this.obstacles, this.createParticles.bind(this));
+                    
+                    // If box was destroyed, remove it and update score
+                    if (isBoxDestroyed) {
+                        const index = this.obstacles.indexOf(obstacle);
+                        if (index !== -1) {
+                            this.obstacles.splice(index, 1);
+                            this.score += obstacle.points;
+                            this.scoreDisplay.textContent = this.score;
+                            
+                            // Create more particles for destruction effect
+                            this.createParticles(
+                                obstacle.x + obstacle.width/2, 
+                                obstacle.y + obstacle.height/2, 
+                                20, 
+                                '#a67c52'
+                            );
+                        }
+                    }
                 } 
                 // Otherwise push player back (horizontal collision)
                 else if (this.player.x + this.player.width > obstacle.x && this.player.x < obstacle.x + obstacle.width) {
@@ -276,7 +303,7 @@ class Game {
         this.projectiles.forEach((proj, index) => {
             if (!proj.isPlayerProjectile && isColliding(proj, this.player)) {
                 this.player.health -= proj.damage;
-                this.healthDisplay.textContent = this.player.health;
+                this.updateHealthDisplay();
                 this.projectiles.splice(index, 1);
                 this.createParticles(proj.x, proj.y, 10, proj.color);
                 
@@ -298,7 +325,7 @@ class Game {
                 // Apply power-up effect
                 if (powerUp.type === 'health') {
                     this.player.health = Math.min(this.player.health + 30, 100);
-                    this.healthDisplay.textContent = this.player.health;
+                    this.updateHealthDisplay();
                 } else if (powerUp.type === 'weapon') {
                     const randomWeaponIndex = Math.floor(Math.random() * this.weapons.length);
                     this.player.currentWeaponIndex = randomWeaponIndex;
@@ -355,17 +382,17 @@ class Game {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
         // Draw background
-        this.background.draw(this.frameCount);
+        this.background.draw(this.ctx, this.frameCount);
         
         // Draw platforms
+        this.ctx.fillStyle = '#444';
         this.platforms.forEach(platform => {
-            this.ctx.fillStyle = '#444';
             this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
         });
         
         // Draw obstacles
         this.obstacles.forEach(obstacle => {
-            obstacle.draw(this.ctx, this.frameCount, this.player);
+            obstacle.draw(this.ctx, this.frameCount);
         });
         
         // Draw particles
@@ -386,7 +413,7 @@ class Game {
         this.powerUps.forEach(powerUp => {
             this.ctx.fillStyle = powerUp.color;
             this.ctx.beginPath();
-            this.ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, powerUp.width/2, 0, Math.PI * 2);
+            this.ctx.arc(powerUp.x, powerUp.y, powerUp.radius, 0, Math.PI * 2);
             this.ctx.fill();
             
             this.ctx.fillStyle = '#fff';
@@ -520,6 +547,23 @@ class Game {
                 velY: Math.sin(angle) * speed,
                 color
             });
+        }
+    }
+    
+    // New method to update health display
+    updateHealthDisplay() {
+        // Update the health bar width based on player health percentage
+        const healthPercent = this.player.health;
+        this.healthBar.style.width = `${healthPercent}%`;
+        this.healthValue.textContent = Math.round(healthPercent);
+        
+        // Change color based on health level
+        if (healthPercent > 60) {
+            this.healthBar.style.background = 'linear-gradient(to right, #0f0, #0f0)';
+        } else if (healthPercent > 30) {
+            this.healthBar.style.background = 'linear-gradient(to right, #ff0, #ff0)';
+        } else {
+            this.healthBar.style.background = 'linear-gradient(to right, #f00, #f00)';
         }
     }
 }

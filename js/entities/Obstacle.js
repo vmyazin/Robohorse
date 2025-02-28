@@ -22,6 +22,11 @@ class Obstacle {
                 this.color = '#a67c52';
                 this.points = 50;
                 this.health = 20;
+                this.isBeingSmashed = false;
+                this.smashEffectCounter = 0;
+                this.smashEffectDuration = 10; // Increased duration
+                this.compressionAmount = 0; // How much the box is compressed when smashed
+                this.cracks = []; // Array to store crack positions
                 break;
             default:
                 this.width = 50;
@@ -36,13 +41,48 @@ class Obstacle {
     }
     
     update() {
-        // Currently obstacles don't move on their own
-        // This could be extended for moving obstacles
+        // Update smash effect counter
+        if (this.isBeingSmashed) {
+            this.smashEffectCounter--;
+            
+            // Update compression amount based on counter
+            if (this.type === 'box') {
+                // Start with max compression and gradually return to normal
+                this.compressionAmount = 10 * (this.smashEffectCounter / this.smashEffectDuration);
+            }
+            
+            if (this.smashEffectCounter <= 0) {
+                this.isBeingSmashed = false;
+                this.compressionAmount = 0;
+            }
+        }
     }
     
     takeDamage(damage) {
         if (this.health !== Infinity) {
             this.health -= damage;
+            
+            // Activate smash effect for boxes
+            if (this.type === 'box') {
+                this.isBeingSmashed = true;
+                this.smashEffectCounter = this.smashEffectDuration;
+                this.compressionAmount = 10; // Max compression
+                
+                // Generate random cracks if they don't exist yet
+                if (this.cracks.length === 0) {
+                    const crackCount = 3 + Math.floor(Math.random() * 3); // 3-5 cracks
+                    for (let i = 0; i < crackCount; i++) {
+                        this.cracks.push({
+                            x1: Math.random() * this.width,
+                            y1: Math.random() * this.height,
+                            x2: Math.random() * this.width,
+                            y2: Math.random() * this.height,
+                            width: 1 + Math.random() * 2
+                        });
+                    }
+                }
+            }
+            
             return this.health <= 0;
         }
         return false;
@@ -106,53 +146,44 @@ class Obstacle {
             ctx.fillText('CYBER', this.x + this.width * 0.5, this.y + this.height * 0.67);
             
         } else if (this.type === 'box') {
-            // Draw cardboard box
+            // Draw box with smash effect if active
+            const boxHeight = this.isBeingSmashed ? this.height - this.compressionAmount : this.height;
+            const yOffset = this.isBeingSmashed ? this.compressionAmount : 0;
+            
+            // Draw the box
             ctx.fillStyle = this.color;
-            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.fillRect(this.x, this.y + yOffset, this.width, boxHeight);
             
-            // Draw box flaps
-            ctx.fillStyle = '#8c6239';
-            
-            // Top flaps
-            const flapHeight = 10;
-            const flapWidth = this.width / 2 - 2;
-            
-            // Left flap
-            ctx.beginPath();
-            ctx.moveTo(this.x, this.y);
-            ctx.lineTo(this.x + flapWidth, this.y);
-            ctx.lineTo(this.x + flapWidth, this.y - flapHeight);
-            ctx.lineTo(this.x, this.y - flapHeight * 0.7);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Right flap
-            ctx.beginPath();
-            ctx.moveTo(this.x + this.width, this.y);
-            ctx.lineTo(this.x + this.width - flapWidth, this.y);
-            ctx.lineTo(this.x + this.width - flapWidth, this.y - flapHeight);
-            ctx.lineTo(this.x + this.width, this.y - flapHeight * 0.7);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Draw box seams
-            ctx.strokeStyle = '#5d4037';
+            // Draw box outline
+            ctx.strokeStyle = '#7d5a3b';
             ctx.lineWidth = 2;
+            ctx.strokeRect(this.x, this.y + yOffset, this.width, boxHeight);
             
-            // Vertical seams
-            ctx.beginPath();
-            ctx.moveTo(this.x + this.width / 2, this.y);
-            ctx.lineTo(this.x + this.width / 2, this.y + this.height);
-            ctx.stroke();
+            // Draw cracks if the box has been damaged
+            if (this.cracks.length > 0) {
+                ctx.strokeStyle = '#5d3a1b'; // Darker color for cracks
+                ctx.lineWidth = 1;
+                
+                this.cracks.forEach(crack => {
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + crack.x1, this.y + yOffset + crack.y1);
+                    ctx.lineTo(this.x + crack.x2, this.y + yOffset + crack.y2);
+                    ctx.stroke();
+                });
+            }
             
-            // Horizontal seams
-            ctx.beginPath();
-            ctx.moveTo(this.x, this.y + this.height / 2);
-            ctx.lineTo(this.x + this.width, this.y + this.height / 2);
-            ctx.stroke();
-            
+            // Draw wood grain lines
+            ctx.strokeStyle = '#8d6a4b';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 3; i++) {
+                const lineY = this.y + yOffset + (boxHeight / 4) * (i + 1);
+                ctx.beginPath();
+                ctx.moveTo(this.x, lineY);
+                ctx.lineTo(this.x + this.width, lineY);
+                ctx.stroke();
+            }
         } else {
-            // Generic obstacle
+            // Draw generic obstacle
             ctx.fillStyle = this.color;
             ctx.fillRect(this.x, this.y, this.width, this.height);
         }

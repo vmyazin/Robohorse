@@ -39,6 +39,43 @@ canvas {
     padding: 5px 10px;
     border: 2px solid #0ff;
     border-radius: 5px;
+    display: flex;
+    align-items: center;
+}
+
+.health-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.health-label {
+    margin-right: 5px;
+}
+
+.health-bar-container {
+    width: 100px;
+    height: 12px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border: 1px solid #0ff;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.health-bar {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, #f00, #ff0, #0f0);
+    transition: width 0.3s ease;
+}
+
+#health-value {
+    margin-left: 5px;
+    font-size: 10px;
+}
+
+.hud-separator {
+    margin: 0 8px;
 }
 
 #game-over, #start-screen {
