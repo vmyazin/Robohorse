@@ -16,43 +16,63 @@ class Enemy {
         this.color = type.color;
         this.tentacles = type.tentacles;
         
+        // Add aggression factor - higher means more aggressive pursuit
+        this.aggressionFactor = 0.8 + Math.random() * 0.4; // 0.8-1.2
+        
+        // Add persistence timer to prevent rapid direction changes
+        this.directionChangeTimer = 0;
+        this.maxDirectionChangeTime = 60; // frames
+        
+        // Add a target position offset to create more varied movement
+        this.targetOffsetX = (Math.random() - 0.5) * 100;
+        this.targetOffsetY = (Math.random() - 0.5) * 100;
+        
         console.log("Enemy created at", x, y, "with health", this.health);
     }
     
     update(player, frameCount, createParticles) {
-        // Move enemy - but don't let them move off-screen too quickly
-        if (this.x > 0 && this.x < this.canvas.width) {
-            this.x += this.velX;
-            this.y += this.velY;
-        } else {
-            // If enemy is off-screen, only allow movement back on screen
-            if (this.x <= 0 && this.velX > 0) this.x += this.velX;
-            if (this.x >= this.canvas.width && this.velX < 0) this.x += this.velX;
-            this.y += this.velY;
+        // Decrement direction change timer if active
+        if (this.directionChangeTimer > 0) {
+            this.directionChangeTimer--;
         }
         
-        // Enemy AI - follow player
-        if (frameCount % 30 === 0) {
-            const dx = player.x - this.x;
-            const dy = player.y - this.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            this.velX = (dx / dist) * this.speed;
-            this.velY = (dy / dist) * this.speed;
+        // Update target offset occasionally to create varied movement
+        if (frameCount % 120 === 0) {
+            this.targetOffsetX = (Math.random() - 0.5) * 100;
+            this.targetOffsetY = (Math.random() - 0.5) * 100;
         }
         
-        // Enhanced movement patterns
-        if (frameCount % 45 === 0) {
-            // Add some randomness to movement for more dynamic behavior
-            const dx = player.x - this.x;
-            const dy = player.y - this.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
+        // Calculate distance to player with offset
+        const targetX = player.x + this.targetOffsetX;
+        const targetY = player.y + this.targetOffsetY;
+        const dx = targetX - this.x;
+        const dy = targetY - this.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        // Enemy AI - follow player with persistence
+        if ((frameCount % 30 === 0 && this.directionChangeTimer === 0) || dist > 300) {
+            // Only update direction if timer expired or enemy is far from player
             
+            // Calculate direction to player
+            if (dist > 0) { // Prevent division by zero
+                this.velX = (dx / dist) * this.speed * this.aggressionFactor;
+                this.velY = (dy / dist) * this.speed * this.aggressionFactor;
+            }
+            
+            // Set direction change timer
+            this.directionChangeTimer = this.maxDirectionChangeTime;
+        }
+        
+        // Enhanced movement patterns with less randomness
+        if (frameCount % 45 === 0 && Math.random() < 0.3) { // Only 30% chance to add randomness
             // Add slight randomness to movement direction
-            const randomAngle = (Math.random() - 0.5) * Math.PI/4; // +/- 45 degrees
+            const randomAngle = (Math.random() - 0.5) * Math.PI/8; // Reduced randomness: +/- 22.5 degrees
             const angle = Math.atan2(dy, dx) + randomAngle;
             
-            this.velX = Math.cos(angle) * this.speed;
-            this.velY = Math.sin(angle) * this.speed;
+            if (dist > 0) { // Prevent division by zero
+                this.velX = Math.cos(angle) * this.speed * this.aggressionFactor;
+                this.velY = Math.sin(angle) * this.speed * this.aggressionFactor;
+            }
             
             // Create visual tentacle animation effect
             createParticles(
@@ -63,11 +83,87 @@ class Enemy {
             );
         }
         
-        // Screen boundaries for enemies
-        if (this.x < 0) this.velX = Math.abs(this.velX) * 0.5; // Bounce back with reduced speed
-        if (this.x > this.canvas.width) this.velX = -Math.abs(this.velX) * 0.5; // Bounce back with reduced speed
-        if (this.y < 0) this.velY = Math.abs(this.velY) * 0.5; // Bounce back with reduced speed
-        if (this.y > this.canvas.height) this.velY = -Math.abs(this.velY) * 0.5; // Bounce back with reduced speed
+        // Screen boundaries for enemies - stronger boundary enforcement
+        const bounceStrength = 0.8; // Higher bounce strength
+        const margin = 50; // Keep enemies at least this far from the edge
+        
+        // Left boundary
+        if (this.x < margin) {
+            this.velX = Math.abs(this.velX) * bounceStrength;
+            this.x = margin; // Force position to be within bounds
+        }
+        
+        // Right boundary
+        if (this.x > this.canvas.width - this.width - margin) {
+            this.velX = -Math.abs(this.velX) * bounceStrength;
+            this.x = this.canvas.width - this.width - margin; // Force position
+        }
+        
+        // Top boundary
+        if (this.y < margin) {
+            this.velY = Math.abs(this.velY) * bounceStrength;
+            this.y = margin; // Force position
+        }
+        
+        // Bottom boundary
+        if (this.y > this.canvas.height - this.height - margin) {
+            this.velY = -Math.abs(this.velY) * bounceStrength;
+            this.y = this.canvas.height - this.height - margin; // Force position
+        }
+        
+        // If enemy is far from player, increase speed to catch up
+        if (dist > this.canvas.width / 3) {
+            const catchUpFactor = 1.5;
+            this.x += this.velX * catchUpFactor;
+            this.y += this.velY * catchUpFactor;
+        } else {
+            // Normal movement
+            this.x += this.velX;
+            this.y += this.velY;
+        }
+        
+        // Ensure minimum velocity to prevent enemies from getting stuck
+        const minVelocity = 0.2;
+        if (Math.abs(this.velX) < minVelocity && Math.abs(this.velY) < minVelocity) {
+            const angle = Math.random() * Math.PI * 2;
+            this.velX = Math.cos(angle) * this.speed * 0.5;
+            this.velY = Math.sin(angle) * this.speed * 0.5;
+        }
+        
+        // If enemy is very far off-screen, teleport it back into view
+        const farMargin = 200;
+        if (this.x < -farMargin || this.x > this.canvas.width + farMargin || 
+            this.y < -farMargin || this.y > this.canvas.height + farMargin) {
+            // Teleport to a random position near the edge of the screen
+            const side = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
+            
+            switch(side) {
+                case 0: // top
+                    this.x = Math.random() * this.canvas.width;
+                    this.y = margin;
+                    break;
+                case 1: // right
+                    this.x = this.canvas.width - this.width - margin;
+                    this.y = Math.random() * this.canvas.height;
+                    break;
+                case 2: // bottom
+                    this.x = Math.random() * this.canvas.width;
+                    this.y = this.canvas.height - this.height - margin;
+                    break;
+                case 3: // left
+                    this.x = margin;
+                    this.y = Math.random() * this.canvas.height;
+                    break;
+            }
+            
+            // Reset velocity toward player
+            if (dist > 0) {
+                this.velX = (dx / dist) * this.speed;
+                this.velY = (dy / dist) * this.speed;
+            }
+            
+            console.log("Enemy teleported back into view at", this.x, this.y);
+        }
     }
     
     takeDamage(damage) {
