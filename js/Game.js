@@ -32,6 +32,7 @@ class Game {
         this.gameOverScreen = document.getElementById('game-over');
         this.startScreen = document.getElementById('start-screen');
         this.levelDisplay = document.getElementById('level');
+        this.levelAnnouncement = document.getElementById('level-announcement');
         
         // Weapons
         this.weapons = [
@@ -60,6 +61,18 @@ class Game {
         
         // Control state
         this.keys = {};
+        
+        // Sound effects
+        this.sounds = {
+            levelAnnounce: new Audio('sounds/level_announce.mp3')
+        };
+        
+        // Try to preload sounds, but don't crash if they don't exist
+        try {
+            this.sounds.levelAnnounce.load();
+        } catch (e) {
+            console.warn('Could not load sound effects:', e);
+        }
         
         // Bind event listeners
         this.bindEventListeners();
@@ -120,6 +133,9 @@ class Game {
             this.levelDisplay.textContent = levelData.name;
         }
         this.gameOverScreen.style.display = 'none';
+        
+        // Show level announcement
+        this.showLevelAnnouncement(levelData.name);
     }
     
     endGame() {
@@ -748,6 +764,40 @@ class Game {
         
         // Create particles for visual effect
         this.createParticles(x + 12.5, y + 12.5, 15, '#ff0000');
+    }
+    
+    // Add a new method to show level announcement
+    showLevelAnnouncement(levelName) {
+        if (!this.levelAnnouncement) return;
+        
+        // Get the current level number
+        const levelNumber = this.levelManager.currentLevel + 1;
+        
+        // Set the level announcement text
+        this.levelAnnouncement.innerHTML = `LEVEL ${levelNumber}<br>${levelName}`;
+        
+        // Remove any existing classes
+        this.levelAnnouncement.classList.remove('active', 'fade-out');
+        
+        // Force a reflow to ensure the transition works
+        void this.levelAnnouncement.offsetWidth;
+        
+        // Add the active class to slide in
+        this.levelAnnouncement.classList.add('active');
+        
+        // Play sound effect
+        try {
+            this.sounds.levelAnnounce.currentTime = 0;
+            this.sounds.levelAnnounce.play().catch(e => console.warn('Could not play sound:', e));
+        } catch (e) {
+            console.warn('Error playing sound:', e);
+        }
+        
+        // Set a timeout to fade out after 3 seconds
+        setTimeout(() => {
+            this.levelAnnouncement.classList.remove('active');
+            this.levelAnnouncement.classList.add('fade-out');
+        }, 3000);
     }
 }
 

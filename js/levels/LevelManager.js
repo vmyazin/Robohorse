@@ -76,6 +76,11 @@ class LevelManager {
             if (this.game.levelDisplay) {
                 this.game.levelDisplay.textContent = levelData.name;
             }
+            
+            // Show level announcement
+            if (this.game.showLevelAnnouncement) {
+                this.game.showLevelAnnouncement(levelData.name);
+            }
         }
         
         // Update obstacles

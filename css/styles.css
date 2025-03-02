@@ -136,4 +136,36 @@ button:hover {
     margin: 0 5px;
     border-radius: 3px;
     box-shadow: 0 0 5px #36f;
+}
+
+/* Level Announcement */
+#level-announcement {
+    position: absolute;
+    top: -100px; /* Start off-screen */
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 30, 0.8);
+    color: #0ff;
+    font-size: 36px;
+    padding: 20px 40px;
+    border-radius: 10px;
+    border: 3px solid #36f;
+    box-shadow: 0 0 20px #36f, inset 0 0 15px rgba(51, 102, 255, 0.5);
+    text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+    z-index: 100;
+    opacity: 0;
+    transition: top 0.8s ease-out, opacity 0.8s ease-out;
+    text-align: center;
+    font-family: 'Press Start 2P', cursive;
+}
+
+#level-announcement.active {
+    top: 100px;
+    opacity: 1;
+}
+
+#level-announcement.fade-out {
+    top: 80px;
+    opacity: 0;
+    transition: opacity 0.8s ease-in;
 } 
