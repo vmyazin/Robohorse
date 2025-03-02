@@ -36,6 +36,7 @@ class Game {
         
         // Weapons
         this.weapons = [
+            { name: "GLOWING CANNON", color: "#ffffff", damage: 15, fireRate: 15, projectileSpeed: 10, width: 10, height: 10, isGlowing: true },
             { name: "NEURAL BEAM", color: "#00f", damage: 10, fireRate: 10, projectileSpeed: 12, width: 5, height: 2 },
             { name: "TENTACLE SCRAMBLER", color: "#f0f", damage: 20, fireRate: 20, projectileSpeed: 8, width: 8, height: 8 },
             { name: "GALLOP CANNON", color: "#0f0", damage: 30, fireRate: 30, projectileSpeed: 10, width: 10, height: 4 },
@@ -658,8 +659,35 @@ class Game {
         
         // Draw projectiles
         this.projectiles.forEach(proj => {
-            this.ctx.fillStyle = proj.color;
-            this.ctx.fillRect(proj.x, proj.y, proj.width, proj.height);
+            if (proj.isGlowing) {
+                // Draw glowing cannon ball with gradient and glow effect
+                this.ctx.save();
+                
+                // Create radial gradient for the glowing effect
+                const gradient = this.ctx.createRadialGradient(
+                    proj.x + proj.width/2, proj.y + proj.height/2, 0,
+                    proj.x + proj.width/2, proj.y + proj.height/2, proj.width
+                );
+                gradient.addColorStop(0, '#ffffff');
+                gradient.addColorStop(0.5, '#cccccc');
+                gradient.addColorStop(1, 'rgba(200, 200, 200, 0)');
+                
+                // Add glow effect
+                this.ctx.shadowColor = '#ffffff';
+                this.ctx.shadowBlur = 10;
+                
+                // Draw the projectile as a circle
+                this.ctx.fillStyle = gradient;
+                this.ctx.beginPath();
+                this.ctx.arc(proj.x + proj.width/2, proj.y + proj.height/2, proj.width/2, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.restore();
+            } else {
+                // Draw regular projectiles
+                this.ctx.fillStyle = proj.color;
+                this.ctx.fillRect(proj.x, proj.y, proj.width, proj.height);
+            }
         });
         
         // Draw power-ups

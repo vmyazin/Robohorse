@@ -163,7 +163,8 @@ class Player {
                 velY: 0,
                 damage: weapon.damage * damageMultiplier,
                 color: weapon.color,
-                isPlayerProjectile: true
+                isPlayerProjectile: true,
+                isGlowing: weapon.isGlowing || false
             });
             
             // Add muzzle flash effect
@@ -229,7 +230,8 @@ class Player {
                         velY: Math.sin(angle) * weapon.projectileSpeed,
                         damage: weapon.damage / 2,
                         color: weapon.color,
-                        isPlayerProjectile: true
+                        isPlayerProjectile: true,
+                        isGlowing: weapon.isGlowing || false
                     });
                 }
                 createParticles(this.x + this.width/2, this.y + this.height/2, 10, this.weapons[this.currentWeaponIndex].color);
@@ -732,28 +734,67 @@ class Player {
             weaponX = this.x + this.width * 0.2 - weaponLength;
         }
         
-        // Weapon gradient
-        const weaponGradient = ctx.createLinearGradient(
-            weaponX, weaponY, 
-            weaponX + weaponLength, weaponY
-        );
-        
-        weaponGradient.addColorStop(0, weapon.color);
-        weaponGradient.addColorStop(1, lightenColor(weapon.color, 30));
-        
-        ctx.fillStyle = weaponGradient;
-        ctx.shadowColor = weapon.color;
-        ctx.shadowBlur = 10;
-        
-        // Draw weapon
-        roundRect(ctx, weaponX, weaponY, weaponLength, weaponHeight, 3, true, false);
-        
-        // Weapon details
-        ctx.fillStyle = lightenColor(weapon.color, 50);
-        if (this.direction > 0) {
-            roundRect(ctx, weaponX + weaponLength - 5, weaponY + 1, 3, weaponHeight - 2, 1, true, false);
+        if (weapon.isGlowing) {
+            // Draw glowing cannon with special effects
+            ctx.save();
+            
+            // Create radial gradient for the glowing effect
+            const cannonX = weaponX + (this.direction > 0 ? weaponLength : 0);
+            const cannonY = weaponY + weaponHeight/2;
+            const cannonRadius = 6;
+            
+            const gradient = ctx.createRadialGradient(
+                cannonX, cannonY, 0,
+                cannonX, cannonY, cannonRadius * 2
+            );
+            gradient.addColorStop(0, '#ffffff');
+            gradient.addColorStop(0.5, '#cccccc');
+            gradient.addColorStop(1, 'rgba(200, 200, 200, 0)');
+            
+            // Add glow effect
+            ctx.shadowColor = '#ffffff';
+            ctx.shadowBlur = 15;
+            
+            // Draw the cannon barrel
+            ctx.fillStyle = '#aaaaaa';
+            if (this.direction > 0) {
+                roundRect(ctx, weaponX, weaponY, weaponLength - cannonRadius, weaponHeight, 3, true, false);
+            } else {
+                roundRect(ctx, weaponX + cannonRadius, weaponY, weaponLength - cannonRadius, weaponHeight, 3, true, false);
+            }
+            
+            // Draw the glowing cannon ball at the end
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(cannonX, cannonY, cannonRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
         } else {
-            roundRect(ctx, weaponX + 2, weaponY + 1, 3, weaponHeight - 2, 1, true, false);
+            // Regular weapon drawing
+            // Weapon gradient
+            const weaponGradient = ctx.createLinearGradient(
+                weaponX, weaponY, 
+                weaponX + weaponLength, weaponY
+            );
+            
+            weaponGradient.addColorStop(0, weapon.color);
+            weaponGradient.addColorStop(1, lightenColor(weapon.color, 30));
+            
+            ctx.fillStyle = weaponGradient;
+            ctx.shadowColor = weapon.color;
+            ctx.shadowBlur = 10;
+            
+            // Draw weapon
+            roundRect(ctx, weaponX, weaponY, weaponLength, weaponHeight, 3, true, false);
+            
+            // Weapon details
+            ctx.fillStyle = lightenColor(weapon.color, 50);
+            if (this.direction > 0) {
+                roundRect(ctx, weaponX + weaponLength - 5, weaponY + 1, 3, weaponHeight - 2, 1, true, false);
+            } else {
+                roundRect(ctx, weaponX + 2, weaponY + 1, 3, weaponHeight - 2, 1, true, false);
+            }
         }
         
         ctx.shadowBlur = 0;
