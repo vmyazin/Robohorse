@@ -356,6 +356,7 @@ class Enemy {
             ctx.shadowBlur = 8;
         }
         
+        ctx.fillStyle = healthColor;
         roundRect(ctx, 
             this.x, this.y - 15, 
             this.width * healthPercent, 7, 
