@@ -415,15 +415,63 @@ class Game {
         
         // Draw power-ups
         this.powerUps.forEach(powerUp => {
-            this.ctx.fillStyle = powerUp.color;
-            this.ctx.beginPath();
-            this.ctx.arc(powerUp.x, powerUp.y, powerUp.radius, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            this.ctx.fillStyle = '#fff';
-            this.ctx.font = '10px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText(powerUp.type.toUpperCase(), powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2 + 3);
+            if (powerUp.type === 'health') {
+                // Draw a heart for health powerups
+                this.ctx.fillStyle = '#ff3366'; // Brighter red heart color
+                
+                // Save context for transformations
+                this.ctx.save();
+                
+                // Move to the center of the powerup
+                this.ctx.translate(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2);
+                
+                // Add floating animation
+                this.ctx.translate(0, Math.sin(this.frameCount * 0.1) * 2);
+                
+                // Add subtle pulsing effect
+                const pulseScale = 1 + Math.sin(this.frameCount * 0.2) * 0.1;
+                
+                // Scale to appropriate size
+                const scale = (powerUp.width / 30) * pulseScale;
+                this.ctx.scale(scale, scale);
+                
+                // Draw heart shape with improved bezier curves
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, 4);
+                this.ctx.bezierCurveTo(-10, -8, -15, -3, -8, -10);
+                this.ctx.bezierCurveTo(-5, -13, 0, -12, 0, -8);
+                this.ctx.bezierCurveTo(0, -12, 5, -13, 8, -10);
+                this.ctx.bezierCurveTo(15, -3, 10, -8, 0, 4);
+                this.ctx.fill();
+                
+                // Add glow effect
+                this.ctx.shadowColor = '#ff3366';
+                this.ctx.shadowBlur = 15;
+                this.ctx.fill();
+                
+                // Add a subtle white highlight
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                this.ctx.beginPath();
+                this.ctx.arc(-4, -6, 2, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.shadowBlur = 0;
+                this.ctx.restore();
+            } else {
+                // Draw other powerups as circles
+                this.ctx.fillStyle = powerUp.color;
+                this.ctx.beginPath();
+                this.ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, powerUp.width/2, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Make absolutely sure we only draw text for non-health powerups
+                if (powerUp.type !== 'health') {
+                    this.ctx.fillStyle = '#fff';
+                    this.ctx.font = '10px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(powerUp.type.toUpperCase(), powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2 + 3);
+                }
+            }
         });
         
         // Draw special tokens
@@ -516,13 +564,16 @@ class Game {
     spawnPowerUp(x, y) {
         const types = ['health', 'weapon'];
         const type = types[Math.floor(Math.random() * types.length)];
-        const color = type === 'health' ? '#0f0' : '#ff0';
+        const color = type === 'health' ? '#ff3366' : '#ff0';
+        
+        // Make health power-ups slightly larger for better visibility
+        const size = type === 'health' ? 25 : 20;
         
         this.powerUps.push({
             x,
             y,
-            width: 20,
-            height: 20,
+            width: size,
+            height: size,
             type,
             color
         });
