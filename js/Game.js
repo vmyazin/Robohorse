@@ -22,6 +22,10 @@ class Game {
         this.damageFlashDuration = 10; // frames
         this.damageFlashCounter = 0;
         
+        // Mushroom power-up duration
+        this.mushroomPowerDuration = 600; // 10 seconds at 60fps
+        this.mushroomPowerTimer = 0;
+        
         // DOM elements
         this.healthBar = document.getElementById('health-bar');
         this.healthValue = document.getElementById('health-value');
@@ -395,8 +399,7 @@ class Game {
                             
                             // Deactivate mushroom power-up if active
                             if (this.player.mushroomPowerActive) {
-                                this.player.deactivateMushroomPower();
-                                this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 20, '#ff0000');
+                                this.player.deactivateMushroomPower(this.createParticles.bind(this));
                             }
                             
                             // Check if player died from being crushed
@@ -489,8 +492,7 @@ class Game {
                 
                 // Deactivate mushroom power-up if active
                 if (this.player.mushroomPowerActive) {
-                    this.player.deactivateMushroomPower();
-                    this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 20, '#ff0000');
+                    this.player.deactivateMushroomPower(this.createParticles.bind(this));
                 }
                 
                 if (this.player.health <= 0) {
@@ -513,8 +515,7 @@ class Game {
                 
                 // Deactivate mushroom power-up if active
                 if (this.player.mushroomPowerActive) {
-                    this.player.deactivateMushroomPower();
-                    this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 20, '#ff0000');
+                    this.player.deactivateMushroomPower(this.createParticles.bind(this));
                 }
                 
                 if (this.player.health <= 0) {
@@ -538,6 +539,7 @@ class Game {
                     this.weaponDisplay.textContent = this.weapons[randomWeaponIndex].name;
                 } else if (powerUp.type === 'mushroom') {
                     this.player.activateMushroomPower(this.createParticles.bind(this));
+                    this.mushroomPowerTimer = 0; // Reset timer when collecting a new mushroom
                 }
                 
                 this.powerUps.splice(index, 1);
@@ -570,6 +572,17 @@ class Game {
                 this.particles.splice(index, 1);
             }
         });
+        
+        // Update mushroom power-up timer
+        if (this.player.mushroomPowerActive && !this.player.isGrowing && !this.player.isShrinking) {
+            this.mushroomPowerTimer++;
+            
+            // Deactivate mushroom power-up when timer expires
+            if (this.mushroomPowerTimer >= this.mushroomPowerDuration) {
+                this.mushroomPowerTimer = 0;
+                this.player.deactivateMushroomPower(this.createParticles.bind(this));
+            }
+        }
         
         // Update damage flash effect
         if (this.damageFlashActive) {
@@ -848,6 +861,37 @@ class Game {
             this.ctx.font = '12px Arial';
             this.ctx.textAlign = 'center';
             this.ctx.fillText('SPECIAL ACTIVE', x + barWidth / 2, y + barHeight + 12);
+        }
+        
+        // Draw mushroom power-up timer if active
+        if (this.player.mushroomPowerActive && !this.player.isGrowing && !this.player.isShrinking) {
+            const timerWidth = 100;
+            const timerHeight = 10;
+            const timerX = this.player.x + this.player.width/2 - timerWidth/2;
+            const timerY = this.player.y - 20;
+            
+            // Draw timer background
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            this.ctx.fillRect(timerX, timerY, timerWidth, timerHeight);
+            
+            // Draw timer progress
+            const progress = 1 - (this.mushroomPowerTimer / this.mushroomPowerDuration);
+            const progressWidth = timerWidth * progress;
+            
+            // Create gradient for timer
+            const gradient = this.ctx.createLinearGradient(timerX, timerY, timerX + progressWidth, timerY);
+            gradient.addColorStop(0, '#ff0000');
+            gradient.addColorStop(1, '#ff6666');
+            
+            this.ctx.fillStyle = gradient;
+            this.ctx.fillRect(timerX, timerY, progressWidth, timerHeight);
+            
+            // Add glow effect to timer
+            this.ctx.shadowColor = '#ff0000';
+            this.ctx.shadowBlur = 5;
+            this.ctx.strokeStyle = '#ff0000';
+            this.ctx.strokeRect(timerX, timerY, timerWidth, timerHeight);
+            this.ctx.shadowBlur = 0;
         }
     }
     

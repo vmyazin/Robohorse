@@ -52,11 +52,33 @@ class Player {
         this.originalWidth = this.width;
         this.originalHeight = this.height;
         this.weaponDamageMultiplier = 1;
+        
+        // Growth animation properties
+        this.isGrowing = false;
+        this.growthStage = 0;
+        this.growthVisible = true;
+        this.growthAnimationFrame = 0;
+        
+        // Shrinking animation properties
+        this.isShrinking = false;
+        this.shrinkStage = 0;
+        this.shrinkVisible = true;
+        this.shrinkAnimationFrame = 0;
     }
     
     update(keys, frameCount, createParticles) {
         // Store previous velocity for landing detection
         this.lastVelY = this.velY;
+        
+        // Update growth animation if active
+        if (this.isGrowing) {
+            this.updateGrowthAnimation(createParticles);
+        }
+        
+        // Update shrinking animation if active
+        if (this.isShrinking) {
+            this.updateShrinkAnimation(createParticles);
+        }
         
         // Player movement
         if (keys['ArrowLeft']) {
@@ -249,6 +271,20 @@ class Player {
     }
     
     draw(ctx, frameCount, keys) {
+        // Skip drawing if player is in invisible frame during growth/shrink animation
+        // Only check visibility during active transitions
+        if ((this.isGrowing && !this.growthVisible) || 
+            (this.isShrinking && !this.shrinkVisible)) {
+            return;
+        }
+        
+        // Force visibility to true if not in a transition animation
+        // This ensures the player is always visible when not growing or shrinking
+        if (!this.isGrowing && !this.isShrinking) {
+            this.growthVisible = true;
+            this.shrinkVisible = true;
+        }
+        
         ctx.save();
         
         const bodyX = this.x + this.width / 2;
@@ -832,46 +868,131 @@ class Player {
     // New method to activate mushroom power-up
     activateMushroomPower(createParticles) {
         if (!this.mushroomPowerActive) {
-            this.mushroomPowerActive = true;
-            
             // Store original dimensions if not already stored
             this.originalWidth = this.width;
             this.originalHeight = this.height;
             
-            // Double the size
-            this.width *= 2;
-            this.height *= 2;
-            
             // Create power-up effect particles
             createParticles(this.x + this.width/4, this.y + this.height/4, 30, '#ff0000');
             
-            // Adjust position to prevent clipping through floor
-            if (this.y + this.height > this.canvas.height - 50) {
-                this.y = this.canvas.height - 50 - this.height;
-            }
+            // Start the growth animation sequence
+            this.isGrowing = true;
+            this.growthStage = 0;
+            this.growthVisible = true;
+            this.growthAnimationFrame = 0;
             
+            // We'll set mushroomPowerActive to true after the animation completes
             return true;
         }
         return false;
     }
     
-    // New method to deactivate mushroom power-up
-    deactivateMushroomPower() {
-        if (this.mushroomPowerActive) {
-            this.mushroomPowerActive = false;
+    // Helper method to handle the growth animation
+    updateGrowthAnimation(createParticles) {
+        if (!this.isGrowing) return;
+        
+        this.growthAnimationFrame++;
+        
+        // Toggle visibility every 5 frames
+        if (this.growthAnimationFrame % 5 === 0) {
+            this.growthVisible = !this.growthVisible;
             
-            // Restore original dimensions
-            this.width = this.originalWidth;
-            this.height = this.originalHeight;
-            
-            // Adjust position to prevent clipping through floor
-            if (this.y + this.height > this.canvas.height - 50) {
-                this.y = this.canvas.height - 50 - this.height;
+            // Progress to next growth stage every 2 blinks (10 frames)
+            if (!this.growthVisible && this.growthAnimationFrame % 10 === 0) {
+                this.growthStage++;
+                
+                // Calculate intermediate size based on growth stage
+                const growthProgress = this.growthStage / 3; // 3 stages total
+                this.width = this.originalWidth * (1 + growthProgress * 1.5); // Scale up more aggressively
+                this.height = this.originalHeight * (1 + growthProgress * 1.5);
+                
+                // Adjust position to prevent clipping through floor
+                if (this.y + this.height > this.canvas.height - 50) {
+                    this.y = this.canvas.height - 50 - this.height;
+                }
+                
+                // Create additional particles at each growth stage
+                createParticles(this.x + this.width/2, this.y + this.height/2, 10, '#ff0000');
             }
             
+            // Animation complete after 3 stages
+            if (this.growthStage >= 3) {
+                this.isGrowing = false;
+                this.growthVisible = true; // Ensure visibility is on when animation completes
+                this.mushroomPowerActive = true;
+                this.width = this.originalWidth * 2.5; // Increase final size to 2.5x instead of 2x
+                this.height = this.originalHeight * 2.5;
+                
+                // Adjust position one final time
+                if (this.y + this.height > this.canvas.height - 50) {
+                    this.y = this.canvas.height - 50 - this.height;
+                }
+                
+                // Create a final burst of particles
+                createParticles(this.x + this.width/2, this.y + this.height/2, 30, '#ff0000');
+            }
+        }
+    }
+    
+    // New method to deactivate mushroom power-up
+    deactivateMushroomPower(createParticles) {
+        if (this.mushroomPowerActive && !this.isShrinking) {
+            // Start the shrinking animation sequence
+            this.isShrinking = true;
+            this.shrinkStage = 0;
+            this.shrinkVisible = true;
+            this.shrinkAnimationFrame = 0;
+            
+            // We'll set mushroomPowerActive to false after the animation completes
             return true;
         }
         return false;
+    }
+    
+    // Helper method to handle the shrinking animation
+    updateShrinkAnimation(createParticles) {
+        if (!this.isShrinking) return;
+        
+        this.shrinkAnimationFrame++;
+        
+        // Toggle visibility every 5 frames
+        if (this.shrinkAnimationFrame % 5 === 0) {
+            this.shrinkVisible = !this.shrinkVisible;
+            
+            // Progress to next shrink stage every 2 blinks (10 frames)
+            if (!this.shrinkVisible && this.shrinkAnimationFrame % 10 === 0) {
+                this.shrinkStage++;
+                
+                // Calculate intermediate size based on shrink stage
+                const shrinkProgress = this.shrinkStage / 3; // 3 stages total
+                this.width = this.originalWidth * 2.5 * (1 - shrinkProgress * 0.5); // Start from 2.5x size, shrink more gradually
+                this.height = this.originalHeight * 2.5 * (1 - shrinkProgress * 0.5);
+                
+                // Create additional particles at each shrink stage
+                if (createParticles) {
+                    createParticles(this.x + this.width/2, this.y + this.height/2, 10, '#ff0000');
+                }
+            }
+            
+            // Animation complete after 3 stages
+            if (this.shrinkStage >= 3) {
+                this.isShrinking = false;
+                this.shrinkVisible = true; // Ensure visibility is on when animation completes
+                this.mushroomPowerActive = false;
+                this.width = this.originalWidth;
+                this.height = this.originalHeight;
+                
+                // Adjust position to prevent clipping through floor
+                if (this.y + this.height > this.canvas.height - 50) {
+                    this.y = this.canvas.height - 50 - this.height;
+                }
+                
+                // Create a final burst of particles
+                if (createParticles) {
+                    createParticles(this.x + this.width/2, this.y + this.height/2, 20, '#ff0000');
+                }
+            }
+        }
     }
 }
 
