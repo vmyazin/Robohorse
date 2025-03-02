@@ -275,6 +275,30 @@ class Game {
                     // Coming from left
                     if (this.player.x < obstacle.x) {
                         this.player.x = obstacle.x - this.player.width;
+                        
+                        // Check if player is being crushed between left edge and obstacle
+                        if (this.player.x <= 0) {
+                            // Player is crushed between left edge and obstacle - apply damage
+                            this.player.health -= 2; // Apply 2 damage per frame when crushed
+                            this.updateHealthDisplay();
+                            
+                            // Create crush effect particles
+                            this.createParticles(
+                                this.player.x + this.player.width, 
+                                this.player.y + this.player.height/2, 
+                                3, 
+                                '#ff0000'
+                            );
+                            
+                            // Activate damage flash effect
+                            this.damageFlashActive = true;
+                            this.damageFlashCounter = this.damageFlashDuration;
+                            
+                            // Check if player died from being crushed
+                            if (this.player.health <= 0) {
+                                this.endGame();
+                            }
+                        }
                     } 
                     // Coming from right
                     else {
