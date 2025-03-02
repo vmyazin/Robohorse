@@ -84,15 +84,9 @@ class Player {
         // This happens when we collide with an obstacle or the ground
         this.isLanding = this.lastVelY >= this.landingThreshold && this.velY <= 0.5;
         
-        // Floor collision
-        if (this.y + this.height > this.canvas.height - 50) {
-            this.y = this.canvas.height - 50 - this.height;
-            this.velY = 0;
-            this.isJumping = false;
-            this.standingOnObstacle = null; // Clear obstacle reference when on the ground
-        }
+        // We no longer need the floor collision check here as it's handled in Game.js with curved terrain
         
-        // Boundaries
+        // Boundaries - only check left and right edges
         if (this.x < 0) this.x = 0;
         if (this.x + this.width > this.canvas.width) this.x = this.canvas.width - this.width;
         

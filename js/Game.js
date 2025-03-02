@@ -51,9 +51,10 @@ class Game {
         this.specialTokens = [];
         this.obstacles = [];
         this.particles = [];
-        this.platforms = [
-            { x: 0, y: canvas.height - 50, width: canvas.width, height: 50 }
-        ];
+        this.platforms = [];
+        
+        // Generate curved terrain segments
+        this.generateTerrain();
         
         // Level manager - ensure enemies array is initialized first
         console.log("Initializing level manager with enemies array:", this.enemies);
@@ -152,6 +153,86 @@ class Game {
         // Update player
         this.player.update(this.keys, this.frameCount, this.createParticles.bind(this));
         
+        // Check collision with platforms
+        let onPlatform = false;
+        this.platforms.forEach(platform => {
+            // Skip pillars for collision (they're just visual)
+            if (platform.type === 'pillar') return;
+            
+            // Check if player is above the platform and falling
+            const playerBottom = this.player.y + this.player.height;
+            const playerRight = this.player.x + this.player.width;
+            
+            if (this.player.velY >= 0 && // Player is falling
+                playerBottom <= platform.y + 10 && // Player is above or slightly into platform
+                playerBottom >= platform.y - 10 && // Not too far above
+                this.player.x < platform.x + platform.width &&
+                playerRight > platform.x) {
+                
+                // Position player on top of platform
+                this.player.y = platform.y - this.player.height;
+                this.player.velY = 0;
+                this.player.isJumping = false;
+                onPlatform = true;
+                
+                // Create dust particles when landing on a platform
+                if (this.player.lastVelY > 3) {
+                    this.createParticles(
+                        this.player.x + this.player.width/2, 
+                        this.player.y + this.player.height, 
+                        5, 
+                        '#aaa'
+                    );
+                }
+            }
+            
+            // Horizontal collision (only for shelves, not ground)
+            if (platform.type === 'shelf' && 
+                playerBottom > platform.y + 5 && 
+                this.player.y < platform.y + platform.height) {
+                
+                // Coming from left
+                if (playerRight >= platform.x && playerRight <= platform.x + 20 && this.player.x < platform.x) {
+                    this.player.x = platform.x - this.player.width;
+                }
+                // Coming from right
+                else if (this.player.x <= platform.x + platform.width && this.player.x >= platform.x + platform.width - 20 && playerRight > platform.x + platform.width) {
+                    this.player.x = platform.x + platform.width;
+                }
+            }
+        });
+        
+        // If not on any platform, check for ground collision
+        if (!onPlatform) {
+            // Find the ground segment the player is currently over
+            const groundSegments = this.platforms.filter(p => p.type === 'ground');
+            let currentGround = null;
+            
+            for (const segment of groundSegments) {
+                if (this.player.x + this.player.width/2 >= segment.x && 
+                    this.player.x + this.player.width/2 < segment.x + segment.width) {
+                    currentGround = segment;
+                    break;
+                }
+            }
+            
+            if (currentGround && this.player.y + this.player.height > currentGround.y) {
+                this.player.y = currentGround.y - this.player.height;
+                this.player.velY = 0;
+                this.player.isJumping = false;
+                
+                // Create dust particles when landing on the ground
+                if (this.player.lastVelY > 3) {
+                    this.createParticles(
+                        this.player.x + this.player.width/2, 
+                        this.player.y + this.player.height, 
+                        5, 
+                        '#aaa'
+                    );
+                }
+            }
+        }
+        
         // Shooting
         if (this.keys['x']) {
             this.player.shoot(this.frameCount, this.projectiles, this.createParticles.bind(this));
@@ -187,69 +268,58 @@ class Game {
             }
         }
         
-        // Update projectiles
-        this.projectiles.forEach((proj, index) => {
-            proj.x += proj.velX;
-            proj.y += proj.velY;
+        // Update platforms - move with level scrolling
+        this.platforms.forEach(platform => {
+            platform.x -= this.levelManager.scrollSpeed * this.gameSpeed;
             
-            // Remove projectiles that are out of bounds
-            if (proj.x < 0 || proj.x > this.canvas.width || proj.y < 0 || proj.y > this.canvas.height) {
-                this.projectiles.splice(index, 1);
+            // If a ground segment moves off-screen, reposition it to the right
+            if (platform.type === 'ground' && platform.x + platform.width < 0) {
+                // Find the rightmost ground segment
+                const rightmostGround = this.platforms
+                    .filter(p => p.type === 'ground')
+                    .reduce((rightmost, current) => 
+                        current.x > rightmost.x ? current : rightmost, 
+                        { x: 0 });
+                
+                // Position this segment after the rightmost one
+                platform.x = rightmostGround.x + rightmostGround.width;
+                
+                // Update the height based on sine wave pattern
+                const segmentIndex = Math.floor(platform.x / 100);
+                const heightVariation = Math.sin(segmentIndex * 0.5) * 20;
+                platform.y = (this.canvas.height - 50) + heightVariation;
+                platform.height = 50 - heightVariation;
             }
-        });
-        
-        // Update enemies
-        this.enemies.forEach((enemy, index) => {
-            enemy.update(this.player, this.frameCount, this.createParticles.bind(this));
             
-            // Remove enemies that are off-screen to the left or too far to the right
-            if (enemy.x + enemy.width < -100 || enemy.x > this.canvas.width + 300) {
-                this.enemies.splice(index, 1);
-                console.log("Removed enemy that went off-screen. Remaining:", this.enemies.length);
-            }
-            
-            // Check collisions with player projectiles
-            this.projectiles.forEach((proj, projIndex) => {
-                if (proj.isPlayerProjectile && isColliding(proj, enemy)) {
-                    const isDead = enemy.takeDamage(proj.damage);
-                    this.projectiles.splice(projIndex, 1);
-                    this.createParticles(proj.x, proj.y, 5, proj.color);
+            // If a shelf/pillar moves off-screen, reposition it to the right
+            if ((platform.type === 'shelf' || platform.type === 'pillar') && platform.x + platform.width < -200) {
+                // Find all shelves
+                const shelves = this.platforms.filter(p => p.type === 'shelf');
+                
+                // Find the rightmost shelf
+                const rightmostShelf = shelves.reduce((rightmost, current) => 
+                    current.x > rightmost.x ? current : rightmost, 
+                    { x: 0 });
+                
+                if (platform.type === 'shelf') {
+                    // Position this shelf after the rightmost one
+                    platform.x = rightmostShelf.x + 400;
                     
-                    if (isDead) {
-                        this.enemies.splice(index, 1);
-                        this.score += enemy.points;
-                        this.scoreDisplay.textContent = this.score;
-                        this.createParticles(enemy.x + enemy.width/2, enemy.y + enemy.height/2, 20, '#f00');
-                        
-                        // Randomly spawn power-up or special token
-                        const rand = Math.random();
-                        if (rand < 0.2) {
-                            this.spawnPowerUp(enemy.x, enemy.y);
-                        } else if (rand < 0.5) {
-                            this.spawnSpecialToken(enemy.x, enemy.y);
-                        }
+                    // Vary the height
+                    const baseY = this.canvas.height - 50;
+                    const shelfIndex = shelves.indexOf(platform);
+                    platform.y = baseY - 100 - (shelfIndex % 3) * 50;
+                    
+                    // Find and update the associated pillar
+                    const associatedPillar = this.platforms.find(p => 
+                        p.type === 'pillar' && 
+                        Math.abs(p.x - (platform.x + 65)) < 20);
+                    
+                    if (associatedPillar) {
+                        associatedPillar.x = platform.x + 65;
+                        associatedPillar.y = platform.y + 20;
+                        associatedPillar.height = baseY - platform.y - 20;
                     }
-                }
-            });
-            
-            // Check collision with player
-            if (isColliding(enemy, this.player)) {
-                this.player.health -= 1;
-                this.updateHealthDisplay();
-                this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 3, '#fff');
-                
-                // Activate damage flash effect
-                this.damageFlashActive = true;
-                this.damageFlashCounter = this.damageFlashDuration;
-                
-                // Deactivate mushroom power-up if active
-                if (this.player.mushroomPowerActive) {
-                    this.player.deactivateMushroomPower();
-                    this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 20, '#ff0000');
-                }
-                
-                if (this.player.health <= 0) {
-                    this.endGame();
                 }
             }
         });
@@ -361,6 +431,73 @@ class Game {
             }
         });
         
+        // Update projectiles
+        this.projectiles.forEach((proj, index) => {
+            proj.x += proj.velX;
+            proj.y += proj.velY;
+            
+            // Remove projectiles that are out of bounds
+            if (proj.x < 0 || proj.x > this.canvas.width || proj.y < 0 || proj.y > this.canvas.height) {
+                this.projectiles.splice(index, 1);
+            }
+        });
+        
+        // Update enemies
+        this.enemies.forEach((enemy, index) => {
+            enemy.update(this.player, this.frameCount, this.createParticles.bind(this));
+            
+            // Remove enemies that are off-screen to the left or too far to the right
+            if (enemy.x + enemy.width < -100 || enemy.x > this.canvas.width + 300) {
+                this.enemies.splice(index, 1);
+                console.log("Removed enemy that went off-screen. Remaining:", this.enemies.length);
+            }
+            
+            // Check collisions with player projectiles
+            this.projectiles.forEach((proj, projIndex) => {
+                if (proj.isPlayerProjectile && isColliding(proj, enemy)) {
+                    const isDead = enemy.takeDamage(proj.damage);
+                    this.projectiles.splice(projIndex, 1);
+                    this.createParticles(proj.x, proj.y, 5, proj.color);
+                    
+                    if (isDead) {
+                        this.enemies.splice(index, 1);
+                        this.score += enemy.points;
+                        this.scoreDisplay.textContent = this.score;
+                        this.createParticles(enemy.x + enemy.width/2, enemy.y + enemy.height/2, 20, '#f00');
+                        
+                        // Randomly spawn power-up or special token
+                        const rand = Math.random();
+                        if (rand < 0.2) {
+                            this.spawnPowerUp(enemy.x, enemy.y);
+                        } else if (rand < 0.5) {
+                            this.spawnSpecialToken(enemy.x, enemy.y);
+                        }
+                    }
+                }
+            });
+            
+            // Check collision with player
+            if (isColliding(enemy, this.player)) {
+                this.player.health -= 1;
+                this.updateHealthDisplay();
+                this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 3, '#fff');
+                
+                // Activate damage flash effect
+                this.damageFlashActive = true;
+                this.damageFlashCounter = this.damageFlashDuration;
+                
+                // Deactivate mushroom power-up if active
+                if (this.player.mushroomPowerActive) {
+                    this.player.deactivateMushroomPower();
+                    this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 20, '#ff0000');
+                }
+                
+                if (this.player.health <= 0) {
+                    this.endGame();
+                }
+            }
+        });
+        
         // Handle enemy projectiles hitting player
         this.projectiles.forEach((proj, index) => {
             if (!proj.isPlayerProjectile && isColliding(proj, this.player)) {
@@ -455,9 +592,55 @@ class Game {
         this.background.draw(this.ctx, this.frameCount);
         
         // Draw platforms
-        this.ctx.fillStyle = '#444';
         this.platforms.forEach(platform => {
-            this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+            if (platform.type === 'ground') {
+                // Draw ground with texture
+                const gradient = this.ctx.createLinearGradient(0, platform.y, 0, platform.y + platform.height);
+                gradient.addColorStop(0, '#555');
+                gradient.addColorStop(1, '#333');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                
+                // Add texture lines to ground
+                this.ctx.strokeStyle = '#444';
+                this.ctx.lineWidth = 1;
+                for (let i = 0; i < platform.width; i += 20) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(platform.x + i, platform.y);
+                    this.ctx.lineTo(platform.x + i, platform.y + platform.height);
+                    this.ctx.stroke();
+                }
+            } else if (platform.type === 'shelf') {
+                // Draw concrete shelf with a slight 3D effect
+                this.ctx.fillStyle = '#777';
+                this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                
+                // Add highlight on top
+                this.ctx.fillStyle = '#999';
+                this.ctx.fillRect(platform.x, platform.y, platform.width, 3);
+                
+                // Add shadow at bottom
+                this.ctx.fillStyle = '#555';
+                this.ctx.fillRect(platform.x, platform.y + platform.height - 3, platform.width, 3);
+            } else if (platform.type === 'pillar') {
+                // Draw concrete pillar
+                const gradient = this.ctx.createLinearGradient(platform.x, 0, platform.x + platform.width, 0);
+                gradient.addColorStop(0, '#666');
+                gradient.addColorStop(0.5, '#888');
+                gradient.addColorStop(1, '#666');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                
+                // Add horizontal lines for texture
+                this.ctx.strokeStyle = '#777';
+                this.ctx.lineWidth = 1;
+                for (let i = 0; i < platform.height; i += 15) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(platform.x, platform.y + i);
+                    this.ctx.lineTo(platform.x + platform.width, platform.y + i);
+                    this.ctx.stroke();
+                }
+            }
         });
         
         // Draw obstacles
@@ -798,6 +981,59 @@ class Game {
             this.levelAnnouncement.classList.remove('active');
             this.levelAnnouncement.classList.add('fade-out');
         }, 3000);
+    }
+    
+    generateTerrain() {
+        // Clear existing platforms
+        this.platforms = [];
+        
+        // Base platform properties
+        const baseY = this.canvas.height - 50;
+        const segmentWidth = 100;
+        const segments = Math.ceil(this.canvas.width / segmentWidth) + 1; // +1 for smooth scrolling
+        
+        // Generate curved ground segments
+        for (let i = 0; i < segments; i++) {
+            const x = i * segmentWidth;
+            // Create a sine wave pattern for the ground
+            const heightVariation = Math.sin(i * 0.5) * 20;
+            const y = baseY + heightVariation;
+            
+            this.platforms.push({
+                x: x,
+                y: y,
+                width: segmentWidth + 1, // +1 to avoid gaps
+                height: 50 - heightVariation, // Adjust height to fill to bottom
+                type: 'ground'
+            });
+        }
+        
+        // Add concrete shelves on pillars
+        const shelfCount = 5;
+        for (let i = 0; i < shelfCount; i++) {
+            // Position shelves at different x positions
+            const x = 300 + i * 400;
+            // Vary the height of the shelves
+            const y = baseY - 100 - (i % 3) * 50;
+            
+            // Add the shelf platform
+            this.platforms.push({
+                x: x,
+                y: y,
+                width: 150,
+                height: 20,
+                type: 'shelf'
+            });
+            
+            // Add the supporting pillar
+            this.platforms.push({
+                x: x + 65, // Center the pillar under the shelf
+                y: y + 20, // Start from bottom of shelf
+                width: 20,
+                height: baseY - y - 20, // Extend to ground level
+                type: 'pillar'
+            });
+        }
     }
 }
 
