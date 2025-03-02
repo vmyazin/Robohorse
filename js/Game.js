@@ -238,6 +238,10 @@ class Game {
             if (isColliding(this.player, obstacle)) {
                 // If player is above the obstacle and falling, place them on top
                 if (this.player.y + this.player.height < obstacle.y + obstacle.height / 2 && this.player.velY > 0) {
+                    // Store the player's velocity before resetting it (for landing detection)
+                    const previousVelY = this.player.velY;
+                    
+                    // Position player on top of obstacle
                     this.player.y = obstacle.y - this.player.height;
                     this.player.velY = 0;
                     this.player.isJumping = false;

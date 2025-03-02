@@ -21,12 +21,15 @@ class Obstacle {
                 this.height = 40;
                 this.color = '#a67c52';
                 this.points = 50;
-                this.health = 20;
+                this.health = 2; // Exactly 2 jumps to smash
+                this.maxHealth = 2; // Store max health for percentage calculations
                 this.isBeingSmashed = false;
                 this.smashEffectCounter = 0;
-                this.smashEffectDuration = 10; // Increased duration
+                this.smashEffectDuration = 15; // Increased duration for better visual effect
                 this.compressionAmount = 0; // How much the box is compressed when smashed
                 this.cracks = []; // Array to store crack positions
+                this.jumpCount = 0; // Track number of jumps on this box
+                this.woodGrainColor = '#8d6a4b'; // Color for wood grain
                 break;
             default:
                 this.width = 50;
@@ -34,6 +37,7 @@ class Obstacle {
                 this.color = '#888';
                 this.points = 10;
                 this.health = 30;
+                this.maxHealth = 30;
         }
         
         // Position at the bottom of the canvas
@@ -48,7 +52,7 @@ class Obstacle {
             // Update compression amount based on counter
             if (this.type === 'box') {
                 // Start with max compression and gradually return to normal
-                this.compressionAmount = 10 * (this.smashEffectCounter / this.smashEffectDuration);
+                this.compressionAmount = 12 * (this.smashEffectCounter / this.smashEffectDuration);
             }
             
             if (this.smashEffectCounter <= 0) {
@@ -60,17 +64,20 @@ class Obstacle {
     
     takeDamage(damage) {
         if (this.health !== Infinity) {
-            this.health -= damage;
-            
-            // Activate smash effect for boxes
+            // For boxes, we ignore the damage amount and just reduce health by 1
+            // This ensures it always takes exactly 2 jumps
             if (this.type === 'box') {
+                this.health -= 1;
+                this.jumpCount += 1;
+                
+                // Activate smash effect for boxes
                 this.isBeingSmashed = true;
                 this.smashEffectCounter = this.smashEffectDuration;
-                this.compressionAmount = 10; // Max compression
+                this.compressionAmount = 12; // Max compression - increased for better effect
                 
-                // Generate random cracks if they don't exist yet
-                if (this.cracks.length === 0) {
-                    const crackCount = 3 + Math.floor(Math.random() * 3); // 3-5 cracks
+                // Generate random cracks if first jump
+                if (this.jumpCount === 1) {
+                    const crackCount = 3 + Math.floor(Math.random() * 2); // 3-4 cracks
                     for (let i = 0; i < crackCount; i++) {
                         this.cracks.push({
                             x1: Math.random() * this.width,
@@ -80,7 +87,29 @@ class Obstacle {
                             width: 1 + Math.random() * 2
                         });
                     }
+                    
+                    // Darken the wood grain color slightly to show damage
+                    this.woodGrainColor = '#7d5a3b';
+                } 
+                // Add more cracks on second jump
+                else if (this.jumpCount === 2) {
+                    const crackCount = 4 + Math.floor(Math.random() * 3); // 4-6 more cracks
+                    for (let i = 0; i < crackCount; i++) {
+                        this.cracks.push({
+                            x1: Math.random() * this.width,
+                            y1: Math.random() * this.height,
+                            x2: Math.random() * this.width,
+                            y2: Math.random() * this.height,
+                            width: 1 + Math.random() * 2
+                        });
+                    }
+                    
+                    // Darken the wood grain color more to show severe damage
+                    this.woodGrainColor = '#5d3a1b';
                 }
+            } else {
+                // For non-box obstacles, use normal damage calculation
+                this.health -= damage;
             }
             
             return this.health <= 0;
@@ -173,7 +202,7 @@ class Obstacle {
             }
             
             // Draw wood grain lines
-            ctx.strokeStyle = '#8d6a4b';
+            ctx.strokeStyle = this.woodGrainColor;
             ctx.lineWidth = 1;
             for (let i = 0; i < 3; i++) {
                 const lineY = this.y + yOffset + (boxHeight / 4) * (i + 1);
@@ -182,6 +211,21 @@ class Obstacle {
                 ctx.lineTo(this.x + this.width, lineY);
                 ctx.stroke();
             }
+            
+            // Add a visual indicator of jump count
+            if (this.jumpCount === 1) {
+                // Draw a "1 more!" indicator
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('1 more!', this.x + this.width/2, this.y - 15);
+                
+                // Add a subtle glow effect
+                ctx.shadowColor = '#fff';
+                ctx.shadowBlur = 5;
+                ctx.fillText('1 more!', this.x + this.width/2, this.y - 15);
+                ctx.shadowBlur = 0;
+            }
         } else {
             // Draw generic obstacle
             ctx.fillStyle = this.color;
@@ -189,8 +233,8 @@ class Obstacle {
         }
         
         // Draw health bar for destructible obstacles
-        if (this.health !== Infinity && this.health < this.points) {
-            const healthPercentage = this.health / this.points;
+        if (this.health !== Infinity && this.health < this.maxHealth) {
+            const healthPercentage = this.health / this.maxHealth;
             const barWidth = this.width * 0.8;
             const barHeight = 5;
             

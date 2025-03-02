@@ -38,6 +38,7 @@ class Player {
         this.isLanding = false;
         this.lastVelY = 0;
         this.smashDamage = 30; // Damage dealt when smashing a box
+        this.landingThreshold = 3; // Minimum velocity to consider as landing
         
         // Initialize legs
         this.legs = Array(6).fill().map((_, i) => ({
@@ -73,8 +74,9 @@ class Player {
         this.velY += 0.5;
         this.y += this.velY;
         
-        // Detect landing (when velocity changes from positive to near zero)
-        this.isLanding = this.lastVelY > 5 && this.velY <= 0.5;
+        // Detect landing (when velocity changes from positive to zero or negative)
+        // This happens when we collide with an obstacle or the ground
+        this.isLanding = this.lastVelY >= this.landingThreshold && this.velY <= 0.5;
         
         // Floor collision
         if (this.y + this.height > this.canvas.height - 50) {
@@ -96,26 +98,47 @@ class Player {
     
     // Check if player is landing on a box and smash it
     checkBoxSmash(obstacles, createParticles) {
-        if (!this.isLanding || !this.standingOnObstacle) return false;
+        // Check if we have an obstacle to smash
+        if (!this.standingOnObstacle) return false;
         
         // Only smash boxes, not other obstacle types
         if (this.standingOnObstacle.type === 'box') {
-            // Apply smash damage
-            const isDestroyed = this.standingOnObstacle.takeDamage(this.smashDamage);
-            
-            // Create particles for visual effect
-            createParticles(
-                this.standingOnObstacle.x + this.standingOnObstacle.width/2, 
-                this.standingOnObstacle.y, 
-                15, 
-                '#a67c52'
-            );
-            
-            // Add a small upward bounce when smashing a box
-            this.velY = -2;
-            
-            // Return true if box was destroyed
-            return isDestroyed;
+            // We need to be landing with sufficient velocity OR jumping and landing on the box
+            if (this.isLanding || this.lastVelY >= this.landingThreshold) {
+                // Apply smash damage (always 1 damage per jump for boxes)
+                const isDestroyed = this.standingOnObstacle.takeDamage(1);
+                
+                // Create particles for visual effect - more particles on second jump
+                const particleCount = this.standingOnObstacle.jumpCount === 2 ? 25 : 15;
+                createParticles(
+                    this.standingOnObstacle.x + this.standingOnObstacle.width/2, 
+                    this.standingOnObstacle.y, 
+                    particleCount, 
+                    '#a67c52'
+                );
+                
+                // Add a stronger upward bounce on the second jump
+                if (this.standingOnObstacle.jumpCount === 2) {
+                    this.velY = -4; // Stronger bounce on final smash
+                    
+                    // Add extra wood splinter particles
+                    for (let i = 0; i < 3; i++) {
+                        setTimeout(() => {
+                            createParticles(
+                                this.standingOnObstacle.x + Math.random() * this.standingOnObstacle.width, 
+                                this.standingOnObstacle.y + Math.random() * this.standingOnObstacle.height, 
+                                5, 
+                                '#8d6a4b'
+                            );
+                        }, i * 100);
+                    }
+                } else {
+                    this.velY = -2; // Normal bounce on first jump
+                }
+                
+                // Return true if box was destroyed
+                return isDestroyed;
+            }
         }
         
         return false;

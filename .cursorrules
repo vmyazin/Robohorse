@@ -1,1 +1,3 @@
 Ignore the gallop-protocol-game.html file.
+
+Do not start a Pythin server before checking if it's already running.
