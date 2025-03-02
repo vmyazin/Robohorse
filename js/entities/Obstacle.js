@@ -64,6 +64,19 @@ class Obstacle {
                 this.cracks = []; // Array to store crack positions
                 this.jumpCount = 0; // Track number of jumps on this box
                 this.woodGrainColor = '#8d6a4b'; // Color for wood grain
+                
+                // Determine if this box contains a mushroom power-up (30% chance)
+                this.containsMushroom = Math.random() < 0.3;
+                
+                // If it contains a mushroom, make it slightly different in appearance
+                if (this.containsMushroom) {
+                    // Add a subtle red tint to the box
+                    this.color = '#b67c52';
+                    this.woodGrainColor = '#9d6a4b';
+                    
+                    // Add a small red dot on top
+                    this.hasRedDot = true;
+                }
                 break;
             default:
                 this.width = 50;
@@ -123,7 +136,7 @@ class Obstacle {
                     }
                     
                     // Darken the wood grain color slightly to show damage
-                    this.woodGrainColor = '#7d5a3b';
+                    this.woodGrainColor = this.containsMushroom ? '#8d5a3b' : '#7d5a3b';
                 } 
                 // Add more cracks on second jump
                 else if (this.jumpCount === 2) {
@@ -139,7 +152,7 @@ class Obstacle {
                     }
                     
                     // Darken the wood grain color more to show severe damage
-                    this.woodGrainColor = '#5d3a1b';
+                    this.woodGrainColor = this.containsMushroom ? '#6d3a1b' : '#5d3a1b';
                 }
             } else {
                 // For non-box obstacles, use normal damage calculation
@@ -206,6 +219,20 @@ class Obstacle {
                 ctx.moveTo(this.x, lineY);
                 ctx.lineTo(this.x + this.width, lineY);
                 ctx.stroke();
+            }
+            
+            // Draw red dot indicator for mushroom boxes
+            if (this.containsMushroom && this.hasRedDot) {
+                ctx.fillStyle = '#ff0000';
+                ctx.beginPath();
+                ctx.arc(this.x + this.width/2, this.y + yOffset - 5, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Add subtle glow to the red dot
+                ctx.shadowColor = '#ff0000';
+                ctx.shadowBlur = 5;
+                ctx.fill();
+                ctx.shadowBlur = 0;
             }
             
             // Add a visual indicator of jump count

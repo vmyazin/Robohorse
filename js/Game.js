@@ -226,6 +226,12 @@ class Game {
                 this.damageFlashActive = true;
                 this.damageFlashCounter = this.damageFlashDuration;
                 
+                // Deactivate mushroom power-up if active
+                if (this.player.mushroomPowerActive) {
+                    this.player.deactivateMushroomPower();
+                    this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 20, '#ff0000');
+                }
+                
                 if (this.player.health <= 0) {
                     this.endGame();
                 }
@@ -256,6 +262,12 @@ class Game {
                     if (isBoxDestroyed) {
                         const index = this.obstacles.indexOf(obstacle);
                         if (index !== -1) {
+                            // Check if the box contained a mushroom power-up
+                            if (obstacle.type === 'box' && obstacle.containsMushroom) {
+                                // Spawn a mushroom power-up
+                                this.spawnMushroomPowerUp(obstacle.x, obstacle.y - 20);
+                            }
+                            
                             this.obstacles.splice(index, 1);
                             this.score += obstacle.points;
                             this.scoreDisplay.textContent = this.score;
@@ -293,6 +305,12 @@ class Game {
                             // Activate damage flash effect
                             this.damageFlashActive = true;
                             this.damageFlashCounter = this.damageFlashDuration;
+                            
+                            // Deactivate mushroom power-up if active
+                            if (this.player.mushroomPowerActive) {
+                                this.player.deactivateMushroomPower();
+                                this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 20, '#ff0000');
+                            }
                             
                             // Check if player died from being crushed
                             if (this.player.health <= 0) {
@@ -339,6 +357,12 @@ class Game {
                 this.damageFlashActive = true;
                 this.damageFlashCounter = this.damageFlashDuration;
                 
+                // Deactivate mushroom power-up if active
+                if (this.player.mushroomPowerActive) {
+                    this.player.deactivateMushroomPower();
+                    this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 20, '#ff0000');
+                }
+                
                 if (this.player.health <= 0) {
                     this.endGame();
                 }
@@ -358,6 +382,8 @@ class Game {
                     const randomWeaponIndex = Math.floor(Math.random() * this.weapons.length);
                     this.player.currentWeaponIndex = randomWeaponIndex;
                     this.weaponDisplay.textContent = this.weapons[randomWeaponIndex].name;
+                } else if (powerUp.type === 'mushroom') {
+                    this.player.activateMushroomPower(this.createParticles.bind(this));
                 }
                 
                 this.powerUps.splice(index, 1);
@@ -481,6 +507,53 @@ class Game {
                 
                 this.ctx.shadowBlur = 0;
                 this.ctx.restore();
+            } else if (powerUp.type === 'mushroom') {
+                // Draw a Mario-style mushroom
+                this.ctx.save();
+                
+                // Move to the center of the powerup
+                this.ctx.translate(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2);
+                
+                // Add floating animation
+                this.ctx.translate(0, Math.sin(this.frameCount * 0.1) * 2);
+                
+                // Add subtle pulsing effect
+                const pulseScale = 1 + Math.sin(this.frameCount * 0.2) * 0.1;
+                
+                // Scale to appropriate size
+                const scale = (powerUp.width / 30) * pulseScale;
+                this.ctx.scale(scale, scale);
+                
+                // Draw mushroom cap (red with white spots)
+                this.ctx.fillStyle = '#ff0000';
+                this.ctx.beginPath();
+                this.ctx.arc(0, -2, 10, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Draw white spots on cap
+                this.ctx.fillStyle = '#ffffff';
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i / 5) * Math.PI * 2;
+                    const spotX = Math.cos(angle) * 5;
+                    const spotY = Math.sin(angle) * 5 - 2;
+                    this.ctx.beginPath();
+                    this.ctx.arc(spotX, spotY, 2, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+                
+                // Draw mushroom stem
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillRect(-3, -2, 6, 10);
+                
+                // Add glow effect
+                this.ctx.shadowColor = '#ff0000';
+                this.ctx.shadowBlur = 15;
+                this.ctx.beginPath();
+                this.ctx.arc(0, -2, 10, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.shadowBlur = 0;
+                this.ctx.restore();
             } else {
                 // Draw other powerups as circles
                 this.ctx.fillStyle = powerUp.color;
@@ -586,12 +659,28 @@ class Game {
     }
     
     spawnPowerUp(x, y) {
-        const types = ['health', 'weapon'];
+        const types = ['health', 'weapon', 'mushroom'];
         const type = types[Math.floor(Math.random() * types.length)];
-        const color = type === 'health' ? '#ff3366' : '#ff0';
+        let color;
+        let size;
         
-        // Make health power-ups slightly larger for better visibility
-        const size = type === 'health' ? 25 : 20;
+        switch(type) {
+            case 'health':
+                color = '#ff3366';
+                size = 25;
+                break;
+            case 'weapon':
+                color = '#ff0';
+                size = 20;
+                break;
+            case 'mushroom':
+                color = '#ff0000';
+                size = 25;
+                break;
+            default:
+                color = '#ff0';
+                size = 20;
+        }
         
         this.powerUps.push({
             x,
@@ -644,6 +733,21 @@ class Game {
         } else {
             this.healthBar.style.background = 'linear-gradient(to right, #f00, #f00)';
         }
+    }
+    
+    // Add a new method to spawn mushroom power-ups
+    spawnMushroomPowerUp(x, y) {
+        this.powerUps.push({
+            x,
+            y,
+            width: 25,
+            height: 25,
+            type: 'mushroom',
+            color: '#ff0000'
+        });
+        
+        // Create particles for visual effect
+        this.createParticles(x + 12.5, y + 12.5, 15, '#ff0000');
     }
 }
 

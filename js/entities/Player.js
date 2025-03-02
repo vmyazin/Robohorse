@@ -46,6 +46,12 @@ class Player {
             length: 15,
             phase: i * 0.5
         }));
+        
+        // Mushroom power-up properties
+        this.mushroomPowerActive = false;
+        this.originalWidth = this.width;
+        this.originalHeight = this.height;
+        this.weaponDamageMultiplier = 1;
     }
     
     update(keys, frameCount, createParticles) {
@@ -150,6 +156,9 @@ class Player {
             const projX = this.x + (this.direction > 0 ? this.width : 0);
             const projY = this.y + this.height / 2 - weapon.height / 2;
             
+            // Apply mushroom power-up damage multiplier if active
+            const damageMultiplier = this.mushroomPowerActive ? 1.5 : 1;
+            
             projectiles.push({
                 x: projX,
                 y: projY,
@@ -158,7 +167,7 @@ class Player {
                 speed: weapon.projectileSpeed,
                 velX: weapon.projectileSpeed * this.direction,
                 velY: 0,
-                damage: weapon.damage,
+                damage: weapon.damage * damageMultiplier,
                 color: weapon.color,
                 isPlayerProjectile: true
             });
@@ -783,6 +792,51 @@ class Player {
         }
         
         ctx.restore();
+    }
+    
+    // New method to activate mushroom power-up
+    activateMushroomPower(createParticles) {
+        if (!this.mushroomPowerActive) {
+            this.mushroomPowerActive = true;
+            
+            // Store original dimensions if not already stored
+            this.originalWidth = this.width;
+            this.originalHeight = this.height;
+            
+            // Double the size
+            this.width *= 2;
+            this.height *= 2;
+            
+            // Create power-up effect particles
+            createParticles(this.x + this.width/4, this.y + this.height/4, 30, '#ff0000');
+            
+            // Adjust position to prevent clipping through floor
+            if (this.y + this.height > this.canvas.height - 50) {
+                this.y = this.canvas.height - 50 - this.height;
+            }
+            
+            return true;
+        }
+        return false;
+    }
+    
+    // New method to deactivate mushroom power-up
+    deactivateMushroomPower() {
+        if (this.mushroomPowerActive) {
+            this.mushroomPowerActive = false;
+            
+            // Restore original dimensions
+            this.width = this.originalWidth;
+            this.height = this.originalHeight;
+            
+            // Adjust position to prevent clipping through floor
+            if (this.y + this.height > this.canvas.height - 50) {
+                this.y = this.canvas.height - 50 - this.height;
+            }
+            
+            return true;
+        }
+        return false;
     }
 }
 
