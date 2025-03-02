@@ -8,19 +8,32 @@ class Obstacle {
         // Set properties based on obstacle type
         switch(this.type) {
             case 'car':
-                this.width = 120;
-                this.height = 60;
+                this.width = 180;
+                this.height = 80;
                 // Generate a random car color
-                const carColors = ['#3366cc', '#cc3333', '#33cc33', '#9933cc', '#cc9933', '#3399cc'];
+                const carColors = ['#3366cc', '#cc3333', '#33cc33', '#9933cc', '#cc9933', '#3399cc', '#663399', '#996633', '#339966'];
                 this.color = carColors[Math.floor(Math.random() * carColors.length)];
                 this.points = 0;
                 this.health = Infinity; // Cars can't be destroyed
-                // Random car model (0: sedan, 1: SUV, 2: sports car)
-                this.carModel = Math.floor(Math.random() * 3);
+                // Random car model (0: sedan, 1: SUV, 2: sports car, 3: pickup truck)
+                this.carModel = Math.floor(Math.random() * 4);
+                // Add metallic effect
+                this.hasMetallicPaint = Math.random() > 0.5;
+                // Add random license plate text
+                const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+                const numbers = "0123456789";
+                this.licensePlate = "";
+                for (let i = 0; i < 3; i++) {
+                    this.licensePlate += letters.charAt(Math.floor(Math.random() * letters.length));
+                }
+                this.licensePlate += "-";
+                for (let i = 0; i < 3; i++) {
+                    this.licensePlate += numbers.charAt(Math.floor(Math.random() * numbers.length));
+                }
                 break;
             case 'cybertruck':
-                this.width = 140;
-                this.height = 70;
+                this.width = 200;
+                this.height = 100;
                 // Chrome/metallic color for the Cybertruck
                 this.color = '#c0c0c0';
                 this.points = 0;
@@ -29,6 +42,13 @@ class Obstacle {
                 this.hasNeonLights = true;
                 this.neonColor = '#0ff';
                 this.wheelGlow = true;
+                // Random license plate
+                const cyberLetters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+                const cyberNumbers = "0123456789";
+                this.licensePlate = "CYBER-";
+                for (let i = 0; i < 3; i++) {
+                    this.licensePlate += cyberNumbers.charAt(Math.floor(Math.random() * cyberNumbers.length));
+                }
                 break;
             case 'box':
                 this.width = 40;
@@ -144,6 +164,9 @@ class Obstacle {
                 case 2: // Sports car
                     this.drawSportsCar(ctx, frameCount);
                     break;
+                case 3: // Pickup truck
+                    this.drawPickupTruck(ctx, frameCount);
+                    break;
             }
         } else if (this.type === 'cybertruck') {
             this.drawCybertruck(ctx, frameCount);
@@ -223,35 +246,71 @@ class Obstacle {
     
     // Draw a sedan car
     drawSedan(ctx, frameCount) {
+        ctx.save();
+        
+        // Create metallic paint effect if enabled
+        let fillStyle = this.color;
+        if (this.hasMetallicPaint) {
+            const gradient = ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
+            gradient.addColorStop(0, this.color);
+            gradient.addColorStop(0.5, this.lightenColor(this.color, 30));
+            gradient.addColorStop(1, this.color);
+            fillStyle = gradient;
+        }
+        
         // Draw car body
-        ctx.fillStyle = this.color;
+        ctx.fillStyle = fillStyle;
         ctx.beginPath();
         ctx.moveTo(this.x, this.y + this.height * 0.7);
         ctx.lineTo(this.x, this.y + this.height * 0.3);
-        ctx.lineTo(this.x + this.width * 0.2, this.y + this.height * 0.2);
-        ctx.lineTo(this.x + this.width * 0.8, this.y + this.height * 0.2);
+        ctx.lineTo(this.x + this.width * 0.15, this.y + this.height * 0.2);
+        ctx.lineTo(this.x + this.width * 0.85, this.y + this.height * 0.2);
         ctx.lineTo(this.x + this.width, this.y + this.height * 0.3);
         ctx.lineTo(this.x + this.width, this.y + this.height * 0.7);
         ctx.closePath();
         ctx.fill();
         
+        // Add body contour lines
+        ctx.strokeStyle = this.darkenColor(this.color, 20);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        
         // Draw car details
         this.drawCarDetails(ctx, frameCount);
+        
+        ctx.restore();
     }
     
     // Draw an SUV car
     drawSUV(ctx, frameCount) {
+        ctx.save();
+        
+        // Create metallic paint effect if enabled
+        let fillStyle = this.color;
+        if (this.hasMetallicPaint) {
+            const gradient = ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
+            gradient.addColorStop(0, this.color);
+            gradient.addColorStop(0.5, this.lightenColor(this.color, 30));
+            gradient.addColorStop(1, this.color);
+            fillStyle = gradient;
+        }
+        
         // Draw car body
-        ctx.fillStyle = this.color;
+        ctx.fillStyle = fillStyle;
         ctx.beginPath();
         ctx.moveTo(this.x, this.y + this.height * 0.7);
         ctx.lineTo(this.x, this.y + this.height * 0.25);
-        ctx.lineTo(this.x + this.width * 0.3, this.y + this.height * 0.15);
-        ctx.lineTo(this.x + this.width * 0.8, this.y + this.height * 0.15);
+        ctx.lineTo(this.x + this.width * 0.2, this.y + this.height * 0.15);
+        ctx.lineTo(this.x + this.width * 0.85, this.y + this.height * 0.15);
         ctx.lineTo(this.x + this.width, this.y + this.height * 0.25);
         ctx.lineTo(this.x + this.width, this.y + this.height * 0.7);
         ctx.closePath();
         ctx.fill();
+        
+        // Add body contour lines
+        ctx.strokeStyle = this.darkenColor(this.color, 20);
+        ctx.lineWidth = 1;
+        ctx.stroke();
         
         // Draw car details
         this.drawCarDetails(ctx, frameCount);
@@ -260,33 +319,52 @@ class Obstacle {
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(this.x + this.width * 0.3, this.y + this.height * 0.15);
+        ctx.moveTo(this.x + this.width * 0.25, this.y + this.height * 0.15);
         ctx.lineTo(this.x + this.width * 0.8, this.y + this.height * 0.15);
         ctx.stroke();
         
         // Draw vertical roof rack supports
-        for (let i = 0; i < 3; i++) {
-            const x = this.x + this.width * (0.35 + i * 0.15);
+        for (let i = 0; i < 4; i++) {
+            const x = this.x + this.width * (0.3 + i * 0.15);
             ctx.beginPath();
             ctx.moveTo(x, this.y + this.height * 0.15);
             ctx.lineTo(x, this.y + this.height * 0.2);
             ctx.stroke();
         }
+        
+        ctx.restore();
     }
     
     // Draw a sports car
     drawSportsCar(ctx, frameCount) {
+        ctx.save();
+        
+        // Create metallic paint effect if enabled
+        let fillStyle = this.color;
+        if (this.hasMetallicPaint) {
+            const gradient = ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
+            gradient.addColorStop(0, this.color);
+            gradient.addColorStop(0.5, this.lightenColor(this.color, 30));
+            gradient.addColorStop(1, this.color);
+            fillStyle = gradient;
+        }
+        
         // Draw car body
-        ctx.fillStyle = this.color;
+        ctx.fillStyle = fillStyle;
         ctx.beginPath();
         ctx.moveTo(this.x, this.y + this.height * 0.6);
         ctx.lineTo(this.x + this.width * 0.1, this.y + this.height * 0.4);
-        ctx.lineTo(this.x + this.width * 0.3, this.y + this.height * 0.25);
-        ctx.lineTo(this.x + this.width * 0.7, this.y + this.height * 0.25);
+        ctx.lineTo(this.x + this.width * 0.25, this.y + this.height * 0.25);
+        ctx.lineTo(this.x + this.width * 0.75, this.y + this.height * 0.25);
         ctx.lineTo(this.x + this.width * 0.95, this.y + this.height * 0.4);
         ctx.lineTo(this.x + this.width, this.y + this.height * 0.6);
         ctx.closePath();
         ctx.fill();
+        
+        // Add body contour lines
+        ctx.strokeStyle = this.darkenColor(this.color, 20);
+        ctx.lineWidth = 1;
+        ctx.stroke();
         
         // Draw car details
         this.drawCarDetails(ctx, frameCount);
@@ -299,6 +377,86 @@ class Obstacle {
         ctx.fillStyle = '#fff';
         ctx.fillRect(this.x + this.width * 0.3, this.y + this.height * 0.25, this.width * 0.05, this.height * 0.35);
         ctx.fillRect(this.x + this.width * 0.6, this.y + this.height * 0.25, this.width * 0.05, this.height * 0.35);
+        
+        // Add air intake on hood
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.ellipse(this.x + this.width * 0.45, this.y + this.height * 0.3, this.width * 0.1, this.height * 0.05, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.restore();
+    }
+    
+    // Draw a pickup truck
+    drawPickupTruck(ctx, frameCount) {
+        ctx.save();
+        
+        // Create metallic paint effect if enabled
+        let fillStyle = this.color;
+        if (this.hasMetallicPaint) {
+            const gradient = ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
+            gradient.addColorStop(0, this.color);
+            gradient.addColorStop(0.5, this.lightenColor(this.color, 30));
+            gradient.addColorStop(1, this.color);
+            fillStyle = gradient;
+        }
+        
+        // Draw truck cab
+        ctx.fillStyle = fillStyle;
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y + this.height * 0.7);
+        ctx.lineTo(this.x, this.y + this.height * 0.3);
+        ctx.lineTo(this.x + this.width * 0.15, this.y + this.height * 0.2);
+        ctx.lineTo(this.x + this.width * 0.45, this.y + this.height * 0.2);
+        ctx.lineTo(this.x + this.width * 0.45, this.y + this.height * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Add cab contour lines
+        ctx.strokeStyle = this.darkenColor(this.color, 20);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        
+        // Draw truck bed
+        ctx.fillStyle = fillStyle;
+        ctx.beginPath();
+        ctx.moveTo(this.x + this.width * 0.45, this.y + this.height * 0.7);
+        ctx.lineTo(this.x + this.width * 0.45, this.y + this.height * 0.35);
+        ctx.lineTo(this.x + this.width, this.y + this.height * 0.35);
+        ctx.lineTo(this.x + this.width, this.y + this.height * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Add bed contour lines
+        ctx.strokeStyle = this.darkenColor(this.color, 20);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        
+        // Draw truck bed details
+        ctx.fillStyle = this.darkenColor(this.color, 15);
+        ctx.fillRect(this.x + this.width * 0.45, this.y + this.height * 0.35, this.width * 0.55, this.height * 0.05);
+        
+        // Draw windows
+        ctx.fillStyle = '#aaddff';
+        ctx.beginPath();
+        ctx.moveTo(this.x + this.width * 0.15, this.y + this.height * 0.25);
+        ctx.lineTo(this.x + this.width * 0.15, this.y + this.height * 0.2);
+        ctx.lineTo(this.x + this.width * 0.45, this.y + this.height * 0.2);
+        ctx.lineTo(this.x + this.width * 0.45, this.y + this.height * 0.35);
+        ctx.lineTo(this.x + this.width * 0.15, this.y + this.height * 0.35);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Draw wheels
+        this.drawWheels(ctx);
+        
+        // Draw headlights and taillights
+        this.drawLights(ctx);
+        
+        // Draw license plate
+        this.drawLicensePlate(ctx);
+        
+        ctx.restore();
     }
     
     // Draw the Cybertruck
@@ -397,10 +555,9 @@ class Obstacle {
         
         // Add license text
         ctx.fillStyle = '#000000';
-        ctx.font = '10px Arial';
+        ctx.font = '12px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('CYBER', this.x + this.width * 0.5, this.y + this.height * 0.65);
-        ctx.fillText('TRUCK', this.x + this.width * 0.5, this.y + this.height * 0.7);
+        ctx.fillText(this.licensePlate, this.x + this.width * 0.5, this.y + this.height * 0.67);
         
         // Add neon underglow if enabled
         if (this.hasNeonLights) {
@@ -416,15 +573,80 @@ class Obstacle {
         ctx.restore();
     }
     
-    // Common car details (wheels, windows, lights)
-    drawCarDetails(ctx, frameCount) {
-        // Derive a darker shade for the cabin
-        const cabinColor = this.color.replace('#', '');
-        const r = parseInt(cabinColor.substr(0, 2), 16) * 0.7;
-        const g = parseInt(cabinColor.substr(2, 2), 16) * 0.7;
-        const b = parseInt(cabinColor.substr(4, 2), 16) * 0.7;
-        const darkerColor = `#${Math.floor(r).toString(16).padStart(2, '0')}${Math.floor(g).toString(16).padStart(2, '0')}${Math.floor(b).toString(16).padStart(2, '0')}`;
+    // Helper methods for drawing car components
+    drawWheels(ctx) {
+        // Draw wheels
+        ctx.fillStyle = '#222';
+        ctx.beginPath();
+        ctx.arc(this.x + this.width * 0.25, this.y + this.height * 0.7, this.height * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.x + this.width * 0.75, this.y + this.height * 0.7, this.height * 0.2, 0, Math.PI * 2);
+        ctx.fill();
         
+        // Draw wheel rims
+        ctx.fillStyle = '#999';
+        ctx.beginPath();
+        ctx.arc(this.x + this.width * 0.25, this.y + this.height * 0.7, this.height * 0.1, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.x + this.width * 0.75, this.y + this.height * 0.7, this.height * 0.1, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw wheel details (spokes)
+        ctx.strokeStyle = '#777';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 5; i++) {
+            const angle = (i / 5) * Math.PI * 2;
+            // Front wheel spokes
+            ctx.beginPath();
+            ctx.moveTo(this.x + this.width * 0.25, this.y + this.height * 0.7);
+            ctx.lineTo(
+                this.x + this.width * 0.25 + Math.cos(angle) * this.height * 0.1,
+                this.y + this.height * 0.7 + Math.sin(angle) * this.height * 0.1
+            );
+            ctx.stroke();
+            
+            // Rear wheel spokes
+            ctx.beginPath();
+            ctx.moveTo(this.x + this.width * 0.75, this.y + this.height * 0.7);
+            ctx.lineTo(
+                this.x + this.width * 0.75 + Math.cos(angle) * this.height * 0.1,
+                this.y + this.height * 0.7 + Math.sin(angle) * this.height * 0.1
+            );
+            ctx.stroke();
+        }
+    }
+    
+    drawLights(ctx) {
+        // Draw headlights with glow
+        ctx.fillStyle = '#ffff00';
+        ctx.shadowColor = '#ffff00';
+        ctx.shadowBlur = 10;
+        ctx.fillRect(this.x + this.width * 0.05, this.y + this.height * 0.35, this.width * 0.1, this.height * 0.1);
+        
+        // Draw taillights with glow
+        ctx.fillStyle = '#ff0000';
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 10;
+        ctx.fillRect(this.x + this.width * 0.85, this.y + this.height * 0.35, this.width * 0.1, this.height * 0.1);
+        ctx.shadowBlur = 0;
+    }
+    
+    drawLicensePlate(ctx) {
+        // Draw license plate
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(this.x + this.width * 0.4, this.y + this.height * 0.6, this.width * 0.2, this.height * 0.1);
+        
+        // Add license text
+        ctx.fillStyle = '#000000';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.licensePlate, this.x + this.width * 0.5, this.y + this.height * 0.67);
+    }
+    
+    // Common car details (windows, lights, etc.)
+    drawCarDetails(ctx, frameCount) {
         // Draw windows
         ctx.fillStyle = '#aaddff';
         ctx.beginPath();
@@ -444,47 +666,16 @@ class Obstacle {
         ctx.fill();
         
         // Draw wheels
-        ctx.fillStyle = '#222';
-        ctx.beginPath();
-        ctx.arc(this.x + this.width * 0.25, this.y + this.height * 0.7, this.height * 0.2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(this.x + this.width * 0.75, this.y + this.height * 0.7, this.height * 0.2, 0, Math.PI * 2);
-        ctx.fill();
+        this.drawWheels(ctx);
         
-        // Draw wheel rims
-        ctx.fillStyle = '#999';
-        ctx.beginPath();
-        ctx.arc(this.x + this.width * 0.25, this.y + this.height * 0.7, this.height * 0.1, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(this.x + this.width * 0.75, this.y + this.height * 0.7, this.height * 0.1, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Draw headlights
-        ctx.fillStyle = '#ffff00';
-        ctx.shadowColor = '#ffff00';
-        ctx.shadowBlur = 10;
-        ctx.fillRect(this.x + this.width * 0.05, this.y + this.height * 0.35, this.width * 0.1, this.height * 0.1);
-        
-        // Draw taillights
-        ctx.fillStyle = '#ff0000';
-        ctx.shadowColor = '#ff0000';
-        ctx.fillRect(this.x + this.width * 0.85, this.y + this.height * 0.35, this.width * 0.1, this.height * 0.1);
-        ctx.shadowBlur = 0;
+        // Draw headlights and taillights
+        this.drawLights(ctx);
         
         // Draw license plate
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(this.x + this.width * 0.4, this.y + this.height * 0.6, this.width * 0.2, this.height * 0.1);
-        
-        // Add license text
-        ctx.fillStyle = '#000000';
-        ctx.font = '10px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('CYBER', this.x + this.width * 0.5, this.y + this.height * 0.67);
+        this.drawLicensePlate(ctx);
         
         // Draw door lines
-        ctx.strokeStyle = darkerColor;
+        ctx.strokeStyle = this.darkenColor(this.color, 30);
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(this.x + this.width * 0.4, this.y + this.height * 0.25);
@@ -495,6 +686,26 @@ class Obstacle {
         ctx.fillStyle = '#ddd';
         ctx.fillRect(this.x + this.width * 0.35, this.y + this.height * 0.4, this.width * 0.05, this.height * 0.03);
         ctx.fillRect(this.x + this.width * 0.6, this.y + this.height * 0.4, this.width * 0.05, this.height * 0.03);
+    }
+    
+    // Helper methods for color manipulation
+    lightenColor(color, percent) {
+        const num = parseInt(color.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) + amt;
+        const G = (num >> 8 & 0x00FF) + amt;
+        const B = (num & 0x0000FF) + amt;
+        
+        return '#' + (
+            0x1000000 + 
+            (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 + 
+            (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 + 
+            (B < 255 ? (B < 1 ? 0 : B) : 255)
+        ).toString(16).slice(1);
+    }
+    
+    darkenColor(color, percent) {
+        return this.lightenColor(color, -percent);
     }
 }
 
