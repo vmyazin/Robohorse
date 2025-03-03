@@ -13,8 +13,8 @@ class Obstacle {
                 // Generate a random car color
                 const carColors = ['#3366cc', '#cc3333', '#33cc33', '#9933cc', '#cc9933', '#3399cc', '#663399', '#996633', '#339966'];
                 this.color = carColors[Math.floor(Math.random() * carColors.length)];
-                this.points = 0;
-                this.health = Infinity; // Cars can't be destroyed
+                this.points = 100; // Award points for destroying cars
+                this.health = Infinity; // Cars can't be destroyed normally
                 // Random car model (0: sedan, 1: SUV, 2: sports car, 3: pickup truck)
                 this.carModel = Math.floor(Math.random() * 4);
                 // Add metallic effect
@@ -30,14 +30,27 @@ class Obstacle {
                 for (let i = 0; i < 3; i++) {
                     this.licensePlate += numbers.charAt(Math.floor(Math.random() * numbers.length));
                 }
+                // Add explosion properties
+                this.canExplode = true;
+                this.isExploding = false;
+                this.explosionRadius = 300; // Increased explosion radius
+                this.explosionDamage = 75; // Increased explosion damage
+                this.explosionDuration = 90; // Longer explosion duration (1.5 seconds at 60fps)
+                this.explosionTimer = 0;
+                this.explosionParticles = [];
+                this.explosionHitEnemies = new Set(); // Track which enemies were hit
+                this.explosionTriggerCount = 0; // How many times the car has been hit
+                this.explosionTriggerThreshold = 5; // Increased from 3 to 5 hits to make cars more resilient
+                this.damageVisuals = []; // Visual damage indicators
                 break;
             case 'cybertruck':
                 this.width = 200;
                 this.height = 100;
                 // Chrome/metallic color for the Cybertruck
                 this.color = '#c0c0c0';
-                this.points = 0;
-                this.health = Infinity; // Cybertruck can't be destroyed
+                this.points = 250; // Award more points for destroying a Cybertruck
+                // Make Cybertruck use explosion trigger count instead of health
+                this.health = Infinity; // Can't be destroyed normally
                 // Add some special properties for the Cybertruck
                 this.hasNeonLights = true;
                 this.neonColor = '#0ff';
@@ -49,6 +62,18 @@ class Obstacle {
                 for (let i = 0; i < 3; i++) {
                     this.licensePlate += cyberNumbers.charAt(Math.floor(Math.random() * cyberNumbers.length));
                 }
+                // Add explosion properties for Cybertruck
+                this.canExplode = true;
+                this.isExploding = false;
+                this.explosionRadius = 400; // Even larger explosion radius for Cybertruck
+                this.explosionDamage = 100; // More damage for Cybertruck explosion
+                this.explosionDuration = 120; // 2 seconds at 60fps
+                this.explosionTimer = 0;
+                this.explosionParticles = [];
+                this.explosionHitEnemies = new Set();
+                this.explosionTriggerCount = 0; // How many times the cybertruck has been hit
+                this.explosionTriggerThreshold = 10; // 10 hits to explode
+                this.damageVisuals = []; // Visual damage indicators
                 break;
             case 'box':
                 this.width = 40;
@@ -107,6 +132,40 @@ class Obstacle {
                 this.compressionAmount = 0;
             }
         }
+        
+        // Update explosion animation
+        if (this.isExploding) {
+            this.explosionTimer++;
+            
+            // Update explosion particles
+            for (let i = this.explosionParticles.length - 1; i >= 0; i--) {
+                const particle = this.explosionParticles[i];
+                particle.x += particle.velX;
+                particle.y += particle.velY;
+                
+                // Apply gravity to debris particles
+                if (particle.type === 'debris' && particle.gravity) {
+                    particle.velY += particle.gravity;
+                }
+                
+                // Fade smoke particles
+                if (particle.type === 'smoke' && particle.alpha) {
+                    particle.alpha -= particle.fadeRate;
+                    if (particle.alpha < 0) particle.alpha = 0;
+                }
+                
+                particle.life--;
+                
+                if (particle.life <= 0) {
+                    this.explosionParticles.splice(i, 1);
+                }
+            }
+            
+            // End explosion when timer is up
+            if (this.explosionTimer >= this.explosionDuration) {
+                this.isExploding = false;
+            }
+        }
     }
     
     takeDamage(damage) {
@@ -160,8 +219,34 @@ class Obstacle {
             }
             
             return this.health <= 0;
+        } else if ((this.type === 'car' || this.type === 'cybertruck') && this.canExplode) {
+            // Cars and Cybertrucks can be damaged to trigger explosion
+            this.explosionTriggerCount++;
+            
+            // Add damage visual at random position on the vehicle
+            this.addDamageVisual();
+            
+            // Check if vehicle should explode
+            if (this.explosionTriggerCount >= this.explosionTriggerThreshold) {
+                return this.explode();
+            }
         }
         return false;
+    }
+    
+    // Add method to create visual damage indicators
+    addDamageVisual() {
+        // Add a damage mark at a random position on the vehicle
+        const damageX = Math.random() * this.width;
+        const damageY = Math.random() * this.height;
+        const damageSize = 3 + Math.random() * 7;
+        
+        this.damageVisuals.push({
+            x: damageX,
+            y: damageY,
+            size: damageSize,
+            color: '#333333'
+        });
     }
     
     draw(ctx, frameCount) {
@@ -181,8 +266,46 @@ class Obstacle {
                     this.drawPickupTruck(ctx, frameCount);
                     break;
             }
+            
+            // Draw explosion if active
+            if (this.isExploding) {
+                this.drawExplosion(ctx);
+            }
+            
+            // Draw damage indicators
+            this.drawDamageVisuals(ctx);
+            
+            // Draw damage indicator if car has been hit but not exploded
+            if (this.explosionTriggerCount > 0 && !this.isExploding) {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                
+                const hitsLeft = this.explosionTriggerThreshold - this.explosionTriggerCount;
+                ctx.fillText(`${hitsLeft} more hit${hitsLeft !== 1 ? 's' : ''} to explode!`, 
+                            this.x + this.width/2, this.y - 10);
+            }
         } else if (this.type === 'cybertruck') {
             this.drawCybertruck(ctx, frameCount);
+            
+            // Draw explosion if active
+            if (this.isExploding) {
+                this.drawExplosion(ctx);
+            }
+            
+            // Draw damage indicators
+            this.drawDamageVisuals(ctx);
+            
+            // Draw damage indicator if cybertruck has been hit but not exploded
+            if (this.explosionTriggerCount > 0 && !this.isExploding) {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                
+                const hitsLeft = this.explosionTriggerThreshold - this.explosionTriggerCount;
+                ctx.fillText(`${hitsLeft} more hit${hitsLeft !== 1 ? 's' : ''} to explode!`, 
+                            this.x + this.width/2, this.y - 10);
+            }
         } else if (this.type === 'box') {
             // Draw box with smash effect if active
             const boxHeight = this.isBeingSmashed ? this.height - this.compressionAmount : this.height;
@@ -577,8 +700,7 @@ class Obstacle {
         ctx.shadowBlur = 0;
         
         // Draw license plate
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(this.x + this.width * 0.4, this.y + this.height * 0.6, this.width * 0.2, this.height * 0.1);
+        this.drawLicensePlate(ctx);
         
         // Add license text
         ctx.fillStyle = '#000000';
@@ -733,6 +855,243 @@ class Obstacle {
     
     darkenColor(color, percent) {
         return this.lightenColor(color, -percent);
+    }
+    
+    // Add new explode method
+    explode() {
+        if (this.isExploding) return false; // Already exploding
+        
+        this.isExploding = true;
+        this.explosionTimer = 0;
+        this.explosionHitEnemies.clear();
+        
+        // Create explosion particles - increased for a more massive explosion
+        const particleCount = this.type === 'cybertruck' ? 200 : 150;
+        this.explosionParticles = [];
+        
+        // Create primary explosion particles
+        for (let i = 0; i < particleCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 1 + Math.random() * 8; // Increased speed
+            const size = 3 + Math.random() * 12; // Larger particles
+            const life = 30 + Math.random() * 60; // Longer life
+            
+            // Create different colored particles for a more realistic explosion
+            let color;
+            const colorRand = Math.random();
+            if (colorRand < 0.4) {
+                color = '#ff6600'; // Orange
+            } else if (colorRand < 0.7) {
+                color = '#ff0000'; // Red
+            } else if (colorRand < 0.9) {
+                color = '#ffcc00'; // Yellow
+            } else {
+                color = '#ffffff'; // White hot center
+            }
+            
+            this.explosionParticles.push({
+                x: this.x + this.width / 2,
+                y: this.y + this.height / 2,
+                size: size,
+                velX: Math.cos(angle) * speed,
+                velY: Math.sin(angle) * speed,
+                color: color,
+                life: life,
+                type: 'fire'
+            });
+        }
+        
+        // Add debris particles
+        const debrisCount = this.type === 'cybertruck' ? 50 : 30;
+        for (let i = 0; i < debrisCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 10;
+            const size = 2 + Math.random() * 5;
+            const life = 40 + Math.random() * 80;
+            
+            // Create metal/debris particles
+            let color;
+            if (this.type === 'cybertruck') {
+                color = '#a0a0a0'; // Silver for Cybertruck
+            } else {
+                color = this.darkenColor(this.color, 20); // Darkened car color
+            }
+            
+            this.explosionParticles.push({
+                x: this.x + Math.random() * this.width,
+                y: this.y + Math.random() * this.height,
+                size: size,
+                velX: Math.cos(angle) * speed,
+                velY: Math.sin(angle) * speed - 2, // Add upward velocity for arcing effect
+                color: color,
+                life: life,
+                gravity: 0.2, // Add gravity for realistic arcs
+                type: 'debris'
+            });
+        }
+        
+        // Add smoke particles that linger longer
+        const smokeCount = this.type === 'cybertruck' ? 40 : 30;
+        for (let i = 0; i < smokeCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 0.5 + Math.random() * 2;
+            const size = 8 + Math.random() * 15;
+            const life = 80 + Math.random() * 120;
+            
+            this.explosionParticles.push({
+                x: this.x + this.width / 2,
+                y: this.y + this.height / 2,
+                size: size,
+                velX: Math.cos(angle) * speed,
+                velY: Math.sin(angle) * speed - 1, // Slight upward drift
+                color: '#555555',
+                life: life,
+                alpha: 0.7,
+                fadeRate: 0.005 + Math.random() * 0.01,
+                type: 'smoke'
+            });
+        }
+        
+        return true; // Explosion triggered
+    }
+    
+    // Add method to draw explosion
+    drawExplosion(ctx) {
+        // Draw explosion glow
+        const centerX = this.x + this.width / 2;
+        const centerY = this.y + this.height / 2;
+        
+        // Create radial gradient for explosion
+        const gradient = ctx.createRadialGradient(
+            centerX, centerY, 10,
+            centerX, centerY, this.explosionRadius * (1 - this.explosionTimer / this.explosionDuration)
+        );
+        
+        // Set gradient colors based on explosion phase
+        const phase = this.explosionTimer / this.explosionDuration;
+        if (phase < 0.15) {
+            // Initial bright flash - more intense
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+            gradient.addColorStop(0.1, 'rgba(255, 255, 200, 0.9)');
+            gradient.addColorStop(0.3, 'rgba(255, 200, 0, 0.8)');
+            gradient.addColorStop(0.6, 'rgba(255, 100, 0, 0.6)');
+            gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+        } else if (phase < 0.5) {
+            // Fire phase - more vibrant
+            gradient.addColorStop(0, 'rgba(255, 200, 0, 0.9)');
+            gradient.addColorStop(0.2, 'rgba(255, 100, 0, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(200, 0, 0, 0.6)');
+            gradient.addColorStop(0.8, 'rgba(100, 0, 0, 0.3)');
+            gradient.addColorStop(1, 'rgba(50, 0, 0, 0)');
+        } else {
+            // Smoke phase - darker and more opaque
+            gradient.addColorStop(0, 'rgba(80, 80, 80, 0.8)');
+            gradient.addColorStop(0.3, 'rgba(60, 60, 60, 0.7)');
+            gradient.addColorStop(0.7, 'rgba(40, 40, 40, 0.5)');
+            gradient.addColorStop(1, 'rgba(20, 20, 20, 0)');
+        }
+        
+        // Draw explosion circle
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, this.explosionRadius * (1 - this.explosionTimer / this.explosionDuration * 0.7), 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw particles
+        for (const particle of this.explosionParticles) {
+            ctx.save();
+            
+            // Set alpha for smoke particles
+            if (particle.type === 'smoke' && particle.alpha !== undefined) {
+                ctx.globalAlpha = particle.alpha;
+            }
+            
+            ctx.fillStyle = particle.color;
+            ctx.beginPath();
+            
+            if (particle.type === 'debris') {
+                // Draw debris as rectangles
+                ctx.fillRect(
+                    particle.x - particle.size/2, 
+                    particle.y - particle.size/2, 
+                    particle.size, 
+                    particle.size
+                );
+            } else {
+                // Draw fire and smoke as circles
+                ctx.arc(
+                    particle.x, 
+                    particle.y, 
+                    particle.size * (particle.life / (particle.type === 'smoke' ? 100 : 40)), 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+        
+        // Add glow effect
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = phase < 0.3 ? 'rgba(255, 200, 0, 0.8)' : 'rgba(255, 100, 0, 0.6)';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 30 * (1 - phase * 0.5), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        
+        // Add shockwave effect
+        if (phase < 0.2) {
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.7 * (1 - phase * 5)})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, this.explosionRadius * phase * 5, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    }
+    
+    // Add method to draw damage visuals
+    drawDamageVisuals(ctx) {
+        ctx.fillStyle = '#333333';
+        for (const damage of this.damageVisuals) {
+            ctx.beginPath();
+            ctx.arc(this.x + damage.x, this.y + damage.y, damage.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add some smaller damage marks around the main one
+            for (let i = 0; i < 3; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = damage.size * 0.8;
+                ctx.beginPath();
+                ctx.arc(
+                    this.x + damage.x + Math.cos(angle) * distance,
+                    this.y + damage.y + Math.sin(angle) * distance,
+                    damage.size * 0.3,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+        }
+    }
+    
+    // Add method to check if an entity is within explosion radius
+    isInExplosionRadius(entity) {
+        if (!this.isExploding) return false;
+        
+        // Calculate center points
+        const centerX = this.x + this.width / 2;
+        const centerY = this.y + this.height / 2;
+        const entityCenterX = entity.x + entity.width / 2;
+        const entityCenterY = entity.y + entity.height / 2;
+        
+        // Calculate distance between centers
+        const dx = centerX - entityCenterX;
+        const dy = centerY - entityCenterY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Check if entity is within explosion radius
+        return distance <= this.explosionRadius;
     }
 }
 

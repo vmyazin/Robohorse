@@ -70,12 +70,16 @@ class Game {
         
         // Sound effects
         this.sounds = {
-            levelAnnounce: new Audio('sounds/level_announce.mp3')
+            levelAnnounce: new Audio('sounds/level_announce.mp3'),
+            explosion: new Audio('audio/explosion.mp3'),
+            carHit: new Audio('audio/car_hit.mp3')
         };
         
         // Try to preload sounds, but don't crash if they don't exist
         try {
             this.sounds.levelAnnounce.load();
+            this.sounds.explosion.load();
+            this.sounds.carHit.load();
         } catch (e) {
             console.warn('Could not load sound effects:', e);
         }
@@ -261,76 +265,77 @@ class Game {
         this.levelManager.update();
         
         // Update obstacles
-        this.obstacles.forEach(obstacle => {
+        for (let i = this.obstacles.length - 1; i >= 0; i--) {
+            const obstacle = this.obstacles[i];
             obstacle.update();
-        });
-        
-        // Log enemy count and positions occasionally
-        if (this.frameCount % 300 === 0) {
-            console.log("Current enemies:", this.enemies.length);
-            if (this.enemies.length > 0) {
-                console.log("Enemy positions:", this.enemies.map(e => `(${Math.round(e.x)},${Math.round(e.y)})`).join(', '));
-            }
-        }
-        
-        // Update platforms - move with level scrolling
-        this.platforms.forEach(platform => {
-            platform.x -= this.levelManager.scrollSpeed * this.gameSpeed;
             
-            // If a ground segment moves off-screen, reposition it to the right
-            if (platform.type === 'ground' && platform.x + platform.width < 0) {
-                // Find the rightmost ground segment
-                const rightmostGround = this.platforms
-                    .filter(p => p.type === 'ground')
-                    .reduce((rightmost, current) => 
-                        current.x > rightmost.x ? current : rightmost, 
-                        { x: 0 });
-                
-                // Position this segment after the rightmost one
-                platform.x = rightmostGround.x + rightmostGround.width;
-                
-                // Update the height based on sine wave pattern
-                const segmentIndex = Math.floor(platform.x / 100);
-                const heightVariation = Math.sin(segmentIndex * 0.5) * 20;
-                platform.y = (this.canvas.height - 50) + heightVariation;
-                platform.height = 50 - heightVariation;
+            // Remove obstacles that have finished exploding
+            if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && 
+                obstacle.isExploding === false && 
+                obstacle.explosionTimer >= obstacle.explosionDuration) {
+                this.obstacles.splice(i, 1);
+                continue;
             }
             
-            // If a shelf/pillar moves off-screen, reposition it to the right
-            if ((platform.type === 'shelf' || platform.type === 'pillar') && platform.x + platform.width < -200) {
-                // Find all shelves
-                const shelves = this.platforms.filter(p => p.type === 'shelf');
-                
-                // Find the rightmost shelf
-                const rightmostShelf = shelves.reduce((rightmost, current) => 
-                    current.x > rightmost.x ? current : rightmost, 
-                    { x: 0 });
-                
-                if (platform.type === 'shelf') {
-                    // Position this shelf after the rightmost one
-                    platform.x = rightmostShelf.x + 400;
-                    
-                    // Vary the height
-                    const baseY = this.canvas.height - 50;
-                    const shelfIndex = shelves.indexOf(platform);
-                    platform.y = baseY - 100 - (shelfIndex % 3) * 50;
-                    
-                    // Find and update the associated pillar
-                    const associatedPillar = this.platforms.find(p => 
-                        p.type === 'pillar' && 
-                        Math.abs(p.x - (platform.x + 65)) < 20);
-                    
-                    if (associatedPillar) {
-                        associatedPillar.x = platform.x + 65;
-                        associatedPillar.y = platform.y + 20;
-                        associatedPillar.height = baseY - platform.y - 20;
+            // Check for exploding cars and apply damage to enemies
+            if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && obstacle.isExploding) {
+                // Check for enemies in explosion radius
+                this.enemies.forEach(enemy => {
+                    // Only damage each enemy once per explosion
+                    if (!obstacle.explosionHitEnemies.has(enemy) && obstacle.isInExplosionRadius(enemy)) {
+                        // Apply explosion damage to enemy
+                        const isDead = enemy.takeDamage(obstacle.explosionDamage);
+                        obstacle.explosionHitEnemies.add(enemy);
+                        
+                        // Create damage particles
+                        this.createParticles(
+                            enemy.x + enemy.width/2,
+                            enemy.y + enemy.height/2,
+                            10,
+                            '#ff0000'
+                        );
+                        
+                        // Handle enemy death
+                        if (isDead) {
+                            // Add score
+                            this.score += enemy.points;
+                            this.scoreDisplay.textContent = this.score;
+                            
+                            // Create death particles
+                            this.createParticles(
+                                enemy.x + enemy.width/2,
+                                enemy.y + enemy.height/2,
+                                20,
+                                enemy.color
+                            );
+                            
+                            // Chance to spawn special token
+                            if (Math.random() < 0.3) {
+                                this.spawnSpecialToken(enemy.x + enemy.width/2, enemy.y + enemy.height/2);
+                            }
+                            
+                            // Remove enemy
+                            const enemyIndex = this.enemies.indexOf(enemy);
+                            if (enemyIndex !== -1) {
+                                this.enemies.splice(enemyIndex, 1);
+                            }
+                        }
                     }
+                });
+                
+                // Check if player is in explosion radius but DO NOT damage them
+                // Instead, create a visual effect to show they're immune
+                if (obstacle.isInExplosionRadius(this.player)) {
+                    // Create shield particles around player to show immunity
+                    this.createParticles(
+                        this.player.x + this.player.width/2,
+                        this.player.y + this.player.height/2,
+                        5,
+                        '#00ffff'
+                    );
                 }
             }
-        });
-        
-        // Check collision with obstacles
-        this.obstacles.forEach(obstacle => {
+            
             // Check if player is colliding with obstacle
             if (isColliding(this.player, obstacle)) {
                 // If player is above the obstacle and falling, place them on top
@@ -368,7 +373,7 @@ class Game {
                                 obstacle.x + obstacle.width/2, 
                                 obstacle.y + obstacle.height/2, 
                                 20, 
-                                '#a67c52'
+                                obstacle.color
                             );
                         }
                     }
@@ -433,16 +438,76 @@ class Game {
                 // Move player with the obstacle (same amount as level scrolling)
                 this.player.x -= this.levelManager.scrollSpeed * this.gameSpeed;
             }
-        });
+        }
         
         // Update projectiles
-        this.projectiles.forEach((proj, index) => {
+        this.projectiles.forEach((proj, projIndex) => {
             proj.x += proj.velX;
             proj.y += proj.velY;
             
+            // Check collision with obstacles
+            this.obstacles.forEach((obstacle, obstacleIndex) => {
+                if (isColliding(proj, obstacle)) {
+                    // Remove projectile
+                    this.projectiles.splice(projIndex, 1);
+                    
+                    // Create impact particles
+                    this.createParticles(proj.x, proj.y, 5, proj.color);
+                    
+                    // Play car hit sound if hitting a car or cybertruck
+                    if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && proj.isPlayerProjectile) {
+                        try {
+                            // Clone the sound to allow overlapping playback
+                            const hitSound = this.sounds.carHit.cloneNode();
+                            hitSound.volume = 0.3;
+                            hitSound.play();
+                        } catch (e) {
+                            console.warn('Could not play car hit sound:', e);
+                        }
+                    }
+                    
+                    // Apply damage to obstacle
+                    const isDestroyed = obstacle.takeDamage(proj.damage);
+                    
+                    // If obstacle is destroyed, remove it and add score
+                    if (isDestroyed) {
+                        // Play explosion sound if a car or cybertruck exploded
+                        if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && obstacle.isExploding) {
+                            try {
+                                const explosionSound = this.sounds.explosion.cloneNode();
+                                explosionSound.volume = 0.5;
+                                explosionSound.play();
+                            } catch (e) {
+                                console.warn('Could not play explosion sound:', e);
+                            }
+                            
+                            // Don't remove the obstacle yet, let it explode
+                            // Add score for destroying it
+                            this.score += obstacle.points;
+                            this.scoreDisplay.textContent = this.score;
+                        } else {
+                            // For non-exploding obstacles, remove immediately
+                            this.obstacles.splice(obstacleIndex, 1);
+                            this.score += obstacle.points;
+                            this.scoreDisplay.textContent = this.score;
+                            
+                            // Create destruction particles
+                            this.createParticles(
+                                obstacle.x + obstacle.width/2,
+                                obstacle.y + obstacle.height/2,
+                                20,
+                                obstacle.color
+                            );
+                        }
+                    }
+                    
+                    return; // Exit loop after collision
+                }
+            });
+            
             // Remove projectiles that are out of bounds
             if (proj.x < 0 || proj.x > this.canvas.width || proj.y < 0 || proj.y > this.canvas.height) {
-                this.projectiles.splice(index, 1);
+                this.projectiles.splice(projIndex, 1);
             }
         });
         
@@ -596,6 +661,70 @@ class Game {
         if (this.frameCount % 1000 === 0) {
             this.gameSpeed += 0.1;
         }
+        
+        // Log enemy count and positions occasionally
+        if (this.frameCount % 300 === 0) {
+            console.log("Current enemies:", this.enemies.length);
+            if (this.enemies.length > 0) {
+                console.log("Enemy positions:", this.enemies.map(e => `(${Math.round(e.x)},${Math.round(e.y)})`).join(', '));
+            }
+        }
+        
+        // Update platforms - move with level scrolling
+        this.platforms.forEach(platform => {
+            platform.x -= this.levelManager.scrollSpeed * this.gameSpeed;
+            
+            // If a ground segment moves off-screen, reposition it to the right
+            if (platform.type === 'ground' && platform.x + platform.width < 0) {
+                // Find the rightmost ground segment
+                const rightmostGround = this.platforms
+                    .filter(p => p.type === 'ground')
+                    .reduce((rightmost, current) => 
+                        current.x > rightmost.x ? current : rightmost, 
+                        { x: 0 });
+                
+                // Position this segment after the rightmost one
+                platform.x = rightmostGround.x + rightmostGround.width;
+                
+                // Update the height based on sine wave pattern
+                const segmentIndex = Math.floor(platform.x / 100);
+                const heightVariation = Math.sin(segmentIndex * 0.5) * 20;
+                platform.y = (this.canvas.height - 50) + heightVariation;
+                platform.height = 50 - heightVariation;
+            }
+            
+            // If a shelf/pillar moves off-screen, reposition it to the right
+            if ((platform.type === 'shelf' || platform.type === 'pillar') && platform.x + platform.width < -200) {
+                // Find all shelves
+                const shelves = this.platforms.filter(p => p.type === 'shelf');
+                
+                // Find the rightmost shelf
+                const rightmostShelf = shelves.reduce((rightmost, current) => 
+                    current.x > rightmost.x ? current : rightmost, 
+                    { x: 0 });
+                
+                if (platform.type === 'shelf') {
+                    // Position this shelf after the rightmost one
+                    platform.x = rightmostShelf.x + 400;
+                    
+                    // Vary the height
+                    const baseY = this.canvas.height - 50;
+                    const shelfIndex = shelves.indexOf(platform);
+                    platform.y = baseY - 100 - (shelfIndex % 3) * 50;
+                    
+                    // Find and update the associated pillar
+                    const associatedPillar = this.platforms.find(p => 
+                        p.type === 'pillar' && 
+                        Math.abs(p.x - (platform.x + 65)) < 20);
+                    
+                    if (associatedPillar) {
+                        associatedPillar.x = platform.x + 65;
+                        associatedPillar.y = platform.y + 20;
+                        associatedPillar.height = baseY - platform.y - 20;
+                    }
+                }
+            }
+        });
     }
     
     draw() {

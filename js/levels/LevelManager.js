@@ -84,7 +84,9 @@ class LevelManager {
         }
         
         // Update obstacles
-        this.game.obstacles.forEach((obstacle, index) => {
+        for (let i = this.game.obstacles.length - 1; i >= 0; i--) {
+            const obstacle = this.game.obstacles[i];
+            
             // Move obstacle with level scrolling
             obstacle.x -= this.scrollSpeed * this.game.gameSpeed;
             
@@ -93,7 +95,8 @@ class LevelManager {
             
             // Remove obstacles that are off-screen
             if (obstacle.x + obstacle.width < 0) {
-                this.game.obstacles.splice(index, 1);
+                this.game.obstacles.splice(i, 1);
+                continue;
             }
             
             // Check collisions with player projectiles
@@ -104,14 +107,31 @@ class LevelManager {
                     this.game.createParticles(proj.x, proj.y, 5, proj.color);
                     
                     if (isDead) {
-                        this.game.obstacles.splice(index, 1);
-                        this.game.score += obstacle.points;
-                        this.game.scoreDisplay.textContent = this.game.score;
-                        this.game.createParticles(obstacle.x + obstacle.width/2, obstacle.y + obstacle.height/2, 20, '#a67c52');
+                        // For car and cybertruck, don't remove them if they're exploding
+                        if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && obstacle.isExploding) {
+                            // Play explosion sound
+                            try {
+                                const explosionSound = this.game.sounds.explosion.cloneNode();
+                                explosionSound.volume = 0.5;
+                                explosionSound.play();
+                            } catch (e) {
+                                console.warn('Could not play explosion sound:', e);
+                            }
+                            
+                            // Add score for destroying it
+                            this.game.score += obstacle.points;
+                            this.game.scoreDisplay.textContent = this.game.score;
+                        } else {
+                            // For non-exploding obstacles, remove immediately
+                            this.game.obstacles.splice(i, 1);
+                            this.game.score += obstacle.points;
+                            this.game.scoreDisplay.textContent = this.game.score;
+                            this.game.createParticles(obstacle.x + obstacle.width/2, obstacle.y + obstacle.height/2, 20, '#a67c52');
+                        }
                     }
                 }
             });
-        });
+        }
         
         // We're removing this code that applies level scrolling to enemies
         // since we want them to move independently of the view
