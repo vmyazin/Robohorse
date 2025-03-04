@@ -17,6 +17,9 @@ class Game {
         this.lastSpawnTime = 0;
         this.gameSpeed = 1;
         
+        // Frame rate control - simplified
+        this.lastFrameTime = 0;
+        
         // Damage flash effect
         this.damageFlashActive = false;
         this.damageFlashDuration = 10; // frames
@@ -72,14 +75,32 @@ class Game {
         this.sounds = {
             levelAnnounce: new Audio('sounds/level_announce.mp3'),
             explosion: new Audio('audio/explosion.mp3'),
-            carHit: new Audio('audio/car_hit.mp3')
+            carHit: new Audio('audio/car_hit.mp3'),
+            toasty: new Audio('audio/toasty.mp3')
         };
         
-        // Try to preload sounds, but don't crash if they don't exist
+        // Simple Elon Toasty effect
+        this.elonToasty = {
+            active: false,
+            image: new Image(),
+            x: canvas.width,
+            y: canvas.height - 150,
+            width: 150,
+            height: 150,
+            slideInSpeed: 30,
+            slideOutSpeed: 30,
+            slideInComplete: false,
+            timer: 0,
+            displayDuration: 120  // Changed from 8 to 120 (2 seconds at 60fps)
+        };
+        this.elonToasty.image.src = 'images/elon.png';
+        
+        // Preload sounds
         try {
             this.sounds.levelAnnounce.load();
             this.sounds.explosion.load();
             this.sounds.carHit.load();
+            this.sounds.toasty.load();
         } catch (e) {
             console.warn('Could not load sound effects:', e);
         }
@@ -96,6 +117,13 @@ class Game {
             if (e.code === 'Space' && this.gameStarted && !this.gameOver) {
                 const weaponName = this.player.switchWeapon();
                 this.weaponDisplay.textContent = weaponName;
+            }
+            
+            // Easter egg: Ctrl+E triggers Elon Toasty
+            if (e.code === 'KeyE' && e.ctrlKey && this.gameStarted && !this.gameOver) {
+                e.preventDefault(); // Prevent browser's default behavior
+                this.triggerElonToasty();
+                console.log("Elon Toasty triggered by keyboard shortcut");
             }
         });
 
@@ -162,16 +190,130 @@ class Game {
         // Update player
         this.player.update(this.keys, this.frameCount, this.createParticles.bind(this));
         
-        // Check collision with platforms
-        let onPlatform = false;
-        this.platforms.forEach(platform => {
-            // Skip pillars for collision (they're just visual)
-            if (platform.type === 'pillar') return;
+        // Update obstacles with optimized collision detection
+        for (let i = this.obstacles.length - 1; i >= 0; i--) {
+            const obstacle = this.obstacles[i];
             
-            // Check if player is above the platform and falling
+            // Skip obstacles that are far off-screen
+            if (obstacle.x + obstacle.width < -300) {
+                this.obstacles.splice(i, 1);
+                continue;
+            }
+            
+            // Update obstacle state
+            obstacle.update();
+            
+            // Remove obstacles that have finished exploding
+            if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && 
+                obstacle.isExploding && obstacle.explosionRadius <= 0) {
+                this.obstacles.splice(i, 1);
+                continue;
+            }
+            
+            // Check if player is colliding with obstacle
+            if (isColliding(this.player, obstacle)) {
+                // Handle player-obstacle collision
+                this.handlePlayerObstacleCollision(obstacle);
+            }
+            
+            // Only process projectile collisions if the obstacle is not already exploding
+            if (!obstacle.isExploding && (obstacle.type === 'car' || obstacle.type === 'cybertruck' || obstacle.type === 'box')) {
+                // Get nearby projectiles - use rectangle bounds check instead of filter
+                for (let j = this.projectiles.length - 1; j >= 0; j--) {
+                    const proj = this.projectiles[j];
+                    if (!proj.isPlayerProjectile) continue;
+                    
+                    // Quick bounds check before detailed collision
+                    if (Math.abs(proj.x - obstacle.x) > 100 || Math.abs(proj.y - obstacle.y) > 100) continue;
+                    
+                    if (isColliding(proj, obstacle)) {
+                        // Remove projectile
+                        this.projectiles.splice(j, 1);
+                        this.createParticles(proj.x, proj.y, 3, proj.color);
+                        
+                        // Play car hit sound for vehicles
+                        if (obstacle.type === 'car' || obstacle.type === 'cybertruck') {
+                            try {
+                                const hitSound = this.sounds.carHit.cloneNode();
+                                hitSound.volume = 0.3;
+                                hitSound.play();
+                            } catch (e) {
+                                console.warn('Could not play car hit sound:', e);
+                            }
+                        }
+                        
+                        // Handle obstacle damage
+                        const shouldExplode = obstacle.takeDamage(proj.damage);
+                        
+                        if (shouldExplode || (obstacle.type === 'box' && obstacle.health <= 0)) {
+                            // Play explosion sound for cars/cybertrucks or break sound for boxes
+                            try {
+                                if (obstacle.type === 'box') {
+                                    const breakSound = this.sounds.carHit.cloneNode();
+                                    breakSound.volume = 0.5;
+                                    breakSound.play();
+                                    
+                                    // Spawn mushroom if box contained one
+                                    if (obstacle.containsMushroom) {
+                                        this.spawnMushroomPowerUp(obstacle.x, obstacle.y - 20);
+                                    }
+                                    
+                                    // Create particles for box destruction
+                                    this.createParticles(
+                                        obstacle.x + obstacle.width/2,
+                                        obstacle.y + obstacle.height/2,
+                                        15,
+                                        obstacle.color
+                                    );
+                                    
+                                    // Remove the box
+                                    this.obstacles.splice(i, 1);
+                                } else {
+                                    const explosionSound = this.sounds.explosion.cloneNode();
+                                    explosionSound.volume = 0.5;
+                                    explosionSound.play();
+                                    
+                                    // Trigger explosion but don't remove the car yet
+                                    // The car will be removed when the explosion animation completes
+                                    obstacle.explode();
+                                    
+                                    // Trigger Elon Toasty easter egg for Cybertruck explosions (10% chance)
+                                    if (obstacle.type === 'cybertruck' && Math.random() < 0.1) {
+                                        this.triggerElonToasty();
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('Could not play sound:', e);
+                            }
+                            
+                            // Add score
+                            this.score += obstacle.points;
+                            this.scoreDisplay.textContent = this.score;
+                            break; // Exit projectile loop once explosion is triggered or box is destroyed
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Check collision with platforms - use simple for loop instead of filter for better performance
+        let onPlatform = false;
             const playerBottom = this.player.y + this.player.height;
             const playerRight = this.player.x + this.player.width;
+        const playerCenterX = this.player.x + this.player.width / 2;
+        const viewRangeX = this.canvas.width / 2;
+        
+        // Only check platforms that are near the player
+        for (let i = 0; i < this.platforms.length; i++) {
+            const platform = this.platforms[i];
             
+            // Skip platforms that are far from the player
+            if (Math.abs(platform.x - this.player.x) > viewRangeX) continue;
+            
+            // Skip pillars for collision (they're just visual)
+            if (platform.type === 'pillar') continue;
+            
+            // Check if player is above the platform and falling
             if (this.player.velY >= 0 && // Player is falling
                 playerBottom <= platform.y + 10 && // Player is above or slightly into platform
                 playerBottom >= platform.y - 10 && // Not too far above
@@ -209,17 +351,20 @@ class Game {
                     this.player.x = platform.x + platform.width;
                 }
             }
-        });
+        }
         
         // If not on any platform, check for ground collision
         if (!onPlatform) {
-            // Find the ground segment the player is currently over
-            const groundSegments = this.platforms.filter(p => p.type === 'ground');
+            // Find the ground segment the player is currently over - use simple loop instead of filter
             let currentGround = null;
             
-            for (const segment of groundSegments) {
-                if (this.player.x + this.player.width/2 >= segment.x && 
-                    this.player.x + this.player.width/2 < segment.x + segment.width) {
+            for (let i = 0; i < this.platforms.length; i++) {
+                const segment = this.platforms[i];
+                if (segment.type !== 'ground') continue;
+                if (Math.abs(segment.x - this.player.x) > viewRangeX) continue;
+                
+                if (playerCenterX >= segment.x && 
+                    playerCenterX < segment.x + segment.width) {
                     currentGround = segment;
                     break;
                 }
@@ -264,272 +409,49 @@ class Game {
         // Update level manager
         this.levelManager.update();
         
-        // Update obstacles
-        for (let i = this.obstacles.length - 1; i >= 0; i--) {
-            const obstacle = this.obstacles[i];
-            obstacle.update();
-            
-            // Remove obstacles that have finished exploding
-            if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && 
-                obstacle.isExploding === false && 
-                obstacle.explosionTimer >= obstacle.explosionDuration) {
-                this.obstacles.splice(i, 1);
-                continue;
-            }
-            
-            // Check for exploding cars and apply damage to enemies
-            if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && obstacle.isExploding) {
-                // Check for enemies in explosion radius
-                this.enemies.forEach(enemy => {
-                    // Only damage each enemy once per explosion
-                    if (!obstacle.explosionHitEnemies.has(enemy) && obstacle.isInExplosionRadius(enemy)) {
-                        // Apply explosion damage to enemy
-                        const isDead = enemy.takeDamage(obstacle.explosionDamage);
-                        obstacle.explosionHitEnemies.add(enemy);
-                        
-                        // Create damage particles
-                        this.createParticles(
-                            enemy.x + enemy.width/2,
-                            enemy.y + enemy.height/2,
-                            10,
-                            '#ff0000'
-                        );
-                        
-                        // Handle enemy death
-                        if (isDead) {
-                            // Add score
-                            this.score += enemy.points;
-                            this.scoreDisplay.textContent = this.score;
-                            
-                            // Create death particles
-                            this.createParticles(
-                                enemy.x + enemy.width/2,
-                                enemy.y + enemy.height/2,
-                                20,
-                                enemy.color
-                            );
-                            
-                            // Chance to spawn special token
-                            if (Math.random() < 0.3) {
-                                this.spawnSpecialToken(enemy.x + enemy.width/2, enemy.y + enemy.height/2);
-                            }
-                            
-                            // Remove enemy
-                            const enemyIndex = this.enemies.indexOf(enemy);
-                            if (enemyIndex !== -1) {
-                                this.enemies.splice(enemyIndex, 1);
-                            }
-                        }
-                    }
-                });
-                
-                // Check if player is in explosion radius but DO NOT damage them
-                // Instead, create a visual effect to show they're immune
-                if (obstacle.isInExplosionRadius(this.player)) {
-                    // Create shield particles around player to show immunity
-                    this.createParticles(
-                        this.player.x + this.player.width/2,
-                        this.player.y + this.player.height/2,
-                        5,
-                        '#00ffff'
-                    );
-                }
-            }
-            
-            // Check if player is colliding with obstacle
-            if (isColliding(this.player, obstacle)) {
-                // If player is above the obstacle and falling, place them on top
-                if (this.player.y + this.player.height < obstacle.y + obstacle.height / 2 && this.player.velY > 0) {
-                    // Store the player's velocity before resetting it (for landing detection)
-                    const previousVelY = this.player.velY;
-                    
-                    // Position player on top of obstacle
-                    this.player.y = obstacle.y - this.player.height;
-                    this.player.velY = 0;
-                    this.player.isJumping = false;
-                    
-                    // Store reference to the obstacle the player is standing on
-                    this.player.standingOnObstacle = obstacle;
-                    
-                    // Check if player is landing on a box and should smash it
-                    const isBoxDestroyed = this.player.checkBoxSmash(this.obstacles, this.createParticles.bind(this));
-                    
-                    // If box was destroyed, remove it and update score
-                    if (isBoxDestroyed) {
-                        const index = this.obstacles.indexOf(obstacle);
-                        if (index !== -1) {
-                            // Check if the box contained a mushroom power-up
-                            if (obstacle.type === 'box' && obstacle.containsMushroom) {
-                                // Spawn a mushroom power-up
-                                this.spawnMushroomPowerUp(obstacle.x, obstacle.y - 20);
-                            }
-                            
-                            this.obstacles.splice(index, 1);
-                            this.score += obstacle.points;
-                            this.scoreDisplay.textContent = this.score;
-                            
-                            // Create more particles for destruction effect
-                            this.createParticles(
-                                obstacle.x + obstacle.width/2, 
-                                obstacle.y + obstacle.height/2, 
-                                20, 
-                                obstacle.color
-                            );
-                        }
-                    }
-                } 
-                // Otherwise push player back (horizontal collision)
-                else if (this.player.x + this.player.width > obstacle.x && this.player.x < obstacle.x + obstacle.width) {
-                    // Coming from left
-                    if (this.player.x < obstacle.x) {
-                        this.player.x = obstacle.x - this.player.width;
-                        
-                        // Check if player is being crushed between left edge and obstacle
-                        if (this.player.x <= 0) {
-                            // Player is crushed between left edge and obstacle - apply damage
-                            this.player.health -= 2; // Apply 2 damage per frame when crushed
-                            this.updateHealthDisplay();
-                            
-                            // Create crush effect particles
-                            this.createParticles(
-                                this.player.x + this.player.width, 
-                                this.player.y + this.player.height/2, 
-                                3, 
-                                '#ff0000'
-                            );
-                            
-                            // Activate damage flash effect
-                            this.damageFlashActive = true;
-                            this.damageFlashCounter = this.damageFlashDuration;
-                            
-                            // Deactivate mushroom power-up if active
-                            if (this.player.mushroomPowerActive) {
-                                this.player.deactivateMushroomPower(this.createParticles.bind(this));
-                            }
-                            
-                            // Check if player died from being crushed
-                            if (this.player.health <= 0) {
-                                this.endGame();
-                            }
-                        }
-                    } 
-                    // Coming from right
-                    else {
-                        this.player.x = obstacle.x + obstacle.width;
-                    }
-                }
-            } else if (this.player.standingOnObstacle === obstacle) {
-                // Check if player is still above the obstacle
-                const playerBottom = this.player.y + this.player.height;
-                const onObstacle = 
-                    this.player.x + this.player.width > obstacle.x && 
-                    this.player.x < obstacle.x + obstacle.width &&
-                    Math.abs(playerBottom - obstacle.y) < 5; // Small tolerance
-                
-                if (!onObstacle) {
-                    // Player has moved off the obstacle
-                    this.player.standingOnObstacle = null;
-                }
-            }
-            
-            // Move obstacles with level scrolling (already handled by LevelManager)
-            // But we need to move the player if they're standing on an obstacle
-            if (this.player.standingOnObstacle === obstacle) {
-                // Move player with the obstacle (same amount as level scrolling)
-                this.player.x -= this.levelManager.scrollSpeed * this.gameSpeed;
-            }
-        }
-        
         // Update projectiles
-        this.projectiles.forEach((proj, projIndex) => {
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const proj = this.projectiles[i];
+            
             proj.x += proj.velX;
             proj.y += proj.velY;
             
-            // Check collision with obstacles
-            this.obstacles.forEach((obstacle, obstacleIndex) => {
-                if (isColliding(proj, obstacle)) {
-                    // Remove projectile
-                    this.projectiles.splice(projIndex, 1);
-                    
-                    // Create impact particles
-                    this.createParticles(proj.x, proj.y, 5, proj.color);
-                    
-                    // Play car hit sound if hitting a car or cybertruck
-                    if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && proj.isPlayerProjectile) {
-                        try {
-                            // Clone the sound to allow overlapping playback
-                            const hitSound = this.sounds.carHit.cloneNode();
-                            hitSound.volume = 0.3;
-                            hitSound.play();
-                        } catch (e) {
-                            console.warn('Could not play car hit sound:', e);
-                        }
-                    }
-                    
-                    // Apply damage to obstacle
-                    const isDestroyed = obstacle.takeDamage(proj.damage);
-                    
-                    // If obstacle is destroyed, remove it and add score
-                    if (isDestroyed) {
-                        // Play explosion sound if a car or cybertruck exploded
-                        if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && obstacle.isExploding) {
-                            try {
-                                const explosionSound = this.sounds.explosion.cloneNode();
-                                explosionSound.volume = 0.5;
-                                explosionSound.play();
-                            } catch (e) {
-                                console.warn('Could not play explosion sound:', e);
-                            }
-                            
-                            // Don't remove the obstacle yet, let it explode
-                            // Add score for destroying it
-                            this.score += obstacle.points;
-                            this.scoreDisplay.textContent = this.score;
-                        } else {
-                            // For non-exploding obstacles, remove immediately
-                            this.obstacles.splice(obstacleIndex, 1);
-                            this.score += obstacle.points;
-                            this.scoreDisplay.textContent = this.score;
-                            
-                            // Create destruction particles
-                            this.createParticles(
-                                obstacle.x + obstacle.width/2,
-                                obstacle.y + obstacle.height/2,
-                                20,
-                                obstacle.color
-                            );
-                        }
-                    }
-                    
-                    return; // Exit loop after collision
-                }
-            });
-            
             // Remove projectiles that are out of bounds
-            if (proj.x < 0 || proj.x > this.canvas.width || proj.y < 0 || proj.y > this.canvas.height) {
-                this.projectiles.splice(projIndex, 1);
+            if (proj.x < -50 || proj.x > this.canvas.width + 50 || 
+                proj.y < -50 || proj.y > this.canvas.height + 50) {
+                this.projectiles.splice(i, 1);
+                continue;
             }
-        });
+        }
         
         // Update enemies
-        this.enemies.forEach((enemy, index) => {
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            
             enemy.update(this.player, this.frameCount, this.createParticles.bind(this));
             
             // Remove enemies that are off-screen to the left or too far to the right
             if (enemy.x + enemy.width < -100 || enemy.x > this.canvas.width + 300) {
-                this.enemies.splice(index, 1);
-                console.log("Removed enemy that went off-screen. Remaining:", this.enemies.length);
+                this.enemies.splice(i, 1);
+                continue;
             }
             
             // Check collisions with player projectiles
-            this.projectiles.forEach((proj, projIndex) => {
-                if (proj.isPlayerProjectile && isColliding(proj, enemy)) {
+            for (let j = this.projectiles.length - 1; j >= 0; j--) {
+                const proj = this.projectiles[j];
+                
+                // Skip non-player projectiles or those far from the enemy
+                if (!proj.isPlayerProjectile || 
+                    Math.abs(proj.x - enemy.x) > 100 || 
+                    Math.abs(proj.y - enemy.y) > 100) continue;
+                
+                if (isColliding(proj, enemy)) {
                     const isDead = enemy.takeDamage(proj.damage);
-                    this.projectiles.splice(projIndex, 1);
+                    this.projectiles.splice(j, 1);
                     this.createParticles(proj.x, proj.y, 5, proj.color);
                     
                     if (isDead) {
-                        this.enemies.splice(index, 1);
+                        this.enemies.splice(i, 1);
                         this.score += enemy.points;
                         this.scoreDisplay.textContent = this.score;
                         this.createParticles(enemy.x + enemy.width/2, enemy.y + enemy.height/2, 20, '#f00');
@@ -541,12 +463,17 @@ class Game {
                         } else if (rand < 0.5) {
                             this.spawnSpecialToken(enemy.x, enemy.y);
                         }
+                        
+                        break; // Exit loop after enemy is destroyed
                     }
                 }
-            });
+            }
+            
+            // Skip enemies that have been removed
+            if (i >= this.enemies.length) continue;
             
             // Check collision with player
-            if (isColliding(enemy, this.player)) {
+            if (isColliding(this.enemies[i], this.player)) {
                 this.player.health -= 1;
                 this.updateHealthDisplay();
                 this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 3, '#fff');
@@ -564,14 +491,21 @@ class Game {
                     this.endGame();
                 }
             }
-        });
+        }
         
         // Handle enemy projectiles hitting player
-        this.projectiles.forEach((proj, index) => {
-            if (!proj.isPlayerProjectile && isColliding(proj, this.player)) {
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const proj = this.projectiles[i];
+            
+            // Skip player projectiles or those far from the player
+            if (proj.isPlayerProjectile || 
+                Math.abs(proj.x - this.player.x) > 100 || 
+                Math.abs(proj.y - this.player.y) > 100) continue;
+            
+            if (isColliding(proj, this.player)) {
                 this.player.health -= proj.damage;
                 this.updateHealthDisplay();
-                this.projectiles.splice(index, 1);
+                this.projectiles.splice(i, 1);
                 this.createParticles(proj.x, proj.y, 10, proj.color);
                 
                 // Activate damage flash effect
@@ -587,21 +521,26 @@ class Game {
                     this.endGame();
                 }
             }
-        });
+        }
+        
+        // Spawn enemies periodically
+        if (this.frameCount - this.lastSpawnTime > 300) { // Spawn every 5 seconds at 60fps (was 120 - 2 seconds)
+            this.spawnEnemy();
+            this.lastSpawnTime = this.frameCount;
+        }
         
         // Update power-ups
         this.powerUps.forEach((powerUp, index) => {
             powerUp.y += Math.sin(this.frameCount * 0.1) * 0.5; // Floating effect
             
             if (isColliding(powerUp, this.player)) {
-                // Apply power-up effect
                 if (powerUp.type === 'health') {
-                    this.player.health = Math.min(this.player.health + 30, 100);
+                    this.player.health = Math.min(this.player.health + 20, this.player.maxHealth);
                     this.updateHealthDisplay();
                 } else if (powerUp.type === 'weapon') {
-                    const randomWeaponIndex = Math.floor(Math.random() * this.weapons.length);
-                    this.player.currentWeaponIndex = randomWeaponIndex;
-                    this.weaponDisplay.textContent = this.weapons[randomWeaponIndex].name;
+                    // Cycle to next weapon - fix property name to match Player.js
+                    this.player.currentWeaponIndex = (this.player.currentWeaponIndex + 1) % this.weapons.length;
+                    this.weaponDisplay.textContent = this.weapons[this.player.currentWeaponIndex].name;
                 } else if (powerUp.type === 'mushroom') {
                     this.player.activateMushroomPower(this.createParticles.bind(this));
                     this.mushroomPowerTimer = 0; // Reset timer when collecting a new mushroom
@@ -627,7 +566,12 @@ class Game {
             }
         });
         
-        // Update particles
+        // Update particles - limit the number of particles for performance
+        const maxParticles = 100; // Limit the maximum number of particles
+        if (this.particles.length > maxParticles) {
+            this.particles.splice(0, this.particles.length - maxParticles);
+        }
+        
         this.particles.forEach((particle, index) => {
             particle.x += particle.velX;
             particle.y += particle.velY;
@@ -657,34 +601,40 @@ class Game {
             }
         }
         
-        // Increase game speed over time
+        // Increase game speed over time - but more gradually
         if (this.frameCount % 1000 === 0) {
-            this.gameSpeed += 0.1;
+            this.gameSpeed += 0.05; // Reduced from 0.1 to make the speed increase more gradual
         }
         
-        // Log enemy count and positions occasionally
-        if (this.frameCount % 300 === 0) {
+        // Log enemy count and positions less frequently to reduce console spam
+        if (this.frameCount % 600 === 0) { // Reduced frequency from 300 to 600
             console.log("Current enemies:", this.enemies.length);
-            if (this.enemies.length > 0) {
+            if (this.enemies.length > 0 && this.enemies.length < 10) { // Only log positions if there are fewer than 10 enemies
                 console.log("Enemy positions:", this.enemies.map(e => `(${Math.round(e.x)},${Math.round(e.y)})`).join(', '));
             }
         }
         
         // Update platforms - move with level scrolling
-        this.platforms.forEach(platform => {
+        // Process ALL platforms, not just visible ones
+        for (let i = 0; i < this.platforms.length; i++) {
+            const platform = this.platforms[i];
+            
+            // Move platform with level scrolling
             platform.x -= this.levelManager.scrollSpeed * this.gameSpeed;
             
             // If a ground segment moves off-screen, reposition it to the right
-            if (platform.type === 'ground' && platform.x + platform.width < 0) {
+            if (platform.type === 'ground' && platform.x + platform.width < -100) { // Changed from -200 to -100 for smoother terrain
                 // Find the rightmost ground segment
-                const rightmostGround = this.platforms
-                    .filter(p => p.type === 'ground')
-                    .reduce((rightmost, current) => 
-                        current.x > rightmost.x ? current : rightmost, 
-                        { x: 0 });
+                let rightmostGround = { x: 0 };
+                for (let j = 0; j < this.platforms.length; j++) {
+                    const p = this.platforms[j];
+                    if (p.type === 'ground' && p.x > rightmostGround.x) {
+                        rightmostGround = p;
+                    }
+                }
                 
-                // Position this segment after the rightmost one
-                platform.x = rightmostGround.x + rightmostGround.width;
+                // Position this segment after the rightmost one with a small overlap to prevent gaps
+                platform.x = rightmostGround.x + rightmostGround.width - 1;
                 
                 // Update the height based on sine wave pattern
                 const segmentIndex = Math.floor(platform.x / 100);
@@ -696,12 +646,20 @@ class Game {
             // If a shelf/pillar moves off-screen, reposition it to the right
             if ((platform.type === 'shelf' || platform.type === 'pillar') && platform.x + platform.width < -200) {
                 // Find all shelves
-                const shelves = this.platforms.filter(p => p.type === 'shelf');
+                const shelves = [];
+                for (let j = 0; j < this.platforms.length; j++) {
+                    if (this.platforms[j].type === 'shelf') {
+                        shelves.push(this.platforms[j]);
+                    }
+                }
                 
                 // Find the rightmost shelf
-                const rightmostShelf = shelves.reduce((rightmost, current) => 
-                    current.x > rightmost.x ? current : rightmost, 
-                    { x: 0 });
+                let rightmostShelf = { x: 0 };
+                for (let j = 0; j < shelves.length; j++) {
+                    if (shelves[j].x > rightmostShelf.x) {
+                        rightmostShelf = shelves[j];
+                    }
+                }
                 
                 if (platform.type === 'shelf') {
                     // Position this shelf after the rightmost one
@@ -713,18 +671,85 @@ class Game {
                     platform.y = baseY - 100 - (shelfIndex % 3) * 50;
                     
                     // Find and update the associated pillar
-                    const associatedPillar = this.platforms.find(p => 
-                        p.type === 'pillar' && 
-                        Math.abs(p.x - (platform.x + 65)) < 20);
-                    
-                    if (associatedPillar) {
-                        associatedPillar.x = platform.x + 65;
-                        associatedPillar.y = platform.y + 20;
-                        associatedPillar.height = baseY - platform.y - 20;
+                    for (let j = 0; j < this.platforms.length; j++) {
+                        const p = this.platforms[j];
+                        if (p.type === 'pillar' && Math.abs(p.x - (platform.x + 65)) < 20) {
+                            p.x = platform.x + 65;
+                            p.y = platform.y + 20;
+                            p.height = baseY - platform.y - 20;
+                            break;
+                        }
                     }
                 }
             }
-        });
+        }
+    }
+    
+    handlePlayerObstacleCollision(obstacle) {
+        // If player is above the obstacle and falling, place them on top
+        if (this.player.y + this.player.height < obstacle.y + obstacle.height / 2 && this.player.velY > 0) {
+            const previousVelY = this.player.velY;
+            this.player.y = obstacle.y - this.player.height;
+            this.player.velY = 0;
+            this.player.isJumping = false;
+            this.player.standingOnObstacle = obstacle;
+            
+            // Check if player is landing on a box and should smash it
+            if (obstacle.type === 'box') {
+                const isBoxDestroyed = this.player.checkBoxSmash([obstacle], this.createParticles.bind(this));
+                if (isBoxDestroyed) {
+                    const index = this.obstacles.indexOf(obstacle);
+                    if (index !== -1) {
+                        if (obstacle.containsMushroom) {
+                            this.spawnMushroomPowerUp(obstacle.x, obstacle.y - 20);
+                        }
+                        this.obstacles.splice(index, 1);
+                        this.score += obstacle.points;
+                        this.scoreDisplay.textContent = this.score;
+                        this.createParticles(
+                            obstacle.x + obstacle.width/2,
+                            obstacle.y + obstacle.height/2,
+                            15,
+                            obstacle.color
+                        );
+                    }
+                }
+            }
+        } 
+        // Handle horizontal collisions
+        else if (this.player.x + this.player.width > obstacle.x && this.player.x < obstacle.x + obstacle.width) {
+            if (this.player.x < obstacle.x) {
+                this.player.x = obstacle.x - this.player.width;
+                if (this.player.x <= 0) {
+                    this.handlePlayerCrush();
+                }
+            } else {
+                this.player.x = obstacle.x + obstacle.width;
+            }
+        }
+    }
+    
+    handlePlayerCrush() {
+        this.player.health -= 2;
+        this.updateHealthDisplay();
+        
+        this.createParticles(
+            this.player.x + this.player.width,
+            this.player.y + this.player.height/2,
+            3,
+            '#ff0000'
+        );
+        
+        this.damageFlashActive = true;
+        this.damageFlashCounter = this.damageFlashDuration;
+        
+        if (this.player.mushroomPowerActive) {
+            this.player.deactivateMushroomPower(this.createParticles.bind(this));
+        }
+        
+        if (this.player.health <= 0) {
+            this.endGame();
+        }
     }
     
     draw() {
@@ -734,8 +759,13 @@ class Game {
         // Draw background
         this.background.draw(this.ctx, this.frameCount);
         
-        // Draw platforms
-        this.platforms.forEach(platform => {
+        // Draw platforms - use simple for loop instead of filter for better performance
+        for (let i = 0; i < this.platforms.length; i++) {
+            const platform = this.platforms[i];
+            
+            // Skip platforms that are not visible
+            if (platform.x + platform.width <= 0 || platform.x >= this.canvas.width) continue;
+            
             if (platform.type === 'ground') {
                 // Draw ground with texture
                 const gradient = this.ctx.createLinearGradient(0, platform.y, 0, platform.y + platform.height);
@@ -744,10 +774,10 @@ class Game {
                 this.ctx.fillStyle = gradient;
                 this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
                 
-                // Add texture lines to ground
+                // Add texture lines to ground - optimize by drawing fewer lines
                 this.ctx.strokeStyle = '#444';
                 this.ctx.lineWidth = 1;
-                for (let i = 0; i < platform.width; i += 20) {
+                for (let i = 0; i < platform.width; i += 40) { // Increased spacing from 20 to 40
                     this.ctx.beginPath();
                     this.ctx.moveTo(platform.x + i, platform.y);
                     this.ctx.lineTo(platform.x + i, platform.y + platform.height);
@@ -774,193 +804,177 @@ class Game {
                 this.ctx.fillStyle = gradient;
                 this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
                 
-                // Add horizontal lines for texture
+                // Add horizontal lines for texture - optimize by drawing fewer lines
                 this.ctx.strokeStyle = '#777';
                 this.ctx.lineWidth = 1;
-                for (let i = 0; i < platform.height; i += 15) {
+                for (let i = 0; i < platform.height; i += 30) { // Increased spacing from 15 to 30
                     this.ctx.beginPath();
                     this.ctx.moveTo(platform.x, platform.y + i);
                     this.ctx.lineTo(platform.x + platform.width, platform.y + i);
                     this.ctx.stroke();
                 }
             }
-        });
+        }
         
-        // Draw obstacles
-        this.obstacles.forEach(obstacle => {
+        // Draw obstacles - use simple for loop instead of filter for better performance
+        for (let i = 0; i < this.obstacles.length; i++) {
+            const obstacle = this.obstacles[i];
+            
+            // Skip obstacles that are not visible
+            if (obstacle.x + obstacle.width <= 0 || obstacle.x >= this.canvas.width) continue;
+            
             obstacle.draw(this.ctx, this.frameCount);
-        });
-        
-        // Draw particles
-        this.particles.forEach(particle => {
-            this.ctx.fillStyle = particle.color;
-            this.ctx.beginPath();
-            this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-            this.ctx.fill();
-        });
-        
-        // Draw projectiles
-        this.projectiles.forEach(proj => {
-            if (proj.isGlowing) {
-                // Draw glowing cannon ball with gradient and glow effect
-                this.ctx.save();
-                
-                // Create radial gradient for the glowing effect
-                const gradient = this.ctx.createRadialGradient(
-                    proj.x + proj.width/2, proj.y + proj.height/2, 0,
-                    proj.x + proj.width/2, proj.y + proj.height/2, proj.width
-                );
-                gradient.addColorStop(0, '#ffffff');
-                gradient.addColorStop(0.5, '#cccccc');
-                gradient.addColorStop(1, 'rgba(200, 200, 200, 0)');
-                
-                // Add glow effect
-                this.ctx.shadowColor = '#ffffff';
-                this.ctx.shadowBlur = 10;
-                
-                // Draw the projectile as a circle
-                this.ctx.fillStyle = gradient;
-                this.ctx.beginPath();
-                this.ctx.arc(proj.x + proj.width/2, proj.y + proj.height/2, proj.width/2, 0, Math.PI * 2);
-                this.ctx.fill();
-                
-                this.ctx.restore();
-            } else {
-                // Draw regular projectiles
-                this.ctx.fillStyle = proj.color;
-                this.ctx.fillRect(proj.x, proj.y, proj.width, proj.height);
-            }
-        });
+        }
         
         // Draw power-ups
-        this.powerUps.forEach(powerUp => {
+        for (let i = 0; i < this.powerUps.length; i++) {
+            const powerUp = this.powerUps[i];
+            
+            // Draw power-up base
+            this.ctx.fillStyle = powerUp.color;
+                this.ctx.beginPath();
+            this.ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, powerUp.width/2, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+            // Draw power-up icon
+            this.ctx.fillStyle = '#fff';
             if (powerUp.type === 'health') {
-                // Draw a heart for health powerups
-                this.ctx.fillStyle = '#ff3366'; // Brighter red heart color
+                // Draw plus sign
+                this.ctx.fillRect(powerUp.x + powerUp.width/2 - 2, powerUp.y + powerUp.height/4, 4, powerUp.height/2);
+                this.ctx.fillRect(powerUp.x + powerUp.width/4, powerUp.y + powerUp.height/2 - 2, powerUp.width/2, 4);
+            } else if (powerUp.type === 'weapon') {
+                // Draw star
+                const centerX = powerUp.x + powerUp.width/2;
+                const centerY = powerUp.y + powerUp.height/2;
+                const spikes = 5;
+                const outerRadius = powerUp.width/2 - 2;
+                const innerRadius = powerUp.width/4;
                 
-                // Save context for transformations
-                this.ctx.save();
-                
-                // Move to the center of the powerup
-                this.ctx.translate(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2);
-                
-                // Add floating animation
-                this.ctx.translate(0, Math.sin(this.frameCount * 0.1) * 2);
-                
-                // Add subtle pulsing effect
-                const pulseScale = 1 + Math.sin(this.frameCount * 0.2) * 0.1;
-                
-                // Scale to appropriate size
-                const scale = (powerUp.width / 30) * pulseScale;
-                this.ctx.scale(scale, scale);
-                
-                // Draw heart shape with improved bezier curves
                 this.ctx.beginPath();
-                this.ctx.moveTo(0, 4);
-                this.ctx.bezierCurveTo(-10, -8, -15, -3, -8, -10);
-                this.ctx.bezierCurveTo(-5, -13, 0, -12, 0, -8);
-                this.ctx.bezierCurveTo(0, -12, 5, -13, 8, -10);
-                this.ctx.bezierCurveTo(15, -3, 10, -8, 0, 4);
+                for (let i = 0; i < spikes * 2; i++) {
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    const angle = (Math.PI * 2 * i) / (spikes * 2) - Math.PI/2;
+                    const x = centerX + Math.cos(angle) * radius;
+                    const y = centerY + Math.sin(angle) * radius;
+                    
+                    if (i === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                }
+                this.ctx.closePath();
                 this.ctx.fill();
-                
-                // Add glow effect
-                this.ctx.shadowColor = '#ff3366';
-                this.ctx.shadowBlur = 15;
-                this.ctx.fill();
-                
-                // Add a subtle white highlight
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                this.ctx.beginPath();
-                this.ctx.arc(-4, -6, 2, 0, Math.PI * 2);
-                this.ctx.fill();
-                
-                this.ctx.shadowBlur = 0;
-                this.ctx.restore();
             } else if (powerUp.type === 'mushroom') {
-                // Draw a Mario-style mushroom
-                this.ctx.save();
-                
-                // Move to the center of the powerup
-                this.ctx.translate(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2);
-                
-                // Add floating animation
-                this.ctx.translate(0, Math.sin(this.frameCount * 0.1) * 2);
-                
-                // Add subtle pulsing effect
-                const pulseScale = 1 + Math.sin(this.frameCount * 0.2) * 0.1;
-                
-                // Scale to appropriate size
-                const scale = (powerUp.width / 30) * pulseScale;
-                this.ctx.scale(scale, scale);
-                
-                // Draw mushroom cap (red with white spots)
+                // Draw mushroom cap
                 this.ctx.fillStyle = '#ff0000';
                 this.ctx.beginPath();
-                this.ctx.arc(0, -2, 10, 0, Math.PI * 2);
+                this.ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2 - 2, powerUp.width/2 - 2, 0, Math.PI, true);
                 this.ctx.fill();
-                
-                // Draw white spots on cap
-                this.ctx.fillStyle = '#ffffff';
-                for (let i = 0; i < 5; i++) {
-                    const angle = (i / 5) * Math.PI * 2;
-                    const spotX = Math.cos(angle) * 5;
-                    const spotY = Math.sin(angle) * 5 - 2;
-                    this.ctx.beginPath();
-                    this.ctx.arc(spotX, spotY, 2, 0, Math.PI * 2);
-                    this.ctx.fill();
-                }
                 
                 // Draw mushroom stem
                 this.ctx.fillStyle = '#ffffff';
-                this.ctx.fillRect(-3, -2, 6, 10);
+                this.ctx.fillRect(powerUp.x + powerUp.width/2 - 3, powerUp.y + powerUp.height/2 - 2, 6, powerUp.height/2);
                 
-                // Add glow effect
-                this.ctx.shadowColor = '#ff0000';
-                this.ctx.shadowBlur = 15;
+                // Draw spots
+                this.ctx.fillStyle = '#ffffff';
                 this.ctx.beginPath();
-                this.ctx.arc(0, -2, 10, 0, Math.PI * 2);
+                this.ctx.arc(powerUp.x + powerUp.width/2 - 5, powerUp.y + powerUp.height/2 - 5, 2, 0, Math.PI * 2);
+                this.ctx.arc(powerUp.x + powerUp.width/2 + 3, powerUp.y + powerUp.height/2 - 7, 2, 0, Math.PI * 2);
                 this.ctx.fill();
-                
-                this.ctx.shadowBlur = 0;
-                this.ctx.restore();
-            } else {
-                // Draw other powerups as circles
-                this.ctx.fillStyle = powerUp.color;
-                this.ctx.beginPath();
-                this.ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, powerUp.width/2, 0, Math.PI * 2);
-                this.ctx.fill();
-                
-                // Make absolutely sure we only draw text for non-health powerups
-                if (powerUp.type !== 'health') {
-                    this.ctx.fillStyle = '#fff';
-                    this.ctx.font = '10px Arial';
-                    this.ctx.textAlign = 'center';
-                    this.ctx.fillText(powerUp.type.toUpperCase(), powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2 + 3);
-                }
             }
-        });
+            
+            // Draw glow effect
+            this.ctx.shadowColor = powerUp.color;
+            this.ctx.shadowBlur = 10;
+                this.ctx.beginPath();
+            this.ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, powerUp.width/2 + 2, 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.shadowBlur = 0;
+        }
         
         // Draw special tokens
-        this.specialTokens.forEach(token => {
+        for (let i = 0; i < this.specialTokens.length; i++) {
+            const token = this.specialTokens[i];
+            
+            // Draw token base
             this.ctx.fillStyle = token.color;
             this.ctx.beginPath();
             this.ctx.arc(token.x + token.width/2, token.y + token.height/2, token.width/2, 0, Math.PI * 2);
             this.ctx.fill();
             
-            // Draw star symbol inside
-            this.ctx.fillStyle = '#fff';
-            this.ctx.font = '15px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText('★', token.x + token.width/2, token.y + token.height/2 + 5);
-        });
+            // Draw token icon (galloping horse silhouette)
+            this.ctx.fillStyle = '#000';
+            this.ctx.beginPath();
+            this.ctx.arc(token.x + token.width/2, token.y + token.height/2, token.width/4, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Draw glow effect
+            this.ctx.shadowColor = token.color;
+            this.ctx.shadowBlur = 10;
+            this.ctx.beginPath();
+            this.ctx.arc(token.x + token.width/2, token.y + token.height/2, token.width/2 + 2, 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.shadowBlur = 0;
+        }
         
         // Draw player
         this.player.draw(this.ctx, this.frameCount, this.keys);
         
-        // Draw enemies
-        this.enemies.forEach(enemy => {
+        // Draw enemies - use simple for loop instead of filter for better performance
+        for (let i = 0; i < this.enemies.length; i++) {
+            const enemy = this.enemies[i];
+            
+            // Skip enemies that are not visible
+            if (enemy.x + enemy.width <= 0 || enemy.x >= this.canvas.width) continue;
+            
             enemy.draw(this.ctx, this.frameCount, this.player);
-        });
+        }
+        
+        // Draw projectiles - use simple for loop instead of filter for better performance
+        for (let i = 0; i < this.projectiles.length; i++) {
+            const proj = this.projectiles[i];
+            
+            // Skip projectiles that are not visible
+            if (proj.x + proj.width <= 0 || proj.x >= this.canvas.width || 
+                proj.y + proj.height <= 0 || proj.y >= this.canvas.height) continue;
+            
+            // Draw projectile
+            this.ctx.fillStyle = proj.color;
+            
+            if (proj.isGlowing) {
+                // Add glow effect for glowing projectiles
+                this.ctx.shadowColor = proj.color;
+                this.ctx.shadowBlur = 10;
+            }
+            
+            this.ctx.fillRect(proj.x, proj.y, proj.width, proj.height);
+            
+            // Reset shadow
+            if (proj.isGlowing) {
+                this.ctx.shadowBlur = 0;
+            }
+        }
+        
+        // Draw particles - use simple for loop instead of filter for better performance
+        // Limit the number of particles drawn to improve performance
+        const maxParticlesToDraw = 50; // Reduced from 100 to 50
+        let particlesDrawn = 0;
+        
+        for (let i = 0; i < this.particles.length && particlesDrawn < maxParticlesToDraw; i++) {
+            const particle = this.particles[i];
+            
+            // Skip particles that are not visible
+            if (particle.x <= 0 || particle.x >= this.canvas.width || 
+                particle.y <= 0 || particle.y >= this.canvas.height) continue;
+            
+            this.ctx.fillStyle = particle.color;
+            this.ctx.beginPath();
+            this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            particlesDrawn++;
+        }
         
         // Draw damage flash effect
         if (this.damageFlashActive) {
@@ -968,66 +982,21 @@ class Game {
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         }
         
-        // Draw special ability status indicator
-        if (this.player.specialAbilityActive) {
-            // Draw duration bar at the top of the screen
-            const barWidth = 200;
-            const barHeight = 10;
-            const x = (this.canvas.width - barWidth) / 2;
-            const y = 20;
-            
-            // Background
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            this.ctx.fillRect(x, y, barWidth, barHeight);
-            
-            // Duration remaining
-            const durationPercentage = 1 - (this.player.specialAbilityDuration / this.player.specialAbilityMaxDuration);
-            this.ctx.fillStyle = this.player.specialAbilityTokens > 0 ? '#ffff00' : '#ff00ff';
-            this.ctx.fillRect(x, y, barWidth * durationPercentage, barHeight);
-            
-            // Text
-            this.ctx.fillStyle = '#fff';
-            this.ctx.font = '12px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText('SPECIAL ACTIVE', x + barWidth / 2, y + barHeight + 12);
-        }
-        
-        // Draw mushroom power-up timer if active
-        if (this.player.mushroomPowerActive && !this.player.isGrowing && !this.player.isShrinking) {
-            const timerWidth = 100;
-            const timerHeight = 10;
-            const timerX = this.player.x + this.player.width/2 - timerWidth/2;
-            const timerY = this.player.y - 20;
-            
-            // Draw timer background
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            this.ctx.fillRect(timerX, timerY, timerWidth, timerHeight);
-            
-            // Draw timer progress
-            const progress = 1 - (this.mushroomPowerTimer / this.mushroomPowerDuration);
-            const progressWidth = timerWidth * progress;
-            
-            // Create gradient for timer
-            const gradient = this.ctx.createLinearGradient(timerX, timerY, timerX + progressWidth, timerY);
-            gradient.addColorStop(0, '#ff0000');
-            gradient.addColorStop(1, '#ff6666');
-            
-            this.ctx.fillStyle = gradient;
-            this.ctx.fillRect(timerX, timerY, progressWidth, timerHeight);
-            
-            // Add glow effect to timer
-            this.ctx.shadowColor = '#ff0000';
-            this.ctx.shadowBlur = 5;
-            this.ctx.strokeStyle = '#ff0000';
-            this.ctx.strokeRect(timerX, timerY, timerWidth, timerHeight);
-            this.ctx.shadowBlur = 0;
+        // Draw Elon Toasty effect if active
+        if (this.elonToasty.active) {
+            this.drawElonToasty();
         }
     }
     
-    animate() {
+    animate(timestamp) {
         if (!this.gameOver) {
+            // Update game state
             this.update();
+            
+            // Draw the game
             this.draw();
+            
+            // Request the next frame
             requestAnimationFrame(this.animate.bind(this));
         }
     }
@@ -1188,21 +1157,19 @@ class Game {
         // Clear existing platforms
         this.platforms = [];
         
-        // Base platform properties
+        // Create ground segments
         const baseY = this.canvas.height - 50;
         const segmentWidth = 100;
-        const segments = Math.ceil(this.canvas.width / segmentWidth) + 1; // +1 for smooth scrolling
+        const segmentCount = Math.ceil(this.canvas.width / segmentWidth) + 4; // Add extra segments
         
-        // Generate curved ground segments
-        for (let i = 0; i < segments; i++) {
-            const x = i * segmentWidth;
+        for (let i = 0; i < segmentCount; i++) {
             // Create a sine wave pattern for the ground
-            const heightVariation = Math.sin(i * 0.5) * 20;
-            const y = baseY + heightVariation;
+            const segmentIndex = i;
+            const heightVariation = Math.sin(segmentIndex * 0.5) * 20;
             
             this.platforms.push({
-                x: x,
-                y: y,
+                x: i * segmentWidth,
+                y: baseY + heightVariation,
                 width: segmentWidth + 1, // +1 to avoid gaps
                 height: 50 - heightVariation, // Adjust height to fill to bottom
                 type: 'ground'
@@ -1234,6 +1201,62 @@ class Game {
                 height: baseY - y - 20, // Extend to ground level
                 type: 'pillar'
             });
+        }
+    }
+    
+    triggerElonToasty() {
+        // Only trigger if not already active
+        if (!this.elonToasty.active) {
+            this.elonToasty.active = true;
+            this.elonToasty.x = this.canvas.width;
+            this.elonToasty.slideInComplete = false;
+            this.elonToasty.timer = 0;
+            
+            // Play the toasty sound
+            try {
+                this.sounds.toasty.currentTime = 0;
+                this.sounds.toasty.volume = 0.7;
+                this.sounds.toasty.play();
+            } catch (e) {
+                console.error("Error playing toasty sound:", e);
+            }
+        }
+    }
+    
+    drawElonToasty() {
+        if (!this.elonToasty.slideInComplete) {
+            // Slide in from right
+            this.elonToasty.x -= this.elonToasty.slideInSpeed;
+            
+            // Check if slide in is complete
+            if (this.elonToasty.x <= this.canvas.width - this.elonToasty.width) {
+                this.elonToasty.slideInComplete = true;
+                this.elonToasty.timer = 0;
+            }
+        } else {
+            // Wait for a moment
+            this.elonToasty.timer++;
+            
+            // Start sliding out after display duration
+            if (this.elonToasty.timer > this.elonToasty.displayDuration) {
+                this.elonToasty.x += this.elonToasty.slideOutSpeed;
+                
+                // Check if completely off screen to deactivate
+                if (this.elonToasty.x > this.canvas.width) {
+                    this.elonToasty.active = false;
+                }
+            }
+        }
+        
+        // Draw the image if it's loaded
+        if (this.elonToasty.image.complete && this.elonToasty.active) {
+            this.ctx.drawImage(
+                this.elonToasty.image,
+                this.elonToasty.x,
+                this.elonToasty.y,
+                this.elonToasty.width,
+                this.elonToasty.height
+            );
         }
     }
 }

@@ -27,11 +27,14 @@ class Enemy {
         this.targetOffsetX = (Math.random() - 0.5) * 80;
         this.targetOffsetY = (Math.random() - 0.5) * 80;
         
-        // Add level scrolling compensation - reduced to prevent enemies from moving too far right
-        this.scrollCompensation = 1.5; // Reduced from 2.5
+        // Reduce scrolling compensation to fix slowdown
+        this.scrollCompensation = 0.8; // Reduced from 1.0 to improve performance
         
         // Add a spawn timer to ensure enemies don't move too aggressively at first
         this.spawnTimer = 30; // frames to gradually increase speed
+        
+        // Add a movement update frequency to reduce calculations
+        this.movementUpdateFrequency = 10; // Increased from 5 to 10 to improve performance
         
         console.log("Enhanced enemy created at", x, y, "with health", this.health, "and aggression", this.aggressionFactor);
     }
@@ -50,111 +53,127 @@ class Enemy {
             this.directionChangeTimer--;
         }
         
-        // Update target offset occasionally to create varied movement
-        if (frameCount % 90 === 0) {
-            this.targetOffsetX = (Math.random() - 0.5) * 80;
-            this.targetOffsetY = (Math.random() - 0.5) * 80;
-        }
-        
-        // Calculate distance to player with offset
-        const targetX = player.x + this.targetOffsetX;
-        const targetY = player.y + this.targetOffsetY;
-        const dx = targetX - this.x;
-        const dy = targetY - this.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        
-        // Enemy AI - follow player with persistence and compensate for scrolling
-        if ((frameCount % 20 === 0 && this.directionChangeTimer === 0) || dist > 200) {
-            // Only update direction if timer expired or enemy is far from player
-            
-            // Calculate direction to player with scrolling compensation
-            if (dist > 0) { // Prevent division by zero
-                // Add extra velocity to the right to compensate for level scrolling
-                this.velX = (dx / dist) * this.speed * this.aggressionFactor + this.scrollCompensation;
-                this.velY = (dy / dist) * this.speed * this.aggressionFactor;
+        // Only update movement calculations every few frames to improve performance
+        if (frameCount % this.movementUpdateFrequency === 0) {
+            // Update target offset occasionally to create varied movement
+            if (frameCount % 90 === 0) {
+                this.targetOffsetX = (Math.random() - 0.5) * 80;
+                this.targetOffsetY = (Math.random() - 0.5) * 80;
             }
             
-            // Set direction change timer
-            this.directionChangeTimer = this.maxDirectionChangeTime;
-        }
-        
-        // Enhanced movement patterns with less randomness
-        if (frameCount % 30 === 0 && Math.random() < 0.3) {
-            // Add slight randomness to movement direction
-            const randomAngle = (Math.random() - 0.5) * Math.PI/10;
-            const angle = Math.atan2(dy, dx) + randomAngle;
+            // Calculate distance to player with offset
+            const targetX = player.x + this.targetOffsetX;
+            const targetY = player.y + this.targetOffsetY;
+            const dx = targetX - this.x;
+            const dy = targetY - this.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
             
-            if (dist > 0) { // Prevent division by zero
-                // Add scrolling compensation
-                this.velX = Math.cos(angle) * this.speed * this.aggressionFactor + this.scrollCompensation;
-                this.velY = Math.sin(angle) * this.speed * this.aggressionFactor;
+            // Enemy AI - follow player with persistence and compensate for scrolling
+            if ((frameCount % 20 === 0 && this.directionChangeTimer === 0) || dist > 200) {
+                // Only update direction if timer expired or enemy is far from player
+                
+                // Calculate direction to player with scrolling compensation
+                if (dist > 0) { // Prevent division by zero
+                    // Add extra velocity to the right to compensate for level scrolling
+                    this.velX = (dx / dist) * this.speed * this.aggressionFactor + this.scrollCompensation;
+                    this.velY = (dy / dist) * this.speed * this.aggressionFactor;
+                }
+                
+                // Set direction change timer
+                this.directionChangeTimer = this.maxDirectionChangeTime;
             }
             
-            // Create visual tentacle animation effect
-            createParticles(
-                this.x + this.width/2, 
-                this.y + this.height/2, 
-                3, 
-                this.color
-            );
-        }
-        
-        // Improved screen boundaries for enemies
-        const bounceStrength = 0.9;
-        
-        // Left boundary - stricter to prevent enemies from going too far left
-        if (this.x < -50) {
-            this.velX = Math.abs(this.velX) * bounceStrength;
-            this.x = -50;
-        }
-        
-        // Right boundary - stricter to prevent enemies from going too far right
-        if (this.x > this.canvas.width + 50) {
-            this.velX = -Math.abs(this.velX) * bounceStrength;
-            this.x = this.canvas.width + 50;
-        }
-        
-        // Top boundary
-        if (this.y < 0) {
-            this.velY = Math.abs(this.velY) * bounceStrength;
-            this.y = 0;
-        }
-        
-        // Bottom boundary
-        if (this.y > this.canvas.height - this.height) {
-            this.velY = -Math.abs(this.velY) * bounceStrength;
-            this.y = this.canvas.height - this.height;
-        }
-        
-        // If enemy is far from player, increase speed to catch up
-        if (dist > this.canvas.width / 4) {
-            const catchUpFactor = 1.5; // Reduced from 2.0
-            this.x += this.velX * catchUpFactor;
-            this.y += this.velY * catchUpFactor;
+            // Enhanced movement patterns with less randomness
+            if (frameCount % 30 === 0 && Math.random() < 0.3) {
+                // Add slight randomness to movement direction
+                const randomAngle = (Math.random() - 0.5) * Math.PI/10;
+                const angle = Math.atan2(dy, dx) + randomAngle;
+                
+                if (dist > 0) { // Prevent division by zero
+                    // Add scrolling compensation
+                    this.velX = Math.cos(angle) * this.speed * this.aggressionFactor + this.scrollCompensation;
+                    this.velY = Math.sin(angle) * this.speed * this.aggressionFactor;
+                }
+                
+                // Create visual tentacle animation effect - reduce particle count
+                createParticles(
+                    this.x + this.width/2, 
+                    this.y + this.height/2, 
+                    2, // Reduced from 3
+                    this.color
+                );
+            }
+            
+            // Improved screen boundaries for enemies
+            const bounceStrength = 0.9;
+            
+            // Left boundary - stricter to prevent enemies from going too far left
+            if (this.x < -50) {
+                this.velX = Math.abs(this.velX) * bounceStrength;
+                this.x = -50;
+            }
+            
+            // Right boundary - stricter to prevent enemies from going too far right
+            if (this.x > this.canvas.width + 50) {
+                this.velX = -Math.abs(this.velX) * bounceStrength;
+                this.x = this.canvas.width + 50;
+            }
+            
+            // Top boundary
+            if (this.y < 0) {
+                this.velY = Math.abs(this.velY) * bounceStrength;
+                this.y = 0;
+            }
+            
+            // Bottom boundary
+            if (this.y > this.canvas.height - this.height) {
+                this.velY = -Math.abs(this.velY) * bounceStrength;
+                this.y = this.canvas.height - this.height;
+            }
+            
+            // If enemy is far from player, increase speed to catch up
+            if (dist > this.canvas.width / 4) {
+                const catchUpFactor = 1.2; // Reduced from 1.5
+                this.x += this.velX * catchUpFactor;
+                this.y += this.velY * catchUpFactor;
+            } else {
+                // Normal movement
+                this.x += this.velX;
+                this.y += this.velY;
+            }
+            
+            // Ensure minimum velocity to prevent enemies from getting stuck
+            const minVelocity = 0.5;
+            if (Math.abs(this.velX) < minVelocity && Math.abs(this.velY) < minVelocity) {
+                const angle = Math.random() * Math.PI * 2;
+                this.velX = Math.cos(angle) * this.speed * 0.8 + this.scrollCompensation;
+                this.velY = Math.sin(angle) * this.speed * 0.8;
+            }
         } else {
-            // Normal movement
+            // On frames where we don't recalculate, just apply the current velocity
             this.x += this.velX;
             this.y += this.velY;
         }
         
-        // Ensure minimum velocity to prevent enemies from getting stuck
-        const minVelocity = 0.5;
-        if (Math.abs(this.velX) < minVelocity && Math.abs(this.velY) < minVelocity) {
-            const angle = Math.random() * Math.PI * 2;
-            this.velX = Math.cos(angle) * this.speed * 0.8 + this.scrollCompensation;
-            this.velY = Math.sin(angle) * this.speed * 0.8;
-        }
+        // Occasionally shoot at player if close enough - reduce shooting frequency
+        const dist = Math.sqrt(
+            Math.pow(player.x - this.x, 2) + 
+            Math.pow(player.y - this.y, 2)
+        );
         
-        // Occasionally shoot at player if close enough
-        if (dist < 300 && frameCount % 90 === 0 && Math.random() < 0.4) {
+        if (dist < 300 && frameCount % 120 === 0 && Math.random() < 0.3) { // Reduced from 90 frames and 0.4 probability
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const normalizedDist = Math.sqrt(dx*dx + dy*dy);
+            
             return {
                 x: this.x + this.width/2,
                 y: this.y + this.height/2,
                 width: 5,
                 height: 5,
                 speed: 5,
-                velX: (dx / dist) * 5,
-                velY: (dy / dist) * 5,
+                velX: (dx / normalizedDist) * 5,
+                velY: (dy / normalizedDist) * 5,
                 damage: 5,
                 color: this.color,
                 isPlayerProjectile: false

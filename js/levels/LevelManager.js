@@ -9,10 +9,13 @@ class LevelManager {
         this.levelProgress = 0; // Progress through current level (0-1)
         this.levelPosition = 0; // Current position in pixels
         this.levelLength = 5000; // Pixels to travel to complete a level
-        this.scrollSpeed = 2; // Base scroll speed
+        this.scrollSpeed = 1.2; // Reduced from 1.5 to improve performance
         
         // Level elements that have been spawned
         this.spawnedElements = [];
+        
+        // Track the last time we logged progress
+        this.lastProgressLog = 0;
         
         console.log("LevelManager initialized with levelPosition:", this.levelPosition);
     }
@@ -57,9 +60,11 @@ class LevelManager {
         // Calculate level progress based on position
         this.levelProgress = this.levelPosition / this.levelLength;
         
-        // Log progress occasionally
-        if (this.game.frameCount % 100 === 0) {
+        // Log progress less frequently to reduce console spam
+        const currentTime = Date.now();
+        if (currentTime - this.lastProgressLog > 5000) { // Log every 5 seconds instead of every 100 frames
             console.log("Level progress:", this.levelProgress.toFixed(2), "Position:", this.levelPosition.toFixed(0), "of", this.levelLength);
+            this.lastProgressLog = currentTime;
         }
         
         // Update level elements based on new progress
@@ -83,8 +88,8 @@ class LevelManager {
             }
         }
         
-        // Update obstacles
-        for (let i = this.game.obstacles.length - 1; i >= 0; i--) {
+        // Update obstacles - process ALL obstacles, not just visible ones
+        for (let i = 0; i < this.game.obstacles.length; i++) {
             const obstacle = this.game.obstacles[i];
             
             // Move obstacle with level scrolling
@@ -92,45 +97,6 @@ class LevelManager {
             
             // Update obstacle state
             obstacle.update();
-            
-            // Remove obstacles that are off-screen
-            if (obstacle.x + obstacle.width < 0) {
-                this.game.obstacles.splice(i, 1);
-                continue;
-            }
-            
-            // Check collisions with player projectiles
-            this.game.projectiles.forEach((proj, projIndex) => {
-                if (proj.isPlayerProjectile && isColliding(proj, obstacle)) {
-                    const isDead = obstacle.takeDamage(proj.damage);
-                    this.game.projectiles.splice(projIndex, 1);
-                    this.game.createParticles(proj.x, proj.y, 5, proj.color);
-                    
-                    if (isDead) {
-                        // For car and cybertruck, don't remove them if they're exploding
-                        if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && obstacle.isExploding) {
-                            // Play explosion sound
-                            try {
-                                const explosionSound = this.game.sounds.explosion.cloneNode();
-                                explosionSound.volume = 0.5;
-                                explosionSound.play();
-                            } catch (e) {
-                                console.warn('Could not play explosion sound:', e);
-                            }
-                            
-                            // Add score for destroying it
-                            this.game.score += obstacle.points;
-                            this.game.scoreDisplay.textContent = this.game.score;
-                        } else {
-                            // For non-exploding obstacles, remove immediately
-                            this.game.obstacles.splice(i, 1);
-                            this.game.score += obstacle.points;
-                            this.game.scoreDisplay.textContent = this.game.score;
-                            this.game.createParticles(obstacle.x + obstacle.width/2, obstacle.y + obstacle.height/2, 20, '#a67c52');
-                        }
-                    }
-                }
-            });
         }
         
         // We're removing this code that applies level scrolling to enemies
@@ -142,26 +108,25 @@ class LevelManager {
         const levelData = this.getLevelData(this.currentLevel);
         const currentPosition = this.levelProgress * this.levelLength;
         
-        // Log occasionally
-        if (this.game.frameCount % 100 === 0) {
+        // Log occasionally - reduce frequency to improve performance
+        if (this.game.frameCount % 300 === 0) { // Reduced from 100 to 300
             console.log("Checking for elements at position:", currentPosition.toFixed(0));
             console.log("Spawn range:", currentPosition.toFixed(0), "to", (currentPosition + this.game.canvas.width + 200).toFixed(0));
             console.log("Already spawned elements:", this.spawnedElements.length);
         }
         
-        // Check for elements that should be spawned
-        levelData.elements.forEach(element => {
-            // If element is within spawn range and hasn't been spawned yet
-            if (element.position > currentPosition && 
-                element.position < currentPosition + this.game.canvas.width + 200 && 
-                !this.spawnedElements.includes(element.id)) {
-                
-                console.log("Spawning element:", element.type, element.subtype, "at position", element.position);
-                
-                // Spawn the element
-                this.spawnElement(element);
-                this.spawnedElements.push(element.id);
-            }
+        // Check for elements that should be spawned - optimize by filtering first
+        const elementsToSpawn = levelData.elements.filter(element => 
+            element.position > currentPosition && 
+            element.position < currentPosition + this.game.canvas.width + 200 && 
+            !this.spawnedElements.includes(element.id));
+            
+        elementsToSpawn.forEach(element => {
+            console.log("Spawning element:", element.type, element.subtype, "at position", element.position);
+            
+            // Spawn the element
+            this.spawnElement(element);
+            this.spawnedElements.push(element.id);
         });
     }
     

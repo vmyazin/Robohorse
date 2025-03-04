@@ -137,9 +137,14 @@ class Obstacle {
         if (this.isExploding) {
             this.explosionTimer++;
             
-            // Update explosion particles
-            for (let i = this.explosionParticles.length - 1; i >= 0; i--) {
-                const particle = this.explosionParticles[i];
+            // Batch update explosion particles - process in chunks to prevent freezing
+            const particlesToProcess = Math.min(this.explosionParticles.length, 50); // Process max 50 particles per frame
+            
+            for (let i = 0; i < particlesToProcess; i++) {
+                const index = this.explosionParticles.length - 1 - i;
+                if (index < 0) break;
+                
+                const particle = this.explosionParticles[index];
                 particle.x += particle.velX;
                 particle.y += particle.velY;
                 
@@ -157,13 +162,17 @@ class Obstacle {
                 particle.life--;
                 
                 if (particle.life <= 0) {
-                    this.explosionParticles.splice(i, 1);
+                    this.explosionParticles.splice(index, 1);
                 }
             }
             
             // End explosion when timer is up
             if (this.explosionTimer >= this.explosionDuration) {
                 this.isExploding = false;
+                // Clear any remaining particles to free memory
+                this.explosionParticles = [];
+                // Set explosion radius to 0 to signal it's completely finished
+                this.explosionRadius = 0;
             }
         }
     }
@@ -250,132 +259,133 @@ class Obstacle {
     }
     
     draw(ctx, frameCount) {
-        if (this.type === 'car') {
-            // Draw different car models based on carModel property
-            switch(this.carModel) {
-                case 0: // Sedan
-                    this.drawSedan(ctx, frameCount);
-                    break;
-                case 1: // SUV
-                    this.drawSUV(ctx, frameCount);
-                    break;
-                case 2: // Sports car
-                    this.drawSportsCar(ctx, frameCount);
-                    break;
-                case 3: // Pickup truck
-                    this.drawPickupTruck(ctx, frameCount);
-                    break;
-            }
-            
-            // Draw explosion if active
-            if (this.isExploding) {
-                this.drawExplosion(ctx);
-            }
-            
-            // Draw damage indicators
-            this.drawDamageVisuals(ctx);
-            
-            // Draw damage indicator if car has been hit but not exploded
-            if (this.explosionTriggerCount > 0 && !this.isExploding) {
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
-                ctx.font = '14px Arial';
-                ctx.textAlign = 'center';
+        // If exploding, draw explosion and skip drawing the vehicle
+        if (this.isExploding) {
+            this.drawExplosion(ctx);
+            return;
+        }
+        
+        // Draw based on obstacle type
+        switch(this.type) {
+            case 'car':
+                // Draw car based on model
+                switch(this.carModel) {
+                    case 0: // Sedan
+                        this.drawSedan(ctx, frameCount);
+                        break;
+                    case 1: // SUV
+                        this.drawSUV(ctx, frameCount);
+                        break;
+                    case 2: // Sports car
+                        this.drawSportsCar(ctx, frameCount);
+                        break;
+                    case 3: // Pickup truck
+                        this.drawPickupTruck(ctx, frameCount);
+                        break;
+                }
                 
-                const hitsLeft = this.explosionTriggerThreshold - this.explosionTriggerCount;
-                ctx.fillText(`${hitsLeft} more hit${hitsLeft !== 1 ? 's' : ''} to explode!`, 
-                            this.x + this.width/2, this.y - 10);
-            }
-        } else if (this.type === 'cybertruck') {
-            this.drawCybertruck(ctx, frameCount);
-            
-            // Draw explosion if active
-            if (this.isExploding) {
-                this.drawExplosion(ctx);
-            }
-            
-            // Draw damage indicators
-            this.drawDamageVisuals(ctx);
-            
-            // Draw damage indicator if cybertruck has been hit but not exploded
-            if (this.explosionTriggerCount > 0 && !this.isExploding) {
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
-                ctx.font = '14px Arial';
-                ctx.textAlign = 'center';
+                // Draw damage indicators
+                this.drawDamageVisuals(ctx);
                 
-                const hitsLeft = this.explosionTriggerThreshold - this.explosionTriggerCount;
-                ctx.fillText(`${hitsLeft} more hit${hitsLeft !== 1 ? 's' : ''} to explode!`, 
-                            this.x + this.width/2, this.y - 10);
-            }
-        } else if (this.type === 'box') {
-            // Draw box with smash effect if active
-            const boxHeight = this.isBeingSmashed ? this.height - this.compressionAmount : this.height;
-            const yOffset = this.isBeingSmashed ? this.compressionAmount : 0;
-            
-            // Draw the box
-            ctx.fillStyle = this.color;
-            ctx.fillRect(this.x, this.y + yOffset, this.width, boxHeight);
-            
-            // Draw box outline
-            ctx.strokeStyle = '#7d5a3b';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(this.x, this.y + yOffset, this.width, boxHeight);
-            
-            // Draw cracks if the box has been damaged
-            if (this.cracks.length > 0) {
-                ctx.strokeStyle = '#5d3a1b'; // Darker color for cracks
+                // Draw damage indicator if car has been hit but not exploded
+                if (this.explosionTriggerCount > 0 && !this.isExploding) {
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+                    ctx.font = '14px Arial';
+                    ctx.textAlign = 'center';
+                    
+                    const hitsLeft = this.explosionTriggerThreshold - this.explosionTriggerCount;
+                    ctx.fillText(`${hitsLeft} more hit${hitsLeft !== 1 ? 's' : ''} to explode!`, 
+                                this.x + this.width/2, this.y - 10);
+                }
+                break;
+            case 'cybertruck':
+                this.drawCybertruck(ctx, frameCount);
+                
+                // Draw damage indicators
+                this.drawDamageVisuals(ctx);
+                
+                // Draw damage indicator if cybertruck has been hit but not exploded
+                if (this.explosionTriggerCount > 0 && !this.isExploding) {
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+                    ctx.font = '14px Arial';
+                    ctx.textAlign = 'center';
+                    
+                    const hitsLeft = this.explosionTriggerThreshold - this.explosionTriggerCount;
+                    ctx.fillText(`${hitsLeft} more hit${hitsLeft !== 1 ? 's' : ''} to explode!`, 
+                                this.x + this.width/2, this.y - 10);
+                }
+                break;
+            case 'box':
+                // Draw box with smash effect if active
+                const boxHeight = this.isBeingSmashed ? this.height - this.compressionAmount : this.height;
+                const yOffset = this.isBeingSmashed ? this.compressionAmount : 0;
+                
+                // Draw the box
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y + yOffset, this.width, boxHeight);
+                
+                // Draw box outline
+                ctx.strokeStyle = '#7d5a3b';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.x, this.y + yOffset, this.width, boxHeight);
+                
+                // Draw cracks if the box has been damaged
+                if (this.cracks.length > 0) {
+                    ctx.strokeStyle = '#5d3a1b'; // Darker color for cracks
+                    ctx.lineWidth = 1;
+                    
+                    this.cracks.forEach(crack => {
+                        ctx.beginPath();
+                        ctx.moveTo(this.x + crack.x1, this.y + yOffset + crack.y1);
+                        ctx.lineTo(this.x + crack.x2, this.y + yOffset + crack.y2);
+                        ctx.stroke();
+                    });
+                }
+                
+                // Draw wood grain lines
+                ctx.strokeStyle = this.woodGrainColor;
                 ctx.lineWidth = 1;
-                
-                this.cracks.forEach(crack => {
+                for (let i = 0; i < 3; i++) {
+                    const lineY = this.y + yOffset + (boxHeight / 4) * (i + 1);
                     ctx.beginPath();
-                    ctx.moveTo(this.x + crack.x1, this.y + yOffset + crack.y1);
-                    ctx.lineTo(this.x + crack.x2, this.y + yOffset + crack.y2);
+                    ctx.moveTo(this.x, lineY);
+                    ctx.lineTo(this.x + this.width, lineY);
                     ctx.stroke();
-                });
-            }
-            
-            // Draw wood grain lines
-            ctx.strokeStyle = this.woodGrainColor;
-            ctx.lineWidth = 1;
-            for (let i = 0; i < 3; i++) {
-                const lineY = this.y + yOffset + (boxHeight / 4) * (i + 1);
-                ctx.beginPath();
-                ctx.moveTo(this.x, lineY);
-                ctx.lineTo(this.x + this.width, lineY);
-                ctx.stroke();
-            }
-            
-            // Draw red dot indicator for mushroom boxes
-            if (this.containsMushroom && this.hasRedDot) {
-                ctx.fillStyle = '#ff0000';
-                ctx.beginPath();
-                ctx.arc(this.x + this.width/2, this.y + yOffset - 5, 3, 0, Math.PI * 2);
-                ctx.fill();
+                }
                 
-                // Add subtle glow to the red dot
-                ctx.shadowColor = '#ff0000';
-                ctx.shadowBlur = 5;
-                ctx.fill();
-                ctx.shadowBlur = 0;
-            }
-            
-            // Add a visual indicator of jump count
-            if (this.jumpCount === 1) {
-                // Draw a "1 more!" indicator
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                ctx.font = '10px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('1 more!', this.x + this.width/2, this.y - 15);
+                // Draw red dot indicator for mushroom boxes
+                if (this.containsMushroom && this.hasRedDot) {
+                    ctx.fillStyle = '#ff0000';
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.width/2, this.y + yOffset - 5, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Add subtle glow to the red dot
+                    ctx.shadowColor = '#ff0000';
+                    ctx.shadowBlur = 5;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
                 
-                // Add a subtle glow effect
-                ctx.shadowColor = '#fff';
-                ctx.shadowBlur = 5;
-                ctx.fillText('1 more!', this.x + this.width/2, this.y - 15);
-                ctx.shadowBlur = 0;
-            }
-        } else {
-            // Draw generic obstacle
-            ctx.fillStyle = this.color;
-            ctx.fillRect(this.x, this.y, this.width, this.height);
+                // Add a visual indicator of jump count
+                if (this.jumpCount === 1) {
+                    // Draw a "1 more!" indicator
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.font = '10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('1 more!', this.x + this.width/2, this.y - 15);
+                    
+                    // Add a subtle glow effect
+                    ctx.shadowColor = '#fff';
+                    ctx.shadowBlur = 5;
+                    ctx.fillText('1 more!', this.x + this.width/2, this.y - 15);
+                    ctx.shadowBlur = 0;
+                }
+                break;
+            default:
+                // Draw generic obstacle
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
         }
         
         // Draw health bar for destructible obstacles
@@ -865,16 +875,16 @@ class Obstacle {
         this.explosionTimer = 0;
         this.explosionHitEnemies.clear();
         
-        // Create explosion particles - increased for a more massive explosion
-        const particleCount = this.type === 'cybertruck' ? 200 : 150;
+        // Reduce particle count to prevent performance issues
+        const particleCount = this.type === 'cybertruck' ? 80 : 60; // Reduced from 200/150
         this.explosionParticles = [];
         
         // Create primary explosion particles
         for (let i = 0; i < particleCount; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = 1 + Math.random() * 8; // Increased speed
-            const size = 3 + Math.random() * 12; // Larger particles
-            const life = 30 + Math.random() * 60; // Longer life
+            const speed = 1 + Math.random() * 5; // Reduced speed from 8
+            const size = 3 + Math.random() * 8; // Smaller particles
+            const life = 30 + Math.random() * 40; // Shorter life
             
             // Create different colored particles for a more realistic explosion
             let color;
@@ -901,13 +911,13 @@ class Obstacle {
             });
         }
         
-        // Add debris particles
-        const debrisCount = this.type === 'cybertruck' ? 50 : 30;
+        // Add debris particles - reduced count
+        const debrisCount = this.type === 'cybertruck' ? 20 : 15; // Reduced from 50/30
         for (let i = 0; i < debrisCount; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = 2 + Math.random() * 10;
-            const size = 2 + Math.random() * 5;
-            const life = 40 + Math.random() * 80;
+            const speed = 2 + Math.random() * 6; // Reduced from 10
+            const size = 2 + Math.random() * 4; // Smaller debris
+            const life = 40 + Math.random() * 60; // Shorter life
             
             // Create metal/debris particles
             let color;
@@ -930,13 +940,13 @@ class Obstacle {
             });
         }
         
-        // Add smoke particles that linger longer
-        const smokeCount = this.type === 'cybertruck' ? 40 : 30;
+        // Add smoke particles that linger longer - reduced count
+        const smokeCount = this.type === 'cybertruck' ? 15 : 10; // Reduced from 40/30
         for (let i = 0; i < smokeCount; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = 0.5 + Math.random() * 2;
-            const size = 8 + Math.random() * 15;
-            const life = 80 + Math.random() * 120;
+            const size = 8 + Math.random() * 12; // Smaller smoke
+            const life = 60 + Math.random() * 80; // Shorter life
             
             this.explosionParticles.push({
                 x: this.x + this.width / 2,
@@ -947,7 +957,7 @@ class Obstacle {
                 color: '#555555',
                 life: life,
                 alpha: 0.7,
-                fadeRate: 0.005 + Math.random() * 0.01,
+                fadeRate: 0.01 + Math.random() * 0.02, // Faster fade
                 type: 'smoke'
             });
         }
@@ -964,7 +974,7 @@ class Obstacle {
         // Create radial gradient for explosion
         const gradient = ctx.createRadialGradient(
             centerX, centerY, 10,
-            centerX, centerY, this.explosionRadius * (1 - this.explosionTimer / this.explosionDuration)
+            centerX, centerY, this.explosionRadius * (1 - this.explosionTimer / this.explosionDuration * 0.8)
         );
         
         // Set gradient colors based on explosion phase
@@ -976,6 +986,10 @@ class Obstacle {
             gradient.addColorStop(0.3, 'rgba(255, 200, 0, 0.8)');
             gradient.addColorStop(0.6, 'rgba(255, 100, 0, 0.6)');
             gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+            
+            // Add glow effect
+            ctx.shadowColor = 'rgba(255, 200, 0, 0.8)';
+            ctx.shadowBlur = 30;
         } else if (phase < 0.5) {
             // Fire phase - more vibrant
             gradient.addColorStop(0, 'rgba(255, 200, 0, 0.9)');
@@ -983,12 +997,20 @@ class Obstacle {
             gradient.addColorStop(0.5, 'rgba(200, 0, 0, 0.6)');
             gradient.addColorStop(0.8, 'rgba(100, 0, 0, 0.3)');
             gradient.addColorStop(1, 'rgba(50, 0, 0, 0)');
+            
+            // Add glow effect
+            ctx.shadowColor = 'rgba(255, 100, 0, 0.6)';
+            ctx.shadowBlur = 20;
         } else {
             // Smoke phase - darker and more opaque
             gradient.addColorStop(0, 'rgba(80, 80, 80, 0.8)');
             gradient.addColorStop(0.3, 'rgba(60, 60, 60, 0.7)');
             gradient.addColorStop(0.7, 'rgba(40, 40, 40, 0.5)');
             gradient.addColorStop(1, 'rgba(20, 20, 20, 0)');
+            
+            // Reduce glow effect
+            ctx.shadowColor = 'rgba(40, 40, 40, 0.4)';
+            ctx.shadowBlur = 10;
         }
         
         // Draw explosion circle
@@ -997,53 +1019,81 @@ class Obstacle {
         ctx.arc(centerX, centerY, this.explosionRadius * (1 - this.explosionTimer / this.explosionDuration * 0.7), 0, Math.PI * 2);
         ctx.fill();
         
-        // Draw particles
-        for (const particle of this.explosionParticles) {
-            ctx.save();
-            
-            // Set alpha for smoke particles
-            if (particle.type === 'smoke' && particle.alpha !== undefined) {
-                ctx.globalAlpha = particle.alpha;
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        
+        // Draw particles - limit the number of particles drawn to prevent performance issues
+        const maxParticlesToDraw = 50; // Only draw up to 50 particles per frame
+        const particlesToDraw = this.explosionParticles.slice(0, maxParticlesToDraw);
+        
+        // Batch similar particles together to reduce context switches
+        const fireParticles = [];
+        const debrisParticles = [];
+        const smokeParticles = [];
+        
+        // Sort particles by type
+        for (const particle of particlesToDraw) {
+            if (particle.type === 'fire') {
+                fireParticles.push(particle);
+            } else if (particle.type === 'debris') {
+                debrisParticles.push(particle);
+            } else if (particle.type === 'smoke') {
+                smokeParticles.push(particle);
             }
-            
-            ctx.fillStyle = particle.color;
-            ctx.beginPath();
-            
-            if (particle.type === 'debris') {
-                // Draw debris as rectangles
+        }
+        
+        // Draw fire particles
+        if (fireParticles.length > 0) {
+            for (const particle of fireParticles) {
+                ctx.fillStyle = particle.color;
+                ctx.beginPath();
+                ctx.arc(
+                    particle.x, 
+                    particle.y, 
+                    particle.size * (particle.life / 40), 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+        }
+        
+        // Draw debris particles
+        if (debrisParticles.length > 0) {
+            for (const particle of debrisParticles) {
+                ctx.fillStyle = particle.color;
                 ctx.fillRect(
                     particle.x - particle.size/2, 
                     particle.y - particle.size/2, 
                     particle.size, 
                     particle.size
                 );
-            } else {
-                // Draw fire and smoke as circles
+            }
+        }
+        
+        // Draw smoke particles
+        if (smokeParticles.length > 0) {
+            for (const particle of smokeParticles) {
+                ctx.globalAlpha = particle.alpha || 0.7;
+                ctx.fillStyle = particle.color;
+                ctx.beginPath();
                 ctx.arc(
                     particle.x, 
                     particle.y, 
-                    particle.size * (particle.life / (particle.type === 'smoke' ? 100 : 40)), 
+                    particle.size * (particle.life / 100), 
                     0, 
                     Math.PI * 2
                 );
                 ctx.fill();
+                ctx.globalAlpha = 1;
             }
-            
-            ctx.restore();
         }
         
-        // Add glow effect
-        ctx.shadowBlur = 30;
-        ctx.shadowColor = phase < 0.3 ? 'rgba(255, 200, 0, 0.8)' : 'rgba(255, 100, 0, 0.6)';
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, 30 * (1 - phase * 0.5), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        
-        // Add shockwave effect
-        if (phase < 0.2) {
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.7 * (1 - phase * 5)})`;
-            ctx.lineWidth = 3;
+        // Add shockwave effect - only in very early phase
+        if (phase < 0.15) {
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.7 * (1 - phase * 7)})`; // Faster fade
+            ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(centerX, centerY, this.explosionRadius * phase * 5, 0, Math.PI * 2);
             ctx.stroke();
