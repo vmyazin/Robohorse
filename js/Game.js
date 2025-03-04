@@ -84,7 +84,9 @@ class Game {
             blasterRobo: new Audio('audio/blaster_shots.mp3'),
             blasterLeg: new Audio('audio/blaster_shots.mp3'),
             // Add power-up sound
-            powerUp: new Audio('audio/power_up.mp3')
+            powerUp: new Audio('audio/power_up.mp3'),
+            // Add horse scream sound for player death
+            horseScream: new Audio('audio/horse_scream_die.mp3')
         };
 
         // Weapon sound mapping
@@ -125,6 +127,8 @@ class Game {
             this.sounds.blasterRobo.load();
             this.sounds.blasterLeg.load();
             this.sounds.powerUp.load();
+            // Preload horse scream sound
+            this.sounds.horseScream.load();
         } catch (e) {
             console.warn('Could not load sound effects:', e);
         }
@@ -229,6 +233,15 @@ class Game {
         this.gameOver = true;
         this.finalScoreDisplay.textContent = this.score;
         this.gameOverScreen.style.display = 'block';
+        
+        // Play horse scream sound when player dies
+        try {
+            const screamSound = this.sounds.horseScream.cloneNode();
+            screamSound.volume = 0.7;
+            screamSound.play();
+        } catch (e) {
+            console.warn('Could not play horse scream sound:', e);
+        }
     }
     
     update() {
