@@ -21,6 +21,11 @@ class Game {
         this.soundEnabled = true;
         this.soundToggleElement = document.getElementById('sound-toggle');
         
+        // Background music
+        this.backgroundMusic = new Audio('audio/soundtrack_1.mp3');
+        this.backgroundMusic.loop = true;
+        this.backgroundMusic.volume = 0.4; // Set a reasonable default volume
+        
         // Frame rate control - simplified
         this.lastFrameTime = 0;
         
@@ -149,9 +154,15 @@ class Game {
             if (this.soundEnabled) {
                 this.soundToggleElement.textContent = '🔊';
                 this.soundToggleElement.classList.remove('muted');
+                // Resume background music if game is started
+                if (this.gameStarted && !this.gameOver) {
+                    this.backgroundMusic.play().catch(e => console.warn('Could not play background music:', e));
+                }
             } else {
                 this.soundToggleElement.textContent = '🔇';
                 this.soundToggleElement.classList.add('muted');
+                // Pause background music
+                this.backgroundMusic.pause();
             }
         }
         
@@ -243,6 +254,12 @@ class Game {
         this.gameOver = false;
         this.startScreen.style.display = 'none';
         
+        // Play background music if sound is enabled
+        if (this.soundEnabled) {
+            // Music position is already set in resetGame
+            this.backgroundMusic.play().catch(e => console.warn('Could not play background music:', e));
+        }
+        
         // Show level announcement when game starts
         const levelData = this.levelManager.getLevelData(this.levelManager.currentLevel);
         this.showLevelAnnouncement(levelData.name);
@@ -273,12 +290,29 @@ class Game {
             this.levelDisplay.textContent = levelData.name;
         }
         this.gameOverScreen.style.display = 'none';
+        
+        // Reset and stop background music
+        this.backgroundMusic.pause();
+        
+        // Set music to start from a random position within the first 60 seconds
+        // Only if this is a restart after game over
+        if (this.gameOver) {
+            const randomStartTime = Math.random() * 60; // Random time between 0-60 seconds
+            this.backgroundMusic.currentTime = randomStartTime;
+            console.log(`Music will start from ${randomStartTime.toFixed(2)} seconds`);
+        } else {
+            // If it's the first game, start from the beginning
+            this.backgroundMusic.currentTime = 0;
+        }
     }
     
     endGame() {
         this.gameOver = true;
         this.finalScoreDisplay.textContent = this.score;
         this.gameOverScreen.style.display = 'block';
+        
+        // Pause background music
+        this.backgroundMusic.pause();
         
         // Play horse scream sound when player dies
         this.playSound('horseScream', 0.7);
