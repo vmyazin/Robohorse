@@ -180,4 +180,33 @@ button:hover {
 .clickable:hover {
     background-color: rgba(51, 102, 255, 0.3);
     box-shadow: 0 0 10px #36f;
+}
+
+/* Sound Toggle Button */
+#sound-toggle {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    color: #0ff;
+    font-size: 18px;
+    text-shadow: 0 0 5px #0ff;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 3px 8px;
+    border: 2px solid #0ff;
+    border-radius: 5px;
+    cursor: pointer;
+    user-select: none;
+    z-index: 10;
+    transition: all 0.2s ease;
+}
+
+#sound-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px #0ff;
+}
+
+#sound-toggle.muted {
+    color: #777;
+    text-shadow: none;
+    border-color: #777;
 } 

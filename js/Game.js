@@ -17,6 +17,10 @@ class Game {
         this.lastSpawnTime = 0;
         this.gameSpeed = 1;
         
+        // Sound state
+        this.soundEnabled = true;
+        this.soundToggleElement = document.getElementById('sound-toggle');
+        
         // Frame rate control - simplified
         this.lastFrameTime = 0;
         
@@ -137,6 +141,35 @@ class Game {
         this.bindEventListeners();
     }
     
+    toggleSound() {
+        this.soundEnabled = !this.soundEnabled;
+        
+        // Update sound toggle button appearance
+        if (this.soundToggleElement) {
+            if (this.soundEnabled) {
+                this.soundToggleElement.textContent = '🔊';
+                this.soundToggleElement.classList.remove('muted');
+            } else {
+                this.soundToggleElement.textContent = '🔇';
+                this.soundToggleElement.classList.add('muted');
+            }
+        }
+        
+        console.log(`Sound ${this.soundEnabled ? 'enabled' : 'disabled'}`);
+    }
+    
+    playSound(soundKey, volume = 0.5) {
+        if (!this.soundEnabled || !this.sounds[soundKey]) return;
+        
+        try {
+            const sound = this.sounds[soundKey].cloneNode();
+            sound.volume = volume;
+            sound.play();
+        } catch (e) {
+            console.warn(`Could not play ${soundKey} sound:`, e);
+        }
+    }
+    
     bindEventListeners() {
         window.addEventListener('keydown', (e) => {
             this.keys[e.key] = true;
@@ -159,6 +192,12 @@ class Game {
                 }
             }
             
+            // Sound toggle with Ctrl+S
+            if (e.code === 'KeyS' && e.ctrlKey) {
+                e.preventDefault(); // Prevent browser save dialog
+                this.toggleSound();
+            }
+            
             // Easter egg: Ctrl+E triggers Elon Toasty
             if (e.code === 'KeyE' && e.ctrlKey && this.gameStarted && !this.gameOver) {
                 e.preventDefault(); // Prevent browser's default behavior
@@ -170,6 +209,13 @@ class Game {
         window.addEventListener('keyup', (e) => {
             this.keys[e.key] = false;
         });
+        
+        // Sound toggle button click handler
+        if (this.soundToggleElement) {
+            this.soundToggleElement.addEventListener('click', () => {
+                this.toggleSound();
+            });
+        }
         
         // Add click event listeners for the start and restart instructions
         const startInstruction = document.getElementById('start-instruction');
@@ -235,13 +281,7 @@ class Game {
         this.gameOverScreen.style.display = 'block';
         
         // Play horse scream sound when player dies
-        try {
-            const screamSound = this.sounds.horseScream.cloneNode();
-            screamSound.volume = 0.7;
-            screamSound.play();
-        } catch (e) {
-            console.warn('Could not play horse scream sound:', e);
-        }
+        this.playSound('horseScream', 0.7);
     }
     
     update() {
@@ -307,13 +347,7 @@ class Game {
                         
                         // Play car hit sound for vehicles
                         if (obstacle.type === 'car' || obstacle.type === 'cybertruck') {
-                            try {
-                                const hitSound = this.sounds.carHit.cloneNode();
-                                hitSound.volume = 0.3;
-                                hitSound.play();
-                            } catch (e) {
-                                console.warn('Could not play car hit sound:', e);
-                            }
+                            this.playSound('carHit', 0.3);
                         }
                         
                         // Handle obstacle damage
@@ -321,43 +355,35 @@ class Game {
                         
                         if (shouldExplode || (obstacle.type === 'box' && obstacle.health <= 0)) {
                             // Play explosion sound for cars/cybertrucks or break sound for boxes
-                            try {
-                                if (obstacle.type === 'box') {
-                                    const breakSound = this.sounds.carHit.cloneNode();
-                                    breakSound.volume = 0.5;
-                                    breakSound.play();
-                                    
-                                    // Spawn mushroom if box contained one
-                                    if (obstacle.containsMushroom) {
-                                        this.spawnMushroomPowerUp(obstacle.x, obstacle.y - 20);
-                                    }
-                                    
-                                    // Create particles for box destruction
-                                    this.createParticles(
-                                        obstacle.x + obstacle.width/2,
-                                        obstacle.y + obstacle.height/2,
-                                        15,
-                                        obstacle.color
-                                    );
-                                    
-                                    // Remove the box
-                                    this.obstacles.splice(i, 1);
-                                } else {
-                                    const explosionSound = this.sounds.explosion.cloneNode();
-                                    explosionSound.volume = 0.5;
-                                    explosionSound.play();
-                                    
-                                    // Trigger explosion but don't remove the car yet
-                                    // The car will be removed when the explosion animation completes
-                                    obstacle.explode();
-                                    
-                                    // Trigger Elon Toasty easter egg for Cybertruck explosions (10% chance)
-                                    if (obstacle.type === 'cybertruck' && Math.random() < 0.1) {
-                                        this.triggerElonToasty();
-                                    }
+                            if (obstacle.type === 'box') {
+                                this.playSound('carHit', 0.5);
+                                
+                                // Spawn mushroom if box contained one
+                                if (obstacle.containsMushroom) {
+                                    this.spawnMushroomPowerUp(obstacle.x, obstacle.y - 20);
                                 }
-                            } catch (e) {
-                                console.warn('Could not play sound:', e);
+                                
+                                // Create particles for box destruction
+                                this.createParticles(
+                                    obstacle.x + obstacle.width/2,
+                                    obstacle.y + obstacle.height/2,
+                                    15,
+                                    obstacle.color
+                                );
+                                
+                                // Remove the box
+                                this.obstacles.splice(i, 1);
+                            } else {
+                                this.playSound('explosion', 0.5);
+                                
+                                // Trigger explosion but don't remove the car yet
+                                // The car will be removed when the explosion animation completes
+                                obstacle.explode();
+                                
+                                // Trigger Elon Toasty easter egg for Cybertruck explosions (10% chance)
+                                if (obstacle.type === 'cybertruck' && Math.random() < 0.1) {
+                                    this.triggerElonToasty();
+                                }
                             }
                             
                             // Add score
@@ -466,14 +492,8 @@ class Game {
             this.player.shoot(this.frameCount, this.projectiles, this.createParticles.bind(this), (weaponName) => {
                 // Play weapon sound
                 const soundKey = this.weaponSounds[weaponName];
-                if (soundKey && this.sounds[soundKey]) {
-                    try {
-                        const sound = this.sounds[soundKey].cloneNode();
-                        sound.volume = 0.3; // Adjust volume as needed
-                        sound.play();
-                    } catch (e) {
-                        console.warn('Could not play weapon sound:', e);
-                    }
+                if (soundKey) {
+                    this.playSound(soundKey, 0.3);
                 }
             });
         }
@@ -483,14 +503,8 @@ class Game {
             if (this.player.specialAbility(this.frameCount, this.projectiles, this.createParticles.bind(this), (weaponName) => {
                 // Play weapon sound
                 const soundKey = this.weaponSounds[weaponName];
-                if (soundKey && this.sounds[soundKey]) {
-                    try {
-                        const sound = this.sounds[soundKey].cloneNode();
-                        sound.volume = 0.3; // Adjust volume as needed
-                        sound.play();
-                    } catch (e) {
-                        console.warn('Could not play weapon sound:', e);
-                    }
+                if (soundKey) {
+                    this.playSound(soundKey, 0.3);
                 }
             })) {
                 // Update special tokens display
@@ -501,14 +515,8 @@ class Game {
             if (this.player.specialAbility(this.frameCount, this.projectiles, this.createParticles.bind(this), (weaponName) => {
                 // Play weapon sound
                 const soundKey = this.weaponSounds[weaponName];
-                if (soundKey && this.sounds[soundKey]) {
-                    try {
-                        const sound = this.sounds[soundKey].cloneNode();
-                        sound.volume = 0.3; // Adjust volume as needed
-                        sound.play();
-                    } catch (e) {
-                        console.warn('Could not play weapon sound:', e);
-                    }
+                if (soundKey) {
+                    this.playSound(soundKey, 0.3);
                 }
             })) {
                 // Update special tokens display
@@ -660,13 +668,7 @@ class Game {
             
             if (isColliding(powerUp, this.player)) {
                 // Play power-up sound
-                try {
-                    const powerUpSound = this.sounds.powerUp.cloneNode();
-                    powerUpSound.volume = 0.5;
-                    powerUpSound.play();
-                } catch (e) {
-                    console.warn('Could not play power-up sound:', e);
-                }
+                this.playSound('powerUp', 0.5);
                 
                 if (powerUp.type === 'health') {
                     this.player.health = Math.min(this.player.health + 20, this.player.maxHealth);
@@ -678,13 +680,7 @@ class Game {
                 } else if (powerUp.type === 'mushroom') {
                     this.player.activateMushroomPower(this.createParticles.bind(this), () => {
                         // Play mushroom power-up sound
-                        try {
-                            const powerUpSound = this.sounds.powerUp.cloneNode();
-                            powerUpSound.volume = 0.6;
-                            powerUpSound.play();
-                        } catch (e) {
-                            console.warn('Could not play power-up sound:', e);
-                        }
+                        this.playSound('powerUp', 0.6);
                     });
                     this.mushroomPowerTimer = 0; // Reset timer when collecting a new mushroom
                 }
@@ -702,13 +698,7 @@ class Game {
                 // Add token to player's count if not at max
                 if (this.player.specialAbilityTokens < this.player.maxSpecialAbilityTokens) {
                     // Play power-up sound
-                    try {
-                        const powerUpSound = this.sounds.powerUp.cloneNode();
-                        powerUpSound.volume = 0.5;
-                        powerUpSound.play();
-                    } catch (e) {
-                        console.warn('Could not play power-up sound:', e);
-                    }
+                    this.playSound('powerUp', 0.5);
                     
                     this.player.specialAbilityTokens++;
                     this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
@@ -1273,12 +1263,10 @@ class Game {
     
     // Add a new method to show level announcement
     showLevelAnnouncement(levelName) {
-        if (!this.levelAnnouncement) return;
-        
-        // Get the current level number
+        // Extract level number from level name if possible
         const levelNumber = this.levelManager.currentLevel + 1;
         
-        // Set the level announcement text
+        // Set content
         this.levelAnnouncement.innerHTML = `LEVEL ${levelNumber}<br>${levelName}`;
         
         // Remove any existing classes
@@ -1291,12 +1279,7 @@ class Game {
         this.levelAnnouncement.classList.add('active');
         
         // Play sound effect
-        try {
-            this.sounds.levelAnnounce.currentTime = 0;
-            this.sounds.levelAnnounce.play().catch(e => console.warn('Could not play sound:', e));
-        } catch (e) {
-            console.warn('Error playing sound:', e);
-        }
+        this.playSound('levelAnnounce');
         
         // Set a timeout to fade out after 3 seconds
         setTimeout(() => {
@@ -1365,13 +1348,7 @@ class Game {
             this.elonToasty.timer = 0;
             
             // Play the toasty sound
-            try {
-                this.sounds.toasty.currentTime = 0;
-                this.sounds.toasty.volume = 0.7;
-                this.sounds.toasty.play();
-            } catch (e) {
-                console.error("Error playing toasty sound:", e);
-            }
+            this.playSound('toasty', 0.7);
         }
     }
     
