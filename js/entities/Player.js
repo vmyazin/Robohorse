@@ -15,6 +15,7 @@ class Player {
         this.jumpPower = 12;
         this.velY = 0;
         this.health = 100;
+        this.maxHealth = 100;
         this.isJumping = false;
         this.isShooting = false;
         this.direction = 1; // 1 = right, -1 = left

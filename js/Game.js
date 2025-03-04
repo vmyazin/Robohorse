@@ -765,7 +765,8 @@ class Game {
             
             // Check collision with player
             if (i < this.enemies.length && isColliding(this.enemies[i], this.player)) {
-                this.player.health -= 1;
+                // Subtract health but ensure it stays as a valid number
+                this.player.health = Math.max(0, this.player.health - 1);
                 this.updateHealthDisplay();
                 this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 3, '#fff');
                 
@@ -794,7 +795,8 @@ class Game {
                 Math.abs(proj.y - this.player.y) > 100) continue;
             
             if (isColliding(proj, this.player)) {
-                this.player.health -= proj.damage;
+                // Subtract health but ensure it stays as a valid number
+                this.player.health = Math.max(0, this.player.health - proj.damage);
                 this.updateHealthDisplay();
                 this.projectiles.splice(i, 1);
                 this.createParticles(proj.x, proj.y, 10, proj.color);
@@ -847,9 +849,9 @@ class Game {
                         // Play mushroom power-up sound
                         this.playSound('powerUp', 0.6);
                     });
-                    this.mushroomPowerTimer = 0; // Reset timer when collecting a new mushroom
                 }
                 
+                // Remove the power-up after collecting
                 this.powerUps.splice(index, 1);
                 this.createParticles(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, 15, powerUp.color);
             }
@@ -1055,7 +1057,8 @@ class Game {
     }
     
     handlePlayerCrush() {
-        this.player.health -= 2;
+        // Subtract health but ensure it stays as a valid number
+        this.player.health = Math.max(0, this.player.health - 2);
         this.updateHealthDisplay();
         
         this.createParticles(
@@ -1444,10 +1447,20 @@ class Game {
     
     // New method to update health display
     updateHealthDisplay() {
+        // Ensure health is a valid number and capped at maxHealth
+        if (typeof this.player.health !== 'number' || isNaN(this.player.health) || !isFinite(this.player.health)) {
+            this.player.health = this.player.maxHealth;
+        }
+        
+        // Cap health at maxHealth
+        this.player.health = Math.min(this.player.health, this.player.maxHealth);
+        
+        // Calculate health percentage
+        const healthPercent = (this.player.health / this.player.maxHealth) * 100;
+        
         // Update the health bar width based on player health percentage
-        const healthPercent = this.player.health;
         this.healthBar.style.width = `${healthPercent}%`;
-        this.healthValue.textContent = Math.round(healthPercent);
+        this.healthValue.textContent = Math.round(this.player.health);
         
         // Change color based on health level
         if (healthPercent > 60) {
