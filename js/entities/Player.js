@@ -271,19 +271,8 @@ class Player {
     }
     
     draw(ctx, frameCount, keys) {
-        // Skip drawing if player is in invisible frame during growth/shrink animation
-        // Only check visibility during active transitions
-        if ((this.isGrowing && !this.growthVisible) || 
-            (this.isShrinking && !this.shrinkVisible)) {
-            return;
-        }
-        
-        // Force visibility to true if not in a transition animation
-        // This ensures the player is always visible when not growing or shrinking
-        if (!this.isGrowing && !this.isShrinking) {
-            this.growthVisible = true;
-            this.shrinkVisible = true;
-        }
+        // No longer skip drawing based on visibility flags
+        // Player is always visible now
         
         ctx.save();
         
@@ -717,28 +706,6 @@ class Player {
         ctx.fill();
         ctx.stroke();
         
-        // Add small blinking ear tip lights
-        if (frameCount % 30 < 15) {
-            ctx.fillStyle = '#0ff';
-            ctx.shadowColor = '#0ff';
-            ctx.shadowBlur = 10;
-            ctx.beginPath();
-            ctx.arc(
-                headX + headWidth * 0.2 - earWidth, 
-                headY - earHeight, 
-                3, 0, Math.PI * 2
-            );
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(
-                headX + headWidth * 0.8 + earWidth, 
-                headY - earHeight, 
-                3, 0, Math.PI * 2
-            );
-            ctx.fill();
-            ctx.shadowBlur = 0;
-        }
-        
         // Add nostril lights on muzzle
         const nostrilY = headY + headHeight * 0.9;
         const nostrilX1 = headX + headWidth * (this.direction > 0 ? 0.25 : 0.75);
@@ -878,7 +845,6 @@ class Player {
             // Start the growth animation sequence
             this.isGrowing = true;
             this.growthStage = 0;
-            this.growthVisible = true;
             this.growthAnimationFrame = 0;
             
             // We'll set mushroomPowerActive to true after the animation completes
@@ -893,35 +859,32 @@ class Player {
         
         this.growthAnimationFrame++;
         
-        // Toggle visibility every 5 frames
+        // Progress growth every 5 frames instead of toggling visibility
         if (this.growthAnimationFrame % 5 === 0) {
-            this.growthVisible = !this.growthVisible;
+            // Calculate smooth growth progress (0 to 1 over 30 frames)
+            const growthProgress = Math.min(this.growthAnimationFrame / 30, 1);
             
-            // Progress to next growth stage every 2 blinks (10 frames)
-            if (!this.growthVisible && this.growthAnimationFrame % 10 === 0) {
-                this.growthStage++;
-                
-                // Calculate intermediate size based on growth stage
-                const growthProgress = this.growthStage / 3; // 3 stages total
-                this.width = this.originalWidth * (1 + growthProgress * 1.5); // Scale up more aggressively
-                this.height = this.originalHeight * (1 + growthProgress * 1.5);
-                
-                // Adjust position to prevent clipping through floor
-                if (this.y + this.height > this.canvas.height - 50) {
-                    this.y = this.canvas.height - 50 - this.height;
-                }
-                
-                // Create additional particles at each growth stage
+            // Apply smooth scaling with more height than width for a more heroic look
+            // Width grows to 2x, height grows to 2.5x for a taller, more heroic appearance
+            this.width = this.originalWidth * (1 + growthProgress);
+            this.height = this.originalHeight * (1 + growthProgress * 1.5);
+            
+            // Adjust position to prevent clipping through floor
+            if (this.y + this.height > this.canvas.height - 50) {
+                this.y = this.canvas.height - 50 - this.height;
+            }
+            
+            // Create particles during growth
+            if (this.growthAnimationFrame % 10 === 0) {
                 createParticles(this.x + this.width/2, this.y + this.height/2, 10, '#ff0000');
             }
             
-            // Animation complete after 3 stages
-            if (this.growthStage >= 3) {
+            // Animation complete after 30 frames (about 0.5 seconds)
+            if (this.growthAnimationFrame >= 30) {
                 this.isGrowing = false;
-                this.growthVisible = true; // Ensure visibility is on when animation completes
                 this.mushroomPowerActive = true;
-                this.width = this.originalWidth * 2.5; // Increase final size to 2.5x instead of 2x
-                this.height = this.originalHeight * 2.5;
+                this.width = this.originalWidth * 2; // More proportional final width
+                this.height = this.originalHeight * 2.5; // Taller final height
                 
                 // Adjust position one final time
                 if (this.y + this.height > this.canvas.height - 50) {
@@ -940,7 +903,6 @@ class Player {
             // Start the shrinking animation sequence
             this.isShrinking = true;
             this.shrinkStage = 0;
-            this.shrinkVisible = true;
             this.shrinkAnimationFrame = 0;
             
             // We'll set mushroomPowerActive to false after the animation completes
@@ -955,29 +917,24 @@ class Player {
         
         this.shrinkAnimationFrame++;
         
-        // Toggle visibility every 5 frames
+        // Progress shrinking every 5 frames instead of toggling visibility
         if (this.shrinkAnimationFrame % 5 === 0) {
-            this.shrinkVisible = !this.shrinkVisible;
+            // Calculate smooth shrink progress (0 to 1 over 30 frames)
+            const shrinkProgress = Math.min(this.shrinkAnimationFrame / 30, 1);
             
-            // Progress to next shrink stage every 2 blinks (10 frames)
-            if (!this.shrinkVisible && this.shrinkAnimationFrame % 10 === 0) {
-                this.shrinkStage++;
-                
-                // Calculate intermediate size based on shrink stage
-                const shrinkProgress = this.shrinkStage / 3; // 3 stages total
-                this.width = this.originalWidth * 2.5 * (1 - shrinkProgress * 0.5); // Start from 2.5x size, shrink more gradually
-                this.height = this.originalHeight * 2.5 * (1 - shrinkProgress * 0.5);
-                
-                // Create additional particles at each shrink stage
-                if (createParticles) {
-                    createParticles(this.x + this.width/2, this.y + this.height/2, 10, '#ff0000');
-                }
+            // Apply smooth scaling from powered-up size to original
+            // Match the same proportions used in growth
+            this.width = this.originalWidth * (2 - shrinkProgress);
+            this.height = this.originalHeight * (2.5 - shrinkProgress * 1.5);
+            
+            // Create particles during shrinking
+            if (this.shrinkAnimationFrame % 10 === 0 && createParticles) {
+                createParticles(this.x + this.width/2, this.y + this.height/2, 10, '#ff0000');
             }
             
-            // Animation complete after 3 stages
-            if (this.shrinkStage >= 3) {
+            // Animation complete after 30 frames (about 0.5 seconds)
+            if (this.shrinkAnimationFrame >= 30) {
                 this.isShrinking = false;
-                this.shrinkVisible = true; // Ensure visibility is on when animation completes
                 this.mushroomPowerActive = false;
                 this.width = this.originalWidth;
                 this.height = this.originalHeight;
@@ -989,7 +946,7 @@ class Player {
                 
                 // Create a final burst of particles
                 if (createParticles) {
-                    createParticles(this.x + this.width/2, this.y + this.height/2, 20, '#ff0000');
+                    createParticles(this.x + this.width/2, this.y + this.height/2, 30, '#ff0000');
                 }
             }
         }
