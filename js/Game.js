@@ -671,6 +671,7 @@ class Game {
             
             // Remove enemies that are off-screen to the left or too far to the right
             if (enemy.x + enemy.width < -100 || enemy.x > this.canvas.width + 300) {
+                this.removeEnemyFromExplosionSets(enemy);
                 this.enemies.splice(i, 1);
                 continue;
             }
@@ -680,8 +681,12 @@ class Game {
                 const obstacle = this.obstacles[j];
                 // Only check exploding vehicles (cars and cybertrucks)
                 if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && 
-                    obstacle.isExploding && 
-                    !obstacle.explosionHitEnemies.has(enemy)) {
+                    obstacle.isExploding) {
+                    
+                    // Skip if enemy no longer exists or has already been hit
+                    if (!enemy || obstacle.explosionHitEnemies.has(enemy)) {
+                        continue;
+                    }
                     
                     // Check if enemy is within explosion radius
                     if (obstacle.isInExplosionRadius(enemy)) {
@@ -701,6 +706,7 @@ class Game {
                         
                         // If enemy is killed by explosion
                         if (isDead) {
+                            this.removeEnemyFromExplosionSets(enemy);
                             this.enemies.splice(i, 1);
                             this.score += enemy.points;
                             this.scoreDisplay.textContent = this.score;
@@ -738,6 +744,7 @@ class Game {
                     this.createParticles(proj.x, proj.y, 5, proj.color);
                     
                     if (isDead) {
+                        this.removeEnemyFromExplosionSets(enemy);
                         this.enemies.splice(i, 1);
                         this.score += enemy.points;
                         this.scoreDisplay.textContent = this.score;
@@ -757,7 +764,7 @@ class Game {
             }
             
             // Check collision with player
-            if (isColliding(this.enemies[i], this.player)) {
+            if (i < this.enemies.length && isColliding(this.enemies[i], this.player)) {
                 this.player.health -= 1;
                 this.updateHealthDisplay();
                 this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 3, '#fff');
@@ -1649,6 +1656,19 @@ class Game {
             whisperSound.play();
         } catch (e) {
             console.warn('Could not play alien whisper sound:', e);
+        }
+    }
+    
+    // Add a helper method to remove an enemy from all explosion hit sets
+    removeEnemyFromExplosionSets(enemy) {
+        // Clean up any references to this enemy in explosion hit sets
+        for (const obstacle of this.obstacles) {
+            if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && 
+                obstacle.isExploding && 
+                obstacle.explosionHitEnemies && 
+                obstacle.explosionHitEnemies.has(enemy)) {
+                obstacle.explosionHitEnemies.delete(enemy);
+            }
         }
     }
     

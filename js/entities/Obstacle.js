@@ -171,6 +171,8 @@ class Obstacle {
                 this.isExploding = false;
                 // Clear any remaining particles to free memory
                 this.explosionParticles = [];
+                // Clear the hit enemies set to free memory
+                this.explosionHitEnemies.clear();
                 // Set explosion radius to 0 to signal it's completely finished
                 this.explosionRadius = 0;
             }
@@ -1127,7 +1129,7 @@ class Obstacle {
     
     // Add method to check if an entity is within explosion radius
     isInExplosionRadius(entity) {
-        if (!this.isExploding) return false;
+        if (!this.isExploding || !entity) return false;
         
         // Calculate center points
         const centerX = this.x + this.width / 2;
