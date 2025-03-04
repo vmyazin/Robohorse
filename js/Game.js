@@ -26,6 +26,16 @@ class Game {
         this.backgroundMusic.loop = true;
         this.backgroundMusic.volume = 0.4; // Set a reasonable default volume
         
+        // Police radio sounds
+        this.policeRadioSound1 = new Audio('audio/police_radio_1.mp3');
+        this.policeRadioSound1.volume = 0.6;
+        this.policeRadioSound2 = new Audio('audio/police_radio_2.mp3');
+        this.policeRadioSound2.volume = 0.6;
+        this.currentPoliceRadioIndex = 0; // To track which radio file to play next
+        this.lastPoliceRadioTime = 0;
+        this.policeRadioInterval = this.getRandomInterval(30000, 45000); // Random interval between 30-45 seconds
+        this.initialPoliceRadioDelay = 20000; // 20 seconds delay before first play
+        
         // Frame rate control - simplified
         this.lastFrameTime = 0;
         
@@ -264,6 +274,9 @@ class Game {
         const levelData = this.levelManager.getLevelData(this.levelManager.currentLevel);
         this.showLevelAnnouncement(levelData.name);
         
+        // Reset police radio timing when starting the game
+        this.lastPoliceRadioTime = performance.now(); // Set to current time to start the delay
+        
         this.animate();
     }
     
@@ -313,6 +326,12 @@ class Game {
         
         // Pause background music
         this.backgroundMusic.pause();
+        
+        // Stop police radio from playing when game ends
+        this.policeRadioSound1.pause();
+        this.policeRadioSound1.currentTime = 0;
+        this.policeRadioSound2.pause();
+        this.policeRadioSound2.currentTime = 0;
         
         // Play horse scream sound when player dies
         this.playSound('horseScream', 0.7);
@@ -1165,6 +1184,20 @@ class Game {
     }
     
     animate(timestamp) {
+        const deltaTime = timestamp - this.lastFrameTime;
+        this.lastFrameTime = timestamp;
+        
+        // Check if it's time to play police radio sound
+        if (this.gameStarted && !this.gameOver && this.soundEnabled) {
+            const timeElapsedSinceStart = !this.lastPoliceRadioTime ? 0 : timestamp - this.lastPoliceRadioTime;
+            
+            // Check if initial delay has passed before playing the first radio sound
+            if (this.lastPoliceRadioTime && timeElapsedSinceStart >= (this.lastPoliceRadioTime === performance.now() ? this.initialPoliceRadioDelay : this.policeRadioInterval)) {
+                this.playPoliceRadio();
+                this.lastPoliceRadioTime = timestamp;
+            }
+        }
+        
         if (!this.gameOver) {
             // Update game state
             this.update();
@@ -1420,6 +1453,36 @@ class Game {
                 this.elonToasty.width,
                 this.elonToasty.height
             );
+        }
+    }
+    
+    // Helper method to get random interval for police radio
+    getRandomInterval(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+    
+    // Method to play police radio sound
+    playPoliceRadio() {
+        if (!this.soundEnabled) return;
+        
+        try {
+            // Choose which police radio to play
+            const currentSound = this.currentPoliceRadioIndex === 0 ? this.policeRadioSound1 : this.policeRadioSound2;
+            
+            // Reset the audio to the beginning
+            currentSound.currentTime = 0;
+            
+            // Play the sound
+            currentSound.play().catch(e => console.warn('Could not play police radio sound:', e));
+            
+            // Toggle to use the other sound next time
+            this.currentPoliceRadioIndex = this.currentPoliceRadioIndex === 0 ? 1 : 0;
+            
+            // Set new random interval for next play
+            this.policeRadioInterval = this.getRandomInterval(30000, 45000);
+            console.log('Playing police radio', this.currentPoliceRadioIndex === 0 ? '2' : '1', ', next in', this.policeRadioInterval/1000, 'seconds');
+        } catch (e) {
+            console.warn('Could not play police radio sound:', e);
         }
     }
 }
