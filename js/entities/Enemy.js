@@ -16,6 +16,10 @@ class Enemy {
         this.color = type.color;
         this.tentacles = type.tentacles;
         
+        // Add damage visual effect
+        this.damageFeedbackTimer = 0;
+        this.damageFeedbackDuration = 10; // 10 frames flash when damaged
+        
         // Increase aggression factor for more curious behavior
         this.aggressionFactor = 1.5 + Math.random() * 0.5; // 1.5-2.0 for more aggressive pursuit
         
@@ -218,10 +222,22 @@ class Enemy {
     
     takeDamage(damage) {
         this.health -= damage;
+        
+        // Activate damage visual feedback
+        this.damageFeedbackTimer = this.damageFeedbackDuration;
+        
         return this.health <= 0;
     }
     
     draw(ctx, frameCount, player) {
+        // Apply damage visual effect if active
+        const originalColor = this.color;
+        if (this.damageFeedbackTimer > 0) {
+            this.damageFeedbackTimer--;
+            // Flash white or red to indicate damage
+            this.color = this.damageFeedbackTimer % 2 === 0 ? '#ff3333' : '#ffffff';
+        }
+        
         ctx.save();
         
         // Draw shadow under enemy
@@ -416,6 +432,10 @@ class Enemy {
         );
         
         ctx.shadowBlur = 0;
+        
+        // Restore original color after drawing
+        this.color = originalColor;
+        
         ctx.restore();
     }
 }

@@ -675,6 +675,54 @@ class Game {
                 continue;
             }
             
+            // Check for enemies in range of exploding vehicles
+            for (let j = 0; j < this.obstacles.length; j++) {
+                const obstacle = this.obstacles[j];
+                // Only check exploding vehicles (cars and cybertrucks)
+                if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && 
+                    obstacle.isExploding && 
+                    !obstacle.explosionHitEnemies.has(enemy)) {
+                    
+                    // Check if enemy is within explosion radius
+                    if (obstacle.isInExplosionRadius(enemy)) {
+                        // Apply explosion damage to enemy
+                        const isDead = enemy.takeDamage(obstacle.explosionDamage);
+                        
+                        // Add enemy to the set of hit enemies to prevent multiple hits
+                        obstacle.explosionHitEnemies.add(enemy);
+                        
+                        // Create explosion impact particles
+                        this.createParticles(
+                            enemy.x + enemy.width/2,
+                            enemy.y + enemy.height/2,
+                            10,
+                            '#ff6600'
+                        );
+                        
+                        // If enemy is killed by explosion
+                        if (isDead) {
+                            this.enemies.splice(i, 1);
+                            this.score += enemy.points;
+                            this.scoreDisplay.textContent = this.score;
+                            this.createParticles(enemy.x + enemy.width/2, enemy.y + enemy.height/2, 20, '#f00');
+                            
+                            // Randomly spawn power-up or special token
+                            const rand = Math.random();
+                            if (rand < 0.2) {
+                                this.spawnPowerUp(enemy.x, enemy.y);
+                            } else if (rand < 0.5) {
+                                this.spawnSpecialToken(enemy.x, enemy.y);
+                            }
+                            
+                            break; // Exit loop after enemy is destroyed
+                        }
+                    }
+                }
+            }
+            
+            // Skip enemies that have been removed
+            if (i >= this.enemies.length) continue;
+            
             // Check collisions with player projectiles
             for (let j = this.projectiles.length - 1; j >= 0; j--) {
                 const proj = this.projectiles[j];
@@ -707,9 +755,6 @@ class Game {
                     }
                 }
             }
-            
-            // Skip enemies that have been removed
-            if (i >= this.enemies.length) continue;
             
             // Check collision with player
             if (isColliding(this.enemies[i], this.player)) {

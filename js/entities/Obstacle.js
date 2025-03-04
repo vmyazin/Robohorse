@@ -33,14 +33,14 @@ class Obstacle {
                 // Add explosion properties
                 this.canExplode = true;
                 this.isExploding = false;
-                this.explosionRadius = 300; // Increased explosion radius
-                this.explosionDamage = 75; // Increased explosion damage
+                this.explosionRadius = 350; // Increased explosion radius even more
+                this.explosionDamage = 100; // Increased explosion damage for more significant impact
                 this.explosionDuration = 90; // Longer explosion duration (1.5 seconds at 60fps)
                 this.explosionTimer = 0;
                 this.explosionParticles = [];
                 this.explosionHitEnemies = new Set(); // Track which enemies were hit
                 this.explosionTriggerCount = 0; // How many times the car has been hit
-                this.explosionTriggerThreshold = 5; // Increased from 3 to 5 hits to make cars more resilient
+                this.explosionTriggerThreshold = 5; // Unchanged - 5 hits to make cars resilient
                 this.damageVisuals = []; // Visual damage indicators
                 break;
             case 'cybertruck':
@@ -65,13 +65,13 @@ class Obstacle {
                 // Add explosion properties for Cybertruck
                 this.canExplode = true;
                 this.isExploding = false;
-                this.explosionRadius = 400; // Even larger explosion radius for Cybertruck
-                this.explosionDamage = 100; // More damage for Cybertruck explosion
+                this.explosionRadius = 450; // Even larger explosion radius for Cybertruck
+                this.explosionDamage = 150; // More damage for Cybertruck explosion
                 this.explosionDuration = 120; // 2 seconds at 60fps
                 this.explosionTimer = 0;
                 this.explosionParticles = [];
                 this.explosionHitEnemies = new Set();
-                this.explosionTriggerCount = 0; // How many times the cybertruck has been hit
+                this.explosionTriggerCount = 0;
                 this.explosionTriggerThreshold = 10; // 10 hits to explode
                 this.damageVisuals = []; // Visual damage indicators
                 break;
