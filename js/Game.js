@@ -105,7 +105,11 @@ class Game {
             // Add power-up sound
             powerUp: new Audio('audio/power_up.mp3'),
             // Add horse scream sound for player death
-            horseScream: new Audio('audio/horse_scream_die.mp3')
+            horseScream: new Audio('audio/horse_scream_die.mp3'),
+            // Add alien whisper sounds for enemy spawns
+            alienWhisper1: new Audio('audio/alien_whisper_1.mp3'),
+            alienWhisper2: new Audio('audio/alien_whisper_2.mp3'),
+            alienWhisper3: new Audio('audio/alien_whisper_3.mp3')
         };
 
         // Weapon sound mapping
@@ -148,6 +152,10 @@ class Game {
             this.sounds.powerUp.load();
             // Preload horse scream sound
             this.sounds.horseScream.load();
+            // Preload alien whisper sounds
+            this.sounds.alienWhisper1.load();
+            this.sounds.alienWhisper2.load();
+            this.sounds.alienWhisper3.load();
         } catch (e) {
             console.warn('Could not load sound effects:', e);
         }
@@ -1489,23 +1497,41 @@ class Game {
         if (!this.soundEnabled) return;
         
         try {
-            // Choose which police radio to play
-            const currentSound = this.currentPoliceRadioIndex === 0 ? this.policeRadioSound1 : this.policeRadioSound2;
+            // Alternate between the two radio sounds
+            if (this.currentPoliceRadioIndex === 0) {
+                this.policeRadioSound1.currentTime = 0;
+                this.policeRadioSound1.play();
+                this.currentPoliceRadioIndex = 1;
+            } else {
+                this.policeRadioSound2.currentTime = 0;
+                this.policeRadioSound2.play();
+                this.currentPoliceRadioIndex = 0;
+            }
             
-            // Reset the audio to the beginning
-            currentSound.currentTime = 0;
-            
-            // Play the sound
-            currentSound.play().catch(e => console.warn('Could not play police radio sound:', e));
-            
-            // Toggle to use the other sound next time
-            this.currentPoliceRadioIndex = this.currentPoliceRadioIndex === 0 ? 1 : 0;
-            
-            // Set new random interval for next play
+            // Set a new random interval for the next radio sound
             this.policeRadioInterval = this.getRandomInterval(30000, 45000);
-            console.log('Playing police radio', this.currentPoliceRadioIndex === 0 ? '2' : '1', ', next in', this.policeRadioInterval/1000, 'seconds');
         } catch (e) {
             console.warn('Could not play police radio sound:', e);
+        }
+    }
+    
+    // Method to play a random alien whisper sound when enemies spawn
+    playAlienWhisper() {
+        if (!this.soundEnabled) return;
+        
+        try {
+            // Choose a random whisper sound (1-3)
+            const randomWhisper = Math.floor(Math.random() * 3) + 1;
+            const whisperSound = this.sounds[`alienWhisper${randomWhisper}`];
+            
+            // Set appropriate volume
+            whisperSound.volume = 0.7;
+            
+            // Reset playback position and play the sound
+            whisperSound.currentTime = 0;
+            whisperSound.play();
+        } catch (e) {
+            console.warn('Could not play alien whisper sound:', e);
         }
     }
     

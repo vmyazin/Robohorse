@@ -255,6 +255,9 @@ class LevelManager {
                     // Add the enemy to the game
                     this.game.enemies.push(enemy);
                     console.log("Enemy added successfully. Total enemies:", this.game.enemies.length);
+                    
+                    // Play alien whisper sound when an enemy spawns
+                    this.game.playAlienWhisper();
                 } catch (error) {
                     console.error("Error creating enemy:", error);
                 }
