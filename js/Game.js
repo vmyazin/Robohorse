@@ -18,8 +18,19 @@ class Game {
         this.gameSpeed = 1;
         
         // Sound state
-        this.soundEnabled = true;
+        this.soundEnabled = localStorage.getItem('soundEnabled') !== 'false'; // Default to true if not set
         this.soundToggleElement = document.getElementById('sound-toggle');
+        
+        // Update sound toggle button appearance based on stored preference
+        if (this.soundToggleElement) {
+            if (this.soundEnabled) {
+                this.soundToggleElement.textContent = '🔊';
+                this.soundToggleElement.classList.remove('muted');
+            } else {
+                this.soundToggleElement.textContent = '🔇';
+                this.soundToggleElement.classList.add('muted');
+            }
+        }
         
         // Background music
         this.backgroundMusic = new Audio('audio/soundtrack_1.mp3');
@@ -164,6 +175,9 @@ class Game {
     
     toggleSound() {
         this.soundEnabled = !this.soundEnabled;
+        
+        // Save sound preference to localStorage
+        localStorage.setItem('soundEnabled', this.soundEnabled);
         
         // Update sound toggle button appearance
         if (this.soundToggleElement) {
