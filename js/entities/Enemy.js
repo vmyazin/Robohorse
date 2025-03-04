@@ -16,8 +16,8 @@ class Enemy {
         this.color = type.color;
         this.tentacles = type.tentacles;
         
-        // Increase aggression factor for more aggressive pursuit
-        this.aggressionFactor = 1.2 + Math.random() * 0.5; // 1.2-1.7
+        // Reduce aggression factor for less aggressive pursuit
+        this.aggressionFactor = 0.8 + Math.random() * 0.4; // 0.8-1.2 (was 1.2-1.7)
         
         // Add persistence timer to prevent rapid direction changes
         this.directionChangeTimer = 0;
