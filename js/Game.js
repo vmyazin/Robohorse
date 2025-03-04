@@ -4,6 +4,7 @@ import Background from './components/Background.js';
 import LevelManager from './levels/LevelManager.js';
 import SoundManager from './managers/SoundManager.js';
 import InputManager from './managers/InputManager.js';
+import EffectsManager from './managers/EffectsManager.js';
 import { isColliding } from './utils/helpers.js';
 
 class Game {
@@ -23,14 +24,10 @@ class Game {
         // Initialize managers
         this.soundManager = new SoundManager(this);
         this.inputManager = new InputManager(this);
+        this.effectsManager = new EffectsManager(this);
         
         // Frame rate control - simplified
         this.lastFrameTime = 0;
-        
-        // Damage flash effect
-        this.damageFlashActive = false;
-        this.damageFlashDuration = 10; // frames
-        this.damageFlashCounter = 0;
         
         // Mushroom power-up duration
         this.mushroomPowerDuration = 600; // 10 seconds at 60fps
@@ -108,22 +105,6 @@ class Game {
             "ROBOHORSE CANNON": "blasterRobo",
             "LEG LAUNCHERS": "blasterLeg"
         };
-        
-        // Simple Elon Toasty effect
-        this.elonToasty = {
-            active: false,
-            image: new Image(),
-            x: canvas.width,
-            y: canvas.height - 150,
-            width: 150,
-            height: 150,
-            slideInSpeed: 30,
-            slideOutSpeed: 30,
-            slideInComplete: false,
-            timer: 0,
-            displayDuration: 120  // Changed from 8 to 120 (2 seconds at 60fps)
-        };
-        this.elonToasty.image.src = 'images/elon.png';
         
         // Bind event listeners
         this.bindEventListeners();
@@ -615,8 +596,7 @@ class Game {
                 this.createParticles(this.player.x + this.player.width/2, this.player.y + this.player.height/2, 3, '#fff');
                 
                 // Activate damage flash effect
-                this.damageFlashActive = true;
-                this.damageFlashCounter = this.damageFlashDuration;
+                this.effectsManager.triggerDamageFlash();
                 
                 // Deactivate mushroom power-up if active
                 if (this.player.mushroomPowerActive) {
@@ -646,8 +626,7 @@ class Game {
                 this.createParticles(proj.x, proj.y, 10, proj.color);
                 
                 // Activate damage flash effect
-                this.damageFlashActive = true;
-                this.damageFlashCounter = this.damageFlashDuration;
+                this.effectsManager.triggerDamageFlash();
                 
                 // Deactivate mushroom power-up if active
                 if (this.player.mushroomPowerActive) {
@@ -765,12 +744,7 @@ class Game {
         }
         
         // Update damage flash effect
-        if (this.damageFlashActive) {
-            this.damageFlashCounter--;
-            if (this.damageFlashCounter <= 0) {
-                this.damageFlashActive = false;
-            }
-        }
+        this.effectsManager.update();
         
         // Increase game speed over time - but more gradually
         if (this.frameCount % 1000 === 0) {
@@ -923,8 +897,7 @@ class Game {
             '#ff0000'
         );
         
-        this.damageFlashActive = true;
-        this.damageFlashCounter = this.damageFlashDuration;
+        this.effectsManager.triggerDamageFlash();
         
         if (this.player.mushroomPowerActive) {
             this.player.deactivateMushroomPower(this.createParticles.bind(this));
@@ -1159,16 +1132,11 @@ class Game {
             particlesDrawn++;
         }
         
-        // Draw damage flash effect
-        if (this.damageFlashActive) {
-            this.ctx.fillStyle = `rgba(255, 0, 0, ${this.damageFlashCounter / this.damageFlashDuration * 0.3})`;
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        }
+        // Draw UI elements
+        this.drawUI();
         
-        // Draw Elon Toasty effect if active
-        if (this.elonToasty.active) {
-            this.drawElonToasty();
-        }
+        // Draw effects
+        this.effectsManager.draw(this.ctx);
     }
     
     animate(timestamp) {
@@ -1421,52 +1389,7 @@ class Game {
     }
     
     triggerElonToasty() {
-        if (!this.elonToasty.active) {
-            this.elonToasty.active = true;
-            this.elonToasty.x = this.canvas.width;
-            this.elonToasty.slideInComplete = false;
-            this.elonToasty.timer = 0;
-            
-            // Play the toasty sound
-            this.soundManager.playSound('toasty', 0.7);
-        }
-    }
-    
-    drawElonToasty() {
-        if (!this.elonToasty.slideInComplete) {
-            // Slide in from right
-            this.elonToasty.x -= this.elonToasty.slideInSpeed;
-            
-            // Check if slide in is complete
-            if (this.elonToasty.x <= this.canvas.width - this.elonToasty.width) {
-                this.elonToasty.slideInComplete = true;
-                this.elonToasty.timer = 0;
-            }
-        } else {
-            // Wait for a moment
-            this.elonToasty.timer++;
-            
-            // Start sliding out after display duration
-            if (this.elonToasty.timer > this.elonToasty.displayDuration) {
-                this.elonToasty.x += this.elonToasty.slideOutSpeed;
-                
-                // Check if completely off screen to deactivate
-                if (this.elonToasty.x > this.canvas.width) {
-                    this.elonToasty.active = false;
-                }
-            }
-        }
-        
-        // Draw the image if it's loaded
-        if (this.elonToasty.image.complete && this.elonToasty.active) {
-            this.ctx.drawImage(
-                this.elonToasty.image,
-                this.elonToasty.x,
-                this.elonToasty.y,
-                this.elonToasty.width,
-                this.elonToasty.height
-            );
-        }
+        this.effectsManager.triggerElonToasty();
     }
     
     // Add a helper method to remove an enemy from all explosion hit sets
@@ -1566,6 +1489,22 @@ class Game {
         
         // Play level change sound
         this.soundManager.playSound('powerUp', 0.5);
+    }
+    
+    // Draw UI elements on the canvas
+    drawUI() {
+        // Only draw UI if game is started
+        if (!this.gameStarted) return;
+        
+        const ctx = this.ctx;
+        
+        // Set text properties
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left';
+        
+        // Draw score
+        ctx.fillText(`Score: ${this.score}`, 20, 30);
     }
 }
 
