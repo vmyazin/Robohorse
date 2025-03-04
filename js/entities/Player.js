@@ -185,6 +185,9 @@ class Player {
             // Apply mushroom power-up damage multiplier if active (increased to 2x)
             const damageMultiplier = this.mushroomPowerActive ? 2 : 1;
             
+            // Check if we're using the Robohorse Cannon
+            const isRobohorseCannonShot = weapon.name === "ROBOHORSE CANNON";
+            
             projectiles.push({
                 x: projX,
                 y: projY,
@@ -196,7 +199,13 @@ class Player {
                 damage: weapon.damage * damageMultiplier,
                 color: weapon.color,
                 isPlayerProjectile: true,
-                isGlowing: weapon.isGlowing || false
+                isGlowing: weapon.isGlowing || false,
+                // Add sine wave properties for Robohorse Cannon
+                isSineWave: isRobohorseCannonShot,
+                sineAmplitude: isRobohorseCannonShot ? 4 : 0, // Amplitude of the sine wave
+                sineFrequency: isRobohorseCannonShot ? 0.05 : 0, // Frequency of the sine wave
+                sinePhase: frameCount * 0.1, // Initial phase based on frame count for variation
+                initialY: projY // Store initial Y position for sine wave calculation
             });
             
             // Add muzzle flash effect
@@ -854,14 +863,19 @@ class Player {
     }
     
     // New method to activate mushroom power-up
-    activateMushroomPower(createParticles) {
-        if (!this.mushroomPowerActive) {
-            // Store original dimensions if not already stored
+    activateMushroomPower(createParticles, playSound) {
+        if (!this.mushroomPowerActive && !this.isGrowing) {
+            // Store original dimensions
             this.originalWidth = this.width;
             this.originalHeight = this.height;
             
             // Create power-up effect particles
             createParticles(this.x + this.width/4, this.y + this.height/4, 30, '#ff0000');
+            
+            // Play power-up sound if provided
+            if (playSound) {
+                playSound();
+            }
             
             // Start the growth animation sequence
             this.isGrowing = true;

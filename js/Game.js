@@ -82,7 +82,9 @@ class Game {
             blasterNeural: new Audio('audio/blaster_shot_snap.mp3'),
             blasterTentacle: new Audio('audio/blaster_shots_pee.mp3'),
             blasterRobo: new Audio('audio/blaster_shots.mp3'),
-            blasterLeg: new Audio('audio/blaster_shots.mp3')
+            blasterLeg: new Audio('audio/blaster_shots.mp3'),
+            // Add power-up sound
+            powerUp: new Audio('audio/power_up.mp3')
         };
 
         // Weapon sound mapping
@@ -122,6 +124,7 @@ class Game {
             this.sounds.blasterTentacle.load();
             this.sounds.blasterRobo.load();
             this.sounds.blasterLeg.load();
+            this.sounds.powerUp.load();
         } catch (e) {
             console.warn('Could not load sound effects:', e);
         }
@@ -508,7 +511,22 @@ class Game {
             const proj = this.projectiles[i];
             
             proj.x += proj.velX;
-            proj.y += proj.velY;
+            
+            // Apply sine wave motion for Robohorse Cannon shots
+            if (proj.isSineWave) {
+                // Update the phase with each frame
+                proj.sinePhase += proj.sineFrequency;
+                // Calculate Y position based on sine wave (around the initial Y position)
+                proj.y = proj.initialY + Math.sin(proj.sinePhase) * proj.sineAmplitude;
+                
+                // Add trailing particle effect for sine wave shots
+                if (this.frameCount % 2 === 0) {
+                    this.createParticles(proj.x + proj.width/2, proj.y + proj.height/2, 1, proj.color);
+                }
+            } else {
+                // Normal straight-line movement for other projectiles
+                proj.y += proj.velY;
+            }
             
             // Remove projectiles that are out of bounds
             if (proj.x < -50 || proj.x > this.canvas.width + 50 || 
@@ -628,6 +646,15 @@ class Game {
             powerUp.y += Math.sin(this.frameCount * 0.1) * 0.5; // Floating effect
             
             if (isColliding(powerUp, this.player)) {
+                // Play power-up sound
+                try {
+                    const powerUpSound = this.sounds.powerUp.cloneNode();
+                    powerUpSound.volume = 0.5;
+                    powerUpSound.play();
+                } catch (e) {
+                    console.warn('Could not play power-up sound:', e);
+                }
+                
                 if (powerUp.type === 'health') {
                     this.player.health = Math.min(this.player.health + 20, this.player.maxHealth);
                     this.updateHealthDisplay();
@@ -636,7 +663,16 @@ class Game {
                     this.player.currentWeaponIndex = (this.player.currentWeaponIndex + 1) % this.weapons.length;
                     this.weaponDisplay.textContent = this.weapons[this.player.currentWeaponIndex].name;
                 } else if (powerUp.type === 'mushroom') {
-                    this.player.activateMushroomPower(this.createParticles.bind(this));
+                    this.player.activateMushroomPower(this.createParticles.bind(this), () => {
+                        // Play mushroom power-up sound
+                        try {
+                            const powerUpSound = this.sounds.powerUp.cloneNode();
+                            powerUpSound.volume = 0.6;
+                            powerUpSound.play();
+                        } catch (e) {
+                            console.warn('Could not play power-up sound:', e);
+                        }
+                    });
                     this.mushroomPowerTimer = 0; // Reset timer when collecting a new mushroom
                 }
                 
@@ -652,6 +688,15 @@ class Game {
             if (isColliding(token, this.player)) {
                 // Add token to player's count if not at max
                 if (this.player.specialAbilityTokens < this.player.maxSpecialAbilityTokens) {
+                    // Play power-up sound
+                    try {
+                        const powerUpSound = this.sounds.powerUp.cloneNode();
+                        powerUpSound.volume = 0.5;
+                        powerUpSound.play();
+                    } catch (e) {
+                        console.warn('Could not play power-up sound:', e);
+                    }
+                    
                     this.player.specialAbilityTokens++;
                     this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
                     this.specialTokens.splice(index, 1);
