@@ -257,7 +257,7 @@ class LevelManager {
                     console.log("Enemy added successfully. Total enemies:", this.game.enemies.length);
                     
                     // Play alien whisper sound when an enemy spawns
-                    this.game.playAlienWhisper();
+                    this.game.soundManager.playAlienWhisper();
                 } catch (error) {
                     console.error("Error creating enemy:", error);
                 }
@@ -269,6 +269,14 @@ class LevelManager {
     // Add new method to return all level definitions
     getAllLevels() {
         return LEVELS;
+    }
+    
+    resetToFirstLevel() {
+        return this.loadLevel(0);
+    }
+    
+    getCurrentLevel() {
+        return this.getLevelData(this.currentLevel);
     }
 }
 

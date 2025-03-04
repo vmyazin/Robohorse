@@ -2,6 +2,8 @@ import Player from './entities/Player.js';
 import Enemy from './entities/Enemy.js';
 import Background from './components/Background.js';
 import LevelManager from './levels/LevelManager.js';
+import SoundManager from './managers/SoundManager.js';
+import InputManager from './managers/InputManager.js';
 import { isColliding } from './utils/helpers.js';
 
 class Game {
@@ -16,36 +18,11 @@ class Game {
         this.frameCount = 0;
         this.lastSpawnTime = 0;
         this.gameSpeed = 1;
-        
-        // Sound state
-        this.soundEnabled = localStorage.getItem('soundEnabled') !== 'false'; // Default to true if not set
-        this.soundToggleElement = document.getElementById('sound-toggle');
-        
-        // Update sound toggle button appearance based on stored preference
-        if (this.soundToggleElement) {
-            if (this.soundEnabled) {
-                this.soundToggleElement.textContent = '🔊';
-                this.soundToggleElement.classList.remove('muted');
-            } else {
-                this.soundToggleElement.textContent = '🔇';
-                this.soundToggleElement.classList.add('muted');
-            }
-        }
-        
-        // Background music
-        this.backgroundMusic = new Audio('audio/soundtrack_1.mp3');
-        this.backgroundMusic.loop = true;
-        this.backgroundMusic.volume = 0.4; // Set a reasonable default volume
-        
-        // Police radio sounds
-        this.policeRadioSound1 = new Audio('audio/police_radio_1.mp3');
-        this.policeRadioSound1.volume = 0.6;
-        this.policeRadioSound2 = new Audio('audio/police_radio_2.mp3');
-        this.policeRadioSound2.volume = 0.6;
-        this.currentPoliceRadioIndex = 0; // To track which radio file to play next
         this.lastPoliceRadioTime = 0;
-        this.policeRadioInterval = this.getRandomInterval(30000, 45000); // Random interval between 30-45 seconds
-        this.initialPoliceRadioDelay = 20000; // 20 seconds delay before first play
+        
+        // Initialize managers
+        this.soundManager = new SoundManager(this);
+        this.inputManager = new InputManager(this);
         
         // Frame rate control - simplified
         this.lastFrameTime = 0;
@@ -98,30 +75,31 @@ class Game {
         console.log("Initializing level manager with enemies array:", this.enemies);
         this.levelManager = new LevelManager(this);
         
-        // Control state
-        this.keys = {};
-        
         // Sound effects
-        this.sounds = {
-            explosion: new Audio('audio/explosion.mp3'),
-            carHit: new Audio('audio/car_hit.mp3'),
-            toasty: new Audio('audio/toasty.mp3'),
-            // Add new weapon sounds
-            blasterGlowing: new Audio('audio/blaster_shot_high.mp3'),
-            blasterNeural: new Audio('audio/blaster_shot_snap.mp3'),
-            blasterTentacle: new Audio('audio/blaster_shots_pee.mp3'),
-            blasterRobo: new Audio('audio/blaster_shots.mp3'),
-            blasterLeg: new Audio('audio/blaster_shots.mp3'),
-            // Add power-up sound
-            powerUp: new Audio('audio/power_up.mp3'),
-            // Add horse scream sound for player death
-            horseScream: new Audio('audio/horse_scream_die.mp3'),
-            // Add alien whisper sounds for enemy spawns
-            alienWhisper1: new Audio('audio/alien_whisper_1.mp3'),
-            alienWhisper2: new Audio('audio/alien_whisper_2.mp3'),
-            alienWhisper3: new Audio('audio/alien_whisper_3.mp3')
+        const soundsConfig = {
+            explosion: 'audio/explosion.mp3',
+            carHit: 'audio/car_hit.mp3',
+            toasty: 'audio/toasty.mp3',
+            // Weapon sounds
+            blasterGlowing: 'audio/blaster_shot_high.mp3',
+            blasterNeural: 'audio/blaster_shot_snap.mp3',
+            blasterTentacle: 'audio/blaster_shots_pee.mp3',
+            blasterRobo: 'audio/blaster_shots.mp3',
+            blasterLeg: 'audio/blaster_shot_leg.mp3',
+            // Other sounds
+            powerUp: 'audio/power_up.mp3',
+            horseScream: 'audio/horse_scream.mp3',
+            alienWhisper1: 'audio/alien_whisper_1.mp3',
+            alienWhisper2: 'audio/alien_whisper_2.mp3',
+            alienWhisper3: 'audio/alien_whisper_3.mp3',
+            backgroundMusic: 'audio/soundtrack_1.mp3',
+            policeRadio1: 'audio/police_radio_1.mp3',
+            policeRadio2: 'audio/police_radio_2.mp3'
         };
-
+        
+        // Initialize sounds in the SoundManager
+        this.soundManager.loadSounds(soundsConfig);
+        
         // Weapon sound mapping
         this.weaponSounds = {
             "GLOWING CANNON": "blasterGlowing",
@@ -147,246 +125,97 @@ class Game {
         };
         this.elonToasty.image.src = 'images/elon.png';
         
-        // Preload sounds
-        try {
-            this.sounds.explosion.load();
-            this.sounds.carHit.load();
-            this.sounds.toasty.load();
-            // Preload weapon sounds
-            this.sounds.blasterGlowing.load();
-            this.sounds.blasterNeural.load();
-            this.sounds.blasterTentacle.load();
-            this.sounds.blasterRobo.load();
-            this.sounds.blasterLeg.load();
-            this.sounds.powerUp.load();
-            // Preload horse scream sound
-            this.sounds.horseScream.load();
-            // Preload alien whisper sounds
-            this.sounds.alienWhisper1.load();
-            this.sounds.alienWhisper2.load();
-            this.sounds.alienWhisper3.load();
-        } catch (e) {
-            console.warn('Could not load sound effects:', e);
-        }
-        
         // Bind event listeners
         this.bindEventListeners();
     }
     
     toggleSound() {
-        this.soundEnabled = !this.soundEnabled;
-        
-        // Save sound preference to localStorage
-        localStorage.setItem('soundEnabled', this.soundEnabled);
-        
-        // Update sound toggle button appearance
-        if (this.soundToggleElement) {
-            if (this.soundEnabled) {
-                this.soundToggleElement.textContent = '🔊';
-                this.soundToggleElement.classList.remove('muted');
-                // Resume background music if game is started
-                if (this.gameStarted && !this.gameOver) {
-                    this.backgroundMusic.play().catch(e => console.warn('Could not play background music:', e));
-                }
-            } else {
-                this.soundToggleElement.textContent = '🔇';
-                this.soundToggleElement.classList.add('muted');
-                // Pause background music
-                this.backgroundMusic.pause();
-            }
-        }
-        
-        console.log(`Sound ${this.soundEnabled ? 'enabled' : 'disabled'}`);
+        this.soundManager.toggleSound();
     }
     
     playSound(soundKey, volume = 0.5) {
-        if (!this.soundEnabled || !this.sounds[soundKey]) return;
-        
-        try {
-            const sound = this.sounds[soundKey].cloneNode();
-            sound.volume = volume;
-            sound.play();
-        } catch (e) {
-            console.warn(`Could not play ${soundKey} sound:`, e);
-        }
+        this.soundManager.playSound(soundKey, volume);
     }
     
     bindEventListeners() {
-        window.addEventListener('keydown', (e) => {
-            this.keys[e.key] = true;
-            
-            // Spacebar functionality
-            if (e.code === 'Space') {
-                // Start game if on start screen
-                if (!this.gameStarted && !this.gameOver) {
-                    this.startGame();
-                }
-                // Restart game if on game over screen
-                else if (this.gameOver) {
-                    this.resetGame();
-                    this.startGame();
-                }
-                // Switch weapon during gameplay
-                else if (this.gameStarted && !this.gameOver) {
-                    const weaponName = this.player.switchWeapon();
-                    this.weaponDisplay.textContent = weaponName;
-                }
-            }
-            
-            // Level navigation with [ and ] keys
-            if (this.gameStarted && !this.gameOver) {
-                if (e.key === '[') {
-                    this.goToPreviousLevel();
-                } else if (e.key === ']') {
-                    this.goToNextLevel();
-                }
-            }
-            
-            // Sound toggle with Ctrl+S
-            if (e.code === 'KeyS' && e.ctrlKey) {
-                e.preventDefault(); // Prevent browser save dialog
-                this.toggleSound();
-            }
-            
-            // Easter egg: Ctrl+E triggers Elon Toasty
-            if (e.code === 'KeyE' && e.ctrlKey && this.gameStarted && !this.gameOver) {
-                e.preventDefault(); // Prevent browser's default behavior
-                this.triggerElonToasty();
-                console.log("Elon Toasty triggered by keyboard shortcut");
-            }
-        });
-
-        window.addEventListener('keyup', (e) => {
-            this.keys[e.key] = false;
-        });
-        
-        // Sound toggle button click handler
-        if (this.soundToggleElement) {
-            this.soundToggleElement.addEventListener('click', () => {
-                this.toggleSound();
-            });
-        }
-        
-        // Add click event listeners for the start and restart instructions
-        const startInstruction = document.getElementById('start-instruction');
-        if (startInstruction) {
-            startInstruction.addEventListener('click', () => {
-                if (!this.gameStarted && !this.gameOver) {
-                    this.startGame();
-                }
-            });
-        }
-        
-        const restartInstruction = document.getElementById('restart-instruction');
-        if (restartInstruction) {
-            restartInstruction.addEventListener('click', () => {
-                if (this.gameOver) {
-                    this.resetGame();
-                    this.startGame();
-                }
-            });
-        }
+        this.inputManager.bindEventListeners();
     }
     
     startGame() {
-        // Reset game state if needed
-        if (this.gameOver) {
-            this.resetGame();
-        }
-        
-        // Initialize level manager
-        if (!this.levelManager) {
-            this.levelManager = new LevelManager(this);
-            this.currentLevel = this.levelManager.loadLevel(0);
-            
-            // Update level display
-            if (this.levelDisplay) {
-                this.levelDisplay.textContent = this.currentLevel.name;
-            }
-            
-            // Show level announcement
-            this.showLevelAnnouncement(this.currentLevel.name);
-            
-            // Check for potential obstacle overlaps in level definitions
-            this.validateLevelObstaclePlacement();
-        }
-        
-        // Set game state
         this.gameStarted = true;
         this.gameOver = false;
         this.startScreen.style.display = 'none';
         
         // Play background music if sound is enabled
-        if (this.soundEnabled) {
-            // Music position is already set in resetGame
-            this.backgroundMusic.play().catch(e => console.warn('Could not play background music:', e));
-        }
+        this.soundManager.playBackgroundMusic();
         
         // Show level announcement when game starts
         const levelData = this.levelManager.getLevelData(this.levelManager.currentLevel);
         this.showLevelAnnouncement(levelData.name);
         
         // Reset police radio timing when starting the game
-        this.lastPoliceRadioTime = performance.now(); // Set to current time to start the delay
+        this.lastPoliceRadioTime = performance.now();
         
         this.animate();
     }
     
     resetGame() {
-        this.player = new Player(this.canvas, this.weapons);
-        this.enemies = [];
-        this.projectiles = [];
-        this.powerUps = [];
-        this.specialTokens = [];
-        this.obstacles = [];
-        this.particles = [];
+        // Reset game state
+        this.gameStarted = false;
+        this.gameOver = false;
         this.score = 0;
+        this.frameCount = 0;
+        this.lastSpawnTime = 0;
         this.gameSpeed = 1;
         
-        // Load first level
-        const levelData = this.levelManager.loadLevel(0);
+        // Reset player by creating a new instance
+        this.player = new Player(this.canvas, this.weapons);
         
-        // Update displays
+        // Clear all game objects
+        this.enemies = [];
+        this.obstacles = [];
+        this.powerUps = [];
+        this.particles = [];
+        this.projectiles = [];
+        this.specialTokens = [];
+        
+        // Reset level manager
+        if (this.levelManager) {
+            this.levelManager.resetToFirstLevel();
+            this.currentLevel = this.levelManager.getCurrentLevel();
+            
+            // Update level display
+            if (this.levelDisplay) {
+                this.levelDisplay.textContent = this.currentLevel.name;
+            }
+        }
+        
+        // Reset UI
+        if (this.scoreDisplay) {
+            this.scoreDisplay.textContent = '0';
+        }
         this.updateHealthDisplay();
-        this.scoreDisplay.textContent = this.score;
-        this.weaponDisplay.textContent = this.weapons[0].name;
-        this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
-        if (this.levelDisplay) {
-            this.levelDisplay.textContent = levelData.name;
-        }
-        this.gameOverScreen.style.display = 'none';
         
-        // Reset and stop background music
-        this.backgroundMusic.pause();
-        
-        // Set music to start from a random position within the first 60 seconds
-        // Only if this is a restart after game over
-        if (this.gameOver) {
-            const randomStartTime = Math.random() * 60; // Random time between 0-60 seconds
-            this.backgroundMusic.currentTime = randomStartTime;
-            console.log(`Music will start from ${randomStartTime.toFixed(2)} seconds`);
-        } else {
-            // If it's the first game, start from the beginning
-            this.backgroundMusic.currentTime = 0;
+        // Hide game over screen
+        if (this.gameOverScreen) {
+            this.gameOverScreen.style.display = 'none';
         }
+        
+        // Stop background music
+        this.soundManager.stopBackgroundMusic();
     }
     
     endGame() {
         this.gameOver = true;
+        this.gameStarted = false;
+        
+        // Update final score display
         this.finalScoreDisplay.textContent = this.score;
         this.gameOverScreen.style.display = 'block';
         
-        // Pause background music
-        this.backgroundMusic.pause();
-        
-        // Stop police radio from playing when game ends
-        this.policeRadioSound1.pause();
-        this.policeRadioSound1.currentTime = 0;
-        this.policeRadioSound2.pause();
-        this.policeRadioSound2.currentTime = 0;
-        
-        // Play horse scream sound when player dies
-        this.playSound('horseScream', 0.7);
+        // Stop background music and play death sound
+        this.soundManager.stopBackgroundMusic();
+        this.soundManager.playSound('horseScream', 0.7);
     }
     
     update() {
@@ -395,17 +224,11 @@ class Game {
         this.frameCount++;
         
         // Update player with sound callback
-        this.player.update(this.keys, this.frameCount, this.createParticles.bind(this), (weaponName) => {
+        this.player.update(this.inputManager.keys, this.frameCount, this.createParticles.bind(this), (weaponName) => {
             // Play weapon sound
             const soundKey = this.weaponSounds[weaponName];
-            if (soundKey && this.sounds[soundKey]) {
-                try {
-                    const sound = this.sounds[soundKey].cloneNode();
-                    sound.volume = 0.3; // Adjust volume as needed
-                    sound.play();
-                } catch (e) {
-                    console.warn('Could not play weapon sound:', e);
-                }
+            if (soundKey) {
+                this.soundManager.playSound(soundKey, 0.3);
             }
         });
         
@@ -452,7 +275,7 @@ class Game {
                         
                         // Play car hit sound for vehicles
                         if (obstacle.type === 'car' || obstacle.type === 'cybertruck') {
-                            this.playSound('carHit', 0.3);
+                            this.soundManager.playSound('carHit', 0.3);
                         }
                         
                         // Handle obstacle damage
@@ -461,7 +284,7 @@ class Game {
                         if (shouldExplode || (obstacle.type === 'box' && obstacle.health <= 0)) {
                             // Play explosion sound for cars/cybertrucks or break sound for boxes
                             if (obstacle.type === 'box') {
-                                this.playSound('carHit', 0.5);
+                                this.soundManager.playSound('carHit', 0.5);
                                 
                                 // Spawn mushroom if box contained one
                                 if (obstacle.containsMushroom) {
@@ -479,7 +302,7 @@ class Game {
                                 // Remove the box
                                 this.obstacles.splice(i, 1);
                             } else {
-                                this.playSound('explosion', 0.5);
+                                this.soundManager.playSound('explosion', 0.5);
                                 
                                 // Trigger explosion but don't remove the car yet
                                 // The car will be removed when the explosion animation completes
@@ -593,26 +416,26 @@ class Game {
         }
         
         // Shooting
-        if (this.keys['x']) {
+        if (this.inputManager.keys['x']) {
             this.player.shoot(this.frameCount, this.projectiles, this.createParticles.bind(this), (weaponName) => {
                 // Play weapon sound
                 const soundKey = this.weaponSounds[weaponName];
                 if (soundKey) {
-                    this.playSound(soundKey, 0.3);
+                    this.soundManager.playSound(soundKey, 0.3);
                 }
             });
         }
         
         // Special ability (stampede mode)
-        if (this.keys['c']) {
+        if (this.inputManager.keys['c']) {
             if (this.player.specialAbility(this.frameCount, this.projectiles, this.createParticles.bind(this), (weaponName) => {
                 // Play weapon sound
                 const soundKey = this.weaponSounds[weaponName];
                 if (soundKey) {
-                    this.playSound(soundKey, 0.3);
+                    this.soundManager.playSound(soundKey, 0.3);
                 }
             })) {
-                // Update special tokens display
+                // Special ability was activated
                 this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
             }
         } else if (this.player.specialAbilityActive) {
@@ -621,7 +444,7 @@ class Game {
                 // Play weapon sound
                 const soundKey = this.weaponSounds[weaponName];
                 if (soundKey) {
-                    this.playSound(soundKey, 0.3);
+                    this.soundManager.playSound(soundKey, 0.3);
                 }
             })) {
                 // Update special tokens display
@@ -856,7 +679,7 @@ class Game {
             
             if (isColliding(powerUp, this.player)) {
                 // Play power-up sound
-                this.playSound('powerUp', 0.5);
+                this.soundManager.playSound('powerUp', 0.5);
                 
                 if (powerUp.type === 'health') {
                     this.player.health = Math.min(this.player.health + 20, this.player.maxHealth);
@@ -868,7 +691,7 @@ class Game {
                 } else if (powerUp.type === 'mushroom') {
                     this.player.activateMushroomPower(this.createParticles.bind(this), () => {
                         // Play mushroom power-up sound
-                        this.playSound('powerUp', 0.6);
+                        this.soundManager.playSound('powerUp', 0.6);
                     });
                 }
                 
@@ -893,7 +716,7 @@ class Game {
                 // Add token to player's count if not at max
                 if (this.player.specialAbilityTokens < this.player.maxSpecialAbilityTokens) {
                     // Play power-up sound
-                    this.playSound('powerUp', 0.5);
+                    this.soundManager.playSound('powerUp', 0.5);
                     
                     this.player.specialAbilityTokens++;
                     this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
@@ -1029,6 +852,17 @@ class Game {
                         }
                     }
                 }
+            }
+        }
+        
+        // Check if it's time to play police radio sound
+        if (this.gameStarted && !this.gameOver) {
+            const timeElapsedSinceStart = !this.lastPoliceRadioTime ? 0 : performance.now() - this.lastPoliceRadioTime;
+            
+            // Check if initial delay has passed before playing the first radio sound
+            if (this.lastPoliceRadioTime && timeElapsedSinceStart >= (this.lastPoliceRadioTime === performance.now() ? 20000 : this.soundManager.policeRadioInterval)) {
+                this.soundManager.playPoliceRadio();
+                this.lastPoliceRadioTime = performance.now();
             }
         }
     }
@@ -1268,7 +1102,7 @@ class Game {
         }
         
         // Draw player
-        this.player.draw(this.ctx, this.frameCount, this.keys);
+        this.player.draw(this.ctx, this.frameCount, this.inputManager.keys);
         
         // Draw enemies - use simple for loop instead of filter for better performance
         for (let i = 0; i < this.enemies.length; i++) {
@@ -1341,17 +1175,6 @@ class Game {
         const deltaTime = timestamp - this.lastFrameTime;
         this.lastFrameTime = timestamp;
         
-        // Check if it's time to play police radio sound
-        if (this.gameStarted && !this.gameOver && this.soundEnabled) {
-            const timeElapsedSinceStart = !this.lastPoliceRadioTime ? 0 : timestamp - this.lastPoliceRadioTime;
-            
-            // Check if initial delay has passed before playing the first radio sound
-            if (this.lastPoliceRadioTime && timeElapsedSinceStart >= (this.lastPoliceRadioTime === performance.now() ? this.initialPoliceRadioDelay : this.policeRadioInterval)) {
-                this.playPoliceRadio();
-                this.lastPoliceRadioTime = timestamp;
-            }
-        }
-        
         if (!this.gameOver) {
             // Update game state
             this.update();
@@ -1388,6 +1211,11 @@ class Game {
         }
         
         this.enemies.push(new Enemy(x, y, type, this.canvas));
+        
+        // Play alien whisper sound occasionally when enemies spawn
+        if (Math.random() < 0.3) { // 30% chance to play the sound
+            this.soundManager.playAlienWhisper();
+        }
     }
     
     spawnPowerUp(x, y) {
@@ -1593,7 +1421,6 @@ class Game {
     }
     
     triggerElonToasty() {
-        // Only trigger if not already active
         if (!this.elonToasty.active) {
             this.elonToasty.active = true;
             this.elonToasty.x = this.canvas.width;
@@ -1601,7 +1428,7 @@ class Game {
             this.elonToasty.timer = 0;
             
             // Play the toasty sound
-            this.playSound('toasty', 0.7);
+            this.soundManager.playSound('toasty', 0.7);
         }
     }
     
@@ -1639,54 +1466,6 @@ class Game {
                 this.elonToasty.width,
                 this.elonToasty.height
             );
-        }
-    }
-    
-    // Helper method to get random interval for police radio
-    getRandomInterval(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-    
-    // Method to play police radio sound
-    playPoliceRadio() {
-        if (!this.soundEnabled) return;
-        
-        try {
-            // Alternate between the two radio sounds
-            if (this.currentPoliceRadioIndex === 0) {
-                this.policeRadioSound1.currentTime = 0;
-                this.policeRadioSound1.play();
-                this.currentPoliceRadioIndex = 1;
-            } else {
-                this.policeRadioSound2.currentTime = 0;
-                this.policeRadioSound2.play();
-                this.currentPoliceRadioIndex = 0;
-            }
-            
-            // Set a new random interval for the next radio sound
-            this.policeRadioInterval = this.getRandomInterval(30000, 45000);
-        } catch (e) {
-            console.warn('Could not play police radio sound:', e);
-        }
-    }
-    
-    // Method to play a random alien whisper sound when enemies spawn
-    playAlienWhisper() {
-        if (!this.soundEnabled) return;
-        
-        try {
-            // Choose a random whisper sound (1-3)
-            const randomWhisper = Math.floor(Math.random() * 3) + 1;
-            const whisperSound = this.sounds[`alienWhisper${randomWhisper}`];
-            
-            // Set appropriate volume
-            whisperSound.volume = 0.7;
-            
-            // Reset playback position and play the sound
-            whisperSound.currentTime = 0;
-            whisperSound.play();
-        } catch (e) {
-            console.warn('Could not play alien whisper sound:', e);
         }
     }
     
@@ -1765,10 +1544,7 @@ class Game {
         this.showLevelAnnouncement(levelData.name);
         
         // Play level change sound
-        if (this.audioElements && this.audioElements.powerUp) {
-            this.audioElements.powerUp.currentTime = 0;
-            this.audioElements.powerUp.play().catch(e => console.error("Error playing power-up sound:", e));
-        }
+        this.soundManager.playSound('powerUp', 0.5);
     }
     
     goToPreviousLevel() {
@@ -1789,10 +1565,7 @@ class Game {
         this.showLevelAnnouncement(levelData.name);
         
         // Play level change sound
-        if (this.audioElements && this.audioElements.powerUp) {
-            this.audioElements.powerUp.currentTime = 0;
-            this.audioElements.powerUp.play().catch(e => console.error("Error playing power-up sound:", e));
-        }
+        this.soundManager.playSound('powerUp', 0.5);
     }
 }
 
