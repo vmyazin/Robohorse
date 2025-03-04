@@ -127,11 +127,13 @@ class Player {
         if (this.standingOnObstacle.type === 'box') {
             // We need to be landing with sufficient velocity OR jumping and landing on the box
             if (this.isLanding || this.lastVelY >= this.landingThreshold) {
-                // Apply smash damage (always 1 damage per jump for boxes)
-                const isDestroyed = this.standingOnObstacle.takeDamage(1);
+                // Apply smash damage - if mushroom power is active, destroy in one stomp
+                // Otherwise, still require 2 stomps
+                const damageAmount = this.mushroomPowerActive ? 2 : 1;
+                const isDestroyed = this.standingOnObstacle.takeDamage(damageAmount);
                 
-                // Create particles for visual effect - more particles on second jump
-                const particleCount = this.standingOnObstacle.jumpCount === 2 ? 25 : 15;
+                // Create particles for visual effect - more particles on second jump or when powered up
+                const particleCount = this.mushroomPowerActive || this.standingOnObstacle.jumpCount === 2 ? 25 : 15;
                 createParticles(
                     this.standingOnObstacle.x + this.standingOnObstacle.width/2, 
                     this.standingOnObstacle.y, 
@@ -139,8 +141,8 @@ class Player {
                     '#a67c52'
                 );
                 
-                // Add a stronger upward bounce on the second jump
-                if (this.standingOnObstacle.jumpCount === 2) {
+                // Add a stronger upward bounce on the second jump or when powered up
+                if (this.mushroomPowerActive || this.standingOnObstacle.jumpCount === 2) {
                     this.velY = -4; // Stronger bounce on final smash
                     
                     // Add extra wood splinter particles
@@ -148,17 +150,16 @@ class Player {
                         setTimeout(() => {
                             createParticles(
                                 this.standingOnObstacle.x + Math.random() * this.standingOnObstacle.width, 
-                                this.standingOnObstacle.y + Math.random() * this.standingOnObstacle.height, 
-                                5, 
-                                '#8d6a4b'
+                                this.standingOnObstacle.y, 
+                                10, 
+                                '#a67c52'
                             );
                         }, i * 100);
                     }
                 } else {
-                    this.velY = -2; // Normal bounce on first jump
+                    this.velY = -2; // Normal bounce on first hit
                 }
                 
-                // Return true if box was destroyed
                 return isDestroyed;
             }
         }
@@ -172,8 +173,8 @@ class Player {
             const projX = this.x + (this.direction > 0 ? this.width : 0);
             const projY = this.y + this.height / 2 - weapon.height / 2;
             
-            // Apply mushroom power-up damage multiplier if active
-            const damageMultiplier = this.mushroomPowerActive ? 1.5 : 1;
+            // Apply mushroom power-up damage multiplier if active (increased to 2x)
+            const damageMultiplier = this.mushroomPowerActive ? 2 : 1;
             
             projectiles.push({
                 x: projX,
