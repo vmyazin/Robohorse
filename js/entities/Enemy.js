@@ -16,12 +16,16 @@ class Enemy {
         this.color = type.color;
         this.tentacles = type.tentacles;
         
-        // Reduce aggression factor for less aggressive pursuit
-        this.aggressionFactor = 0.8 + Math.random() * 0.4; // 0.8-1.2 (was 1.2-1.7)
+        // Increase aggression factor for more curious behavior
+        this.aggressionFactor = 1.5 + Math.random() * 0.5; // 1.5-2.0 for more aggressive pursuit
         
-        // Add persistence timer to prevent rapid direction changes
-        this.directionChangeTimer = 0;
-        this.maxDirectionChangeTime = 40; // frames
+        // Add curiosity behavior parameters
+        this.curiosityRadius = 300; // Distance at which enemy becomes curious
+        this.orbitSpeed = 0.02; // Speed of orbiting behavior
+        this.orbitAngle = Math.random() * Math.PI * 2; // Random starting angle
+        this.behaviorState = 'curious'; // Can be 'curious' or 'aggressive'
+        this.stateSwitchTimer = 0;
+        this.stateSwitchInterval = 120; // Frames before considering state switch
         
         // Add a target position offset to create more varied movement
         this.targetOffsetX = (Math.random() - 0.5) * 80;
@@ -68,18 +72,42 @@ class Enemy {
             const dy = targetY - this.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
             
-            // Enemy AI - follow player with persistence and compensate for scrolling
-            if ((frameCount % 20 === 0 && this.directionChangeTimer === 0) || dist > 200) {
-                // Only update direction if timer expired or enemy is far from player
-                
-                // Calculate direction to player with scrolling compensation
-                if (dist > 0) { // Prevent division by zero
-                    // Add extra velocity to the right to compensate for level scrolling
-                    this.velX = (dx / dist) * this.speed * this.aggressionFactor + this.scrollCompensation;
-                    this.velY = (dy / dist) * this.speed * this.aggressionFactor;
+            // Update behavior state
+            if (this.stateSwitchTimer <= 0) {
+                if (dist < this.curiosityRadius) {
+                    // Close to player - switch between curious and aggressive
+                    this.behaviorState = Math.random() < 0.7 ? 'curious' : 'aggressive';
+                } else {
+                    // Far from player - become curious
+                    this.behaviorState = 'curious';
+                }
+                this.stateSwitchTimer = this.stateSwitchInterval;
+            } else {
+                this.stateSwitchTimer--;
+            }
+            
+            // Enemy AI - different behaviors based on state
+            if (this.directionChangeTimer === 0 || dist > 200) {
+                if (this.behaviorState === 'curious') {
+                    // Orbit around the player when curious
+                    this.orbitAngle += this.orbitSpeed;
+                    const orbitRadius = Math.min(dist, this.curiosityRadius * 0.7);
+                    const orbitX = targetX + Math.cos(this.orbitAngle) * orbitRadius;
+                    const orbitY = targetY + Math.sin(this.orbitAngle) * orbitRadius;
+                    
+                    const toDest = Math.sqrt(Math.pow(orbitX - this.x, 2) + Math.pow(orbitY - this.y, 2));
+                    if (toDest > 0) {
+                        this.velX = ((orbitX - this.x) / toDest) * this.speed * this.aggressionFactor + this.scrollCompensation;
+                        this.velY = ((orbitY - this.y) / toDest) * this.speed * this.aggressionFactor;
+                    }
+                } else {
+                    // Direct pursuit when aggressive
+                    if (dist > 0) {
+                        this.velX = (dx / dist) * this.speed * this.aggressionFactor + this.scrollCompensation;
+                        this.velY = (dy / dist) * this.speed * this.aggressionFactor;
+                    }
                 }
                 
-                // Set direction change timer
                 this.directionChangeTimer = this.maxDirectionChangeTime;
             }
             
