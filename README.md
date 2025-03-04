@@ -1,6 +1,6 @@
 # Gallop Protocol
 
-A side-scrolling action game where you control Neigh-O-Tron, a six-legged cyber-horse, against the invading Cephalopod Armada!
+A side-scrolling action game where you control RoboHorse, a six-legged cyber-horse, against the invading Cephalopod Armada!
 
 ## Game Features
 
@@ -59,6 +59,6 @@ The game is built with vanilla JavaScript using a modular approach:
 
 ## Credits
 
-Developed as a demonstration of HTML5 Canvas and JavaScript game development.
+Developed as a demonstration of HTML5 Canvas and JavaScript game development by Vasily Simon + Cursor + Claude Sonnet.
 
 Enjoy the game! 

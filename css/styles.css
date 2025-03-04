@@ -168,4 +168,16 @@ button:hover {
     top: 80px;
     opacity: 0;
     transition: opacity 0.8s ease-in;
+}
+
+.clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 8px 12px;
+    border-radius: 5px;
+}
+
+.clickable:hover {
+    background-color: rgba(51, 102, 255, 0.3);
+    box-shadow: 0 0 10px #36f;
 } 

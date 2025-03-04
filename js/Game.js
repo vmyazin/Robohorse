@@ -113,10 +113,22 @@ class Game {
         window.addEventListener('keydown', (e) => {
             this.keys[e.key] = true;
             
-            // Weapon switching
-            if (e.code === 'Space' && this.gameStarted && !this.gameOver) {
-                const weaponName = this.player.switchWeapon();
-                this.weaponDisplay.textContent = weaponName;
+            // Spacebar functionality
+            if (e.code === 'Space') {
+                // Start game if on start screen
+                if (!this.gameStarted && !this.gameOver) {
+                    this.startGame();
+                }
+                // Restart game if on game over screen
+                else if (this.gameOver) {
+                    this.resetGame();
+                    this.startGame();
+                }
+                // Switch weapon during gameplay
+                else if (this.gameStarted && !this.gameOver) {
+                    const weaponName = this.player.switchWeapon();
+                    this.weaponDisplay.textContent = weaponName;
+                }
             }
             
             // Easter egg: Ctrl+E triggers Elon Toasty
@@ -130,15 +142,26 @@ class Game {
         window.addEventListener('keyup', (e) => {
             this.keys[e.key] = false;
         });
-
-        document.getElementById('start-button').addEventListener('click', () => {
-            this.startGame();
-        });
-
-        document.getElementById('restart-button').addEventListener('click', () => {
-            this.resetGame();
-            this.startGame();
-        });
+        
+        // Add click event listeners for the start and restart instructions
+        const startInstruction = document.getElementById('start-instruction');
+        if (startInstruction) {
+            startInstruction.addEventListener('click', () => {
+                if (!this.gameStarted && !this.gameOver) {
+                    this.startGame();
+                }
+            });
+        }
+        
+        const restartInstruction = document.getElementById('restart-instruction');
+        if (restartInstruction) {
+            restartInstruction.addEventListener('click', () => {
+                if (this.gameOver) {
+                    this.resetGame();
+                    this.startGame();
+                }
+            });
+        }
     }
     
     startGame() {
