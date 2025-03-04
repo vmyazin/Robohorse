@@ -1,4 +1,4 @@
-# Gallop Protocol
+# RoboHorse Gallop
 
 A side-scrolling action game where you control RoboHorse, a six-legged cyber-horse, against the invading Cephalopod Armada!
 
@@ -45,7 +45,7 @@ The latest update improves vehicle destruction mechanics:
 
 ## Running the Game
 
-Simply open `gallop-protocol-game-modular.html` in a web browser to play.
+Simply open `index.html` in a web browser to play.
 
 ## Development
 
