@@ -92,7 +92,6 @@ class Game {
         
         // Sound effects
         this.sounds = {
-            levelAnnounce: new Audio('sounds/level_announce.mp3'),
             explosion: new Audio('audio/explosion.mp3'),
             carHit: new Audio('audio/car_hit.mp3'),
             toasty: new Audio('audio/toasty.mp3'),
@@ -139,7 +138,6 @@ class Game {
         
         // Preload sounds
         try {
-            this.sounds.levelAnnounce.load();
             this.sounds.explosion.load();
             this.sounds.carHit.load();
             this.sounds.toasty.load();
@@ -218,6 +216,15 @@ class Game {
                 else if (this.gameStarted && !this.gameOver) {
                     const weaponName = this.player.switchWeapon();
                     this.weaponDisplay.textContent = weaponName;
+                }
+            }
+            
+            // Level navigation with [ and ] keys
+            if (this.gameStarted && !this.gameOver) {
+                if (e.key === '[') {
+                    this.goToPreviousLevel();
+                } else if (e.key === ']') {
+                    this.goToNextLevel();
                 }
             }
             
@@ -1513,9 +1520,6 @@ class Game {
         // Add the active class to slide in
         this.levelAnnouncement.classList.add('active');
         
-        // Play sound effect
-        this.playSound('levelAnnounce');
-        
         // Set a timeout to fade out after 3 seconds
         setTimeout(() => {
             this.levelAnnouncement.classList.remove('active');
@@ -1725,6 +1729,55 @@ class Game {
                         `Consider increasing distance to at least ${minSafeDistance} pixels.`);
                 }
             }
+        }
+    }
+    
+    // Add level navigation methods
+    goToNextLevel() {
+        if (!this.levelManager) return;
+        
+        const allLevels = this.levelManager.getAllLevels();
+        const nextLevelIndex = (this.levelManager.currentLevel + 1) % allLevels.length;
+        
+        console.log(`Navigating to next level: ${nextLevelIndex + 1}`);
+        const levelData = this.levelManager.loadLevel(nextLevelIndex);
+        
+        // Update level display
+        if (this.levelDisplay) {
+            this.levelDisplay.textContent = levelData.name;
+        }
+        
+        // Show level announcement
+        this.showLevelAnnouncement(levelData.name);
+        
+        // Play level change sound
+        if (this.audioElements && this.audioElements.powerUp) {
+            this.audioElements.powerUp.currentTime = 0;
+            this.audioElements.powerUp.play().catch(e => console.error("Error playing power-up sound:", e));
+        }
+    }
+    
+    goToPreviousLevel() {
+        if (!this.levelManager) return;
+        
+        const allLevels = this.levelManager.getAllLevels();
+        const prevLevelIndex = (this.levelManager.currentLevel - 1 + allLevels.length) % allLevels.length;
+        
+        console.log(`Navigating to previous level: ${prevLevelIndex + 1}`);
+        const levelData = this.levelManager.loadLevel(prevLevelIndex);
+        
+        // Update level display
+        if (this.levelDisplay) {
+            this.levelDisplay.textContent = levelData.name;
+        }
+        
+        // Show level announcement
+        this.showLevelAnnouncement(levelData.name);
+        
+        // Play level change sound
+        if (this.audioElements && this.audioElements.powerUp) {
+            this.audioElements.powerUp.currentTime = 0;
+            this.audioElements.powerUp.play().catch(e => console.error("Error playing power-up sound:", e));
         }
     }
 }
