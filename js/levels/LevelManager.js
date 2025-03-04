@@ -99,9 +99,38 @@ class LevelManager {
             obstacle.update();
         }
         
+        // Prevent obstacle overlapping by adjusting positions
+        this.preventObstacleOverlap();
+        
         // We're removing this code that applies level scrolling to enemies
         // since we want them to move independently of the view
         // Enemies will now compensate for scrolling in their own update method
+    }
+    
+    // New method to prevent obstacles from overlapping during movement
+    preventObstacleOverlap() {
+        const obstacles = this.game.obstacles;
+        if (!obstacles || obstacles.length <= 1) return;
+        
+        // Sort obstacles by x position to make collision checks more efficient
+        obstacles.sort((a, b) => a.x - b.x);
+        
+        // Minimum distance between obstacles
+        const MIN_DISTANCE = 20;
+        
+        // Check consecutive obstacles for potential overlap
+        for (let i = 0; i < obstacles.length - 1; i++) {
+            const current = obstacles[i];
+            const next = obstacles[i + 1];
+            
+            // Check if these obstacles are too close together
+            const distance = next.x - (current.x + current.width);
+            
+            if (distance < MIN_DISTANCE && distance > -current.width) { // Overlapping or too close
+                // Push the next obstacle away to maintain minimum distance
+                next.x = current.x + current.width + MIN_DISTANCE;
+            }
+        }
     }
     
     updateLevelElements() {
@@ -134,11 +163,61 @@ class LevelManager {
         // Calculate the x position more accurately to ensure enemies spawn at the right edge of the screen
         // Instead of adding the full element.position, we calculate the relative position from current view
         const relativePosition = element.position - (this.levelProgress * this.levelLength);
-        const x = this.game.canvas.width + Math.min(relativePosition, 200); // Cap at 200px beyond right edge
+        let x = this.game.canvas.width + Math.min(relativePosition, 200); // Cap at 200px beyond right edge
         
         switch (element.type) {
             case 'obstacle':
                 const obstacle = new Obstacle(x, 0, element.subtype, this.game.canvas);
+                
+                // Check for collisions with existing obstacles and adjust position if needed
+                let collisionFound = false;
+                let collisionCheckAttempts = 0;
+                const MAX_COLLISION_ATTEMPTS = 10;
+                
+                // Initial position setup - it starts at the bottom of canvas by default in the Obstacle constructor
+                // Verify y position is set properly (we're not changing it from the Obstacle constructor)
+                obstacle.y = this.game.canvas.height - 50 - obstacle.height;
+                
+                do {
+                    collisionFound = false;
+                    collisionCheckAttempts++;
+                    
+                    // Check for collisions with existing obstacles
+                    for (let i = 0; i < this.game.obstacles.length; i++) {
+                        const existingObstacle = this.game.obstacles[i];
+                        
+                        // Skip obstacles that are too far away to be relevant
+                        if (existingObstacle.x + existingObstacle.width < 0 || 
+                            existingObstacle.x > this.game.canvas.width + 400) {
+                            continue;
+                        }
+                        
+                        // Check if the new obstacle would overlap with an existing one
+                        if (obstacle.x < existingObstacle.x + existingObstacle.width &&
+                            obstacle.x + obstacle.width > existingObstacle.x &&
+                            obstacle.y < existingObstacle.y + existingObstacle.height &&
+                            obstacle.y + obstacle.height > existingObstacle.y) {
+                            
+                            collisionFound = true;
+                            
+                            // Move the new obstacle a bit further to avoid overlap
+                            // Add the width of the existing obstacle plus a small gap
+                            const gap = 20; // Gap between obstacles
+                            obstacle.x = existingObstacle.x + existingObstacle.width + gap;
+                            
+                            break;
+                        }
+                    }
+                    
+                    // Break the loop if we've tried too many times to prevent infinite loops
+                    if (collisionCheckAttempts >= MAX_COLLISION_ATTEMPTS) {
+                        console.log("Warning: Maximum collision adjustment attempts reached for obstacle");
+                        break;
+                    }
+                    
+                } while (collisionFound);
+                
+                // Now we can safely add the obstacle
                 this.game.obstacles.push(obstacle);
                 break;
             case 'enemy':
@@ -182,6 +261,11 @@ class LevelManager {
                 break;
             // Add more element types as needed
         }
+    }
+    
+    // Add new method to return all level definitions
+    getAllLevels() {
+        return LEVELS;
     }
 }
 

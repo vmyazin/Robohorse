@@ -260,6 +260,29 @@ class Game {
     }
     
     startGame() {
+        // Reset game state if needed
+        if (this.gameOver) {
+            this.resetGame();
+        }
+        
+        // Initialize level manager
+        if (!this.levelManager) {
+            this.levelManager = new LevelManager(this);
+            this.currentLevel = this.levelManager.loadLevel(0);
+            
+            // Update level display
+            if (this.levelDisplay) {
+                this.levelDisplay.textContent = this.currentLevel.name;
+            }
+            
+            // Show level announcement
+            this.showLevelAnnouncement(this.currentLevel.name);
+            
+            // Check for potential obstacle overlaps in level definitions
+            this.validateLevelObstaclePlacement();
+        }
+        
+        // Set game state
         this.gameStarted = true;
         this.gameOver = false;
         this.startScreen.style.display = 'none';
@@ -1483,6 +1506,49 @@ class Game {
             console.log('Playing police radio', this.currentPoliceRadioIndex === 0 ? '2' : '1', ', next in', this.policeRadioInterval/1000, 'seconds');
         } catch (e) {
             console.warn('Could not play police radio sound:', e);
+        }
+    }
+    
+    // Add new helper method to validate level obstacle placement
+    validateLevelObstaclePlacement() {
+        // Get all levels from the level manager
+        const allLevels = this.levelManager.getAllLevels();
+        
+        for (let levelIndex = 0; levelIndex < allLevels.length; levelIndex++) {
+            const level = allLevels[levelIndex];
+            const obstacles = level.elements.filter(e => e.type === 'obstacle');
+            
+            // Sort by position to check consecutive obstacles
+            obstacles.sort((a, b) => a.position - b.position);
+            
+            // Check for potential overlaps in the level definition
+            for (let i = 0; i < obstacles.length - 1; i++) {
+                const current = obstacles[i];
+                const next = obstacles[i + 1];
+                
+                // Estimate obstacle width based on subtype
+                let currentWidth = 50;  // default width
+                let nextWidth = 50;     // default width
+                
+                if (current.subtype === 'car') currentWidth = 180;
+                if (current.subtype === 'cybertruck') currentWidth = 200;
+                if (current.subtype === 'box') currentWidth = 40;
+                
+                if (next.subtype === 'car') nextWidth = 180;
+                if (next.subtype === 'cybertruck') nextWidth = 200;
+                if (next.subtype === 'box') nextWidth = 40;
+                
+                // Check if there's enough space between obstacles
+                const distance = next.position - current.position;
+                const minSafeDistance = currentWidth + 20; // width of current + safe margin
+                
+                if (distance < minSafeDistance) {
+                    console.warn(`Potential obstacle overlap in level ${levelIndex + 1} "${level.name}": ` +
+                        `${current.subtype} (id: ${current.id}) at position ${current.position} ` +
+                        `may overlap with ${next.subtype} (id: ${next.id}) at position ${next.position}. ` + 
+                        `Consider increasing distance to at least ${minSafeDistance} pixels.`);
+                }
+            }
         }
     }
 }
