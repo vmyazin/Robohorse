@@ -153,10 +153,15 @@ class Enemy {
                 this.y = 0;
             }
             
-            // Bottom boundary
-            if (this.y > this.canvas.height - this.height) {
+            // Bottom boundary - Improved to prevent enemies from going too far below floor level
+            // The canvas.height - this.height - 30 limit ensures enemies stay at least partly visible
+            // and accessible above the floor level (which is at canvas.height - 50)
+            const floorLevel = this.canvas.height - 50; // Same as the floor level in Player.js
+            const accessibilityMargin = 20; // How much of the enemy should remain above floor for accessibility
+            
+            if (this.y + this.height > floorLevel + accessibilityMargin) {
                 this.velY = -Math.abs(this.velY) * bounceStrength;
-                this.y = this.canvas.height - this.height;
+                this.y = floorLevel + accessibilityMargin - this.height;
             }
             
             // If enemy is far from player, increase speed to catch up

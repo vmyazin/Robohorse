@@ -633,6 +633,28 @@ class Game {
                 proj.y += proj.velY;
             }
             
+            // Ensure projectiles don't go below the floor level
+            const floorLevel = this.canvas.height - 50;
+            const accessibilityMargin = 5; // Small margin for projectiles
+            if (proj.y + proj.height > floorLevel + accessibilityMargin) {
+                if (Math.random() < 0.7 || !proj.isPlayerProjectile) {
+                    // Most projectiles hitting the floor should be removed
+                    this.projectiles.splice(i, 1);
+                    // Create impact particles
+                    this.createParticles(
+                        proj.x + proj.width / 2,
+                        floorLevel,
+                        5,
+                        proj.color
+                    );
+                    continue;
+                } else {
+                    // Some projectiles might bounce with reduced velocity
+                    proj.velY = -proj.velY * 0.4;
+                    proj.y = floorLevel + accessibilityMargin - proj.height;
+                }
+            }
+            
             // Remove projectiles that are out of bounds
             if (proj.x < -50 || proj.x > this.canvas.width + 50 || 
                 proj.y < -50 || proj.y > this.canvas.height + 50) {
@@ -750,6 +772,13 @@ class Game {
         this.powerUps.forEach((powerUp, index) => {
             powerUp.y += Math.sin(this.frameCount * 0.1) * 0.5; // Floating effect
             
+            // Ensure power-ups don't go below the floor level
+            const floorLevel = this.canvas.height - 50; // Same floor level as used for player
+            const accessibilityMargin = 10; // Smaller margin than enemies for better visibility
+            if (powerUp.y + powerUp.height > floorLevel + accessibilityMargin) {
+                powerUp.y = floorLevel + accessibilityMargin - powerUp.height;
+            }
+            
             if (isColliding(powerUp, this.player)) {
                 // Play power-up sound
                 this.playSound('powerUp', 0.5);
@@ -778,6 +807,13 @@ class Game {
         this.specialTokens.forEach((token, index) => {
             token.y += Math.sin(this.frameCount * 0.1) * 0.5; // Floating effect
             
+            // Ensure special tokens don't go below the floor level
+            const floorLevel = this.canvas.height - 50; // Same floor level as used for player
+            const accessibilityMargin = 10; // Smaller margin than enemies for better visibility
+            if (token.y + token.height > floorLevel + accessibilityMargin) {
+                token.y = floorLevel + accessibilityMargin - token.height;
+            }
+            
             if (isColliding(token, this.player)) {
                 // Add token to player's count if not at max
                 if (this.player.specialAbilityTokens < this.player.maxSpecialAbilityTokens) {
@@ -802,6 +838,17 @@ class Game {
             particle.x += particle.velX;
             particle.y += particle.velY;
             particle.size -= 0.1;
+            
+            // Ensure particles don't go below the floor level
+            const floorLevel = this.canvas.height - 50;
+            if (particle.y > floorLevel) {
+                // For particles below floor level, either bounce them up or make them fade faster
+                if (Math.random() < 0.5) {
+                    particle.velY = -particle.velY * 0.5; // Bounce with reduced velocity
+                } else {
+                    particle.size -= 0.3; // Make it fade faster
+                }
+            }
             
             if (particle.size <= 0) {
                 this.particles.splice(index, 1);
@@ -1291,6 +1338,13 @@ class Game {
                 size = 20;
         }
         
+        // Ensure power-up doesn't spawn below floor level
+        const floorLevel = this.canvas.height - 50;
+        const accessibilityMargin = 10;
+        if (y + size > floorLevel + accessibilityMargin) {
+            y = floorLevel + accessibilityMargin - size;
+        }
+        
         this.powerUps.push({
             x,
             y,
@@ -1302,11 +1356,20 @@ class Game {
     }
     
     spawnSpecialToken(x, y) {
+        // Ensure special token doesn't spawn below floor level
+        const floorLevel = this.canvas.height - 50;
+        const accessibilityMargin = 10;
+        const tokenSize = 20;
+        
+        if (y + tokenSize > floorLevel + accessibilityMargin) {
+            y = floorLevel + accessibilityMargin - tokenSize;
+        }
+        
         this.specialTokens.push({
             x,
             y,
-            width: 20,
-            height: 20,
+            width: tokenSize,
+            height: tokenSize,
             color: '#ff00ff'
         });
     }
@@ -1346,6 +1409,15 @@ class Game {
     
     // Add a new method to spawn mushroom power-ups
     spawnMushroomPowerUp(x, y) {
+        // Ensure mushroom doesn't spawn below floor level
+        const floorLevel = this.canvas.height - 50;
+        const accessibilityMargin = 10;
+        const size = 25;
+        
+        if (y + size > floorLevel + accessibilityMargin) {
+            y = floorLevel + accessibilityMargin - size;
+        }
+        
         this.powerUps.push({
             x,
             y,
