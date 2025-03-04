@@ -168,6 +168,11 @@ class Game {
         this.gameStarted = true;
         this.gameOver = false;
         this.startScreen.style.display = 'none';
+        
+        // Show level announcement when game starts
+        const levelData = this.levelManager.getLevelData(this.levelManager.currentLevel);
+        this.showLevelAnnouncement(levelData.name);
+        
         this.animate();
     }
     
@@ -194,9 +199,6 @@ class Game {
             this.levelDisplay.textContent = levelData.name;
         }
         this.gameOverScreen.style.display = 'none';
-        
-        // Show level announcement
-        this.showLevelAnnouncement(levelData.name);
     }
     
     endGame() {
