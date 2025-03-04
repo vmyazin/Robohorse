@@ -1,7 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallop Protocol - Modular Version</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="1000" height="600"></canvas>
+        <div id="level-announcement"></div>
+        <div id="hud">
+            <div class="health-container">
+                <div class="health-label">HEALTH:</div>
+                <div class="health-bar-container">
+                    <div id="health-bar" class="health-bar"></div>
+                </div>
+                <div id="health-value">100</div>
+            </div>
+            <div class="hud-separator">|</div>
+            SCORE: <span id="score">0</span> 
+            <div class="hud-separator">|</div>
+            WEAPON: <span id="weapon">NEURAL BEAM</span> 
+            <div class="hud-separator">|</div>
+            SPECIAL: <span id="special-tokens">0</span> 
+            <div class="hud-separator">|</div>
+            LEVEL: <span id="level">Training Grounds</span>
+        </div>
+        <div id="game-over">
+            GAME OVER<br>
+            FINAL SCORE: <span id="final-score">0</span><br>
+            <p id="restart-instruction" class="clickable">Press <span class="control-key">SPACE</span> to restart</p>
+        </div>
         <div id="start-screen">
-            <h1>ROBOHORSE</h1>
-            <p>Use arrow keys to move, space to switch weapons, and Z to fire.</p>
-            <p>Collect power-ups and destroy enemies to score points!</p>
-            <p><small>Psst... try Ctrl+E for a surprise!</small></p>
-            <button id="start-button">START GAME</button>
-        </div> 
+            <h1>GALLOP PROTOCOL</h1>
+            <p>Control Neigh-O-Tron against the Cephalopod Armada!</p>
+            <p>CONTROLS:</p>
+            <p>
+                <span class="control-key">↑↓←→</span> Move<br>
+                <span class="control-key">↑</span> or <span class="control-key">Z</span> Jump<br>
+                <span class="control-key">X</span> Shoot<br>
+                <span class="control-key">C</span> Special Ability<br>
+                <span class="control-key">SPACE</span> Change Weapon
+            </p>
+            <p>Collect tokens (★) from enemies for special abilities</p>
+            <p><span style="color: #ff6600; font-weight: bold;">NEW!</span> Shoot cars 5 times to trigger massive explosions that damage enemies!</p>
+            <p><span style="color: #ff6600; font-weight: bold;">NEW!</span> Cybertrucks can be destroyed after 10 shots for even bigger explosions and bonus points!</p>
+            <p id="start-instruction" class="clickable">Press <span class="control-key">SPACE</span> to start</p>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html> 
