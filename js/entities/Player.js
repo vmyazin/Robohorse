@@ -66,7 +66,7 @@ class Player {
         this.shrinkAnimationFrame = 0;
     }
     
-    update(keys, frameCount, createParticles) {
+    update(keys, frameCount, createParticles, playSound) {
         // Store previous velocity for landing detection
         this.lastVelY = this.velY;
         
@@ -80,7 +80,7 @@ class Player {
             this.updateShrinkAnimation(createParticles);
         }
         
-        // Player movement
+        // Handle movement
         if (keys['ArrowLeft']) {
             this.x -= this.speed;
             this.direction = -1;
@@ -90,7 +90,7 @@ class Player {
             this.direction = 1;
         }
         
-        // Jump - allow both 'z' key and 'ArrowUp' key
+        // Handle jumping - allow both 'z' key and 'ArrowUp' key
         if ((keys['z'] || keys['ArrowUp']) && !this.isJumping) {
             this.velY = -this.jumpPower;
             this.isJumping = true;
@@ -102,15 +102,24 @@ class Player {
         this.velY += 0.5;
         this.y += this.velY;
         
-        // Detect landing (when velocity changes from positive to zero or negative)
-        // This happens when we collide with an obstacle or the ground
-        this.isLanding = this.lastVelY >= this.landingThreshold && this.velY <= 0.5;
+        // Floor collision
+        if (this.y + this.height > this.canvas.height - 50) {
+            this.y = this.canvas.height - 50 - this.height;
+            this.velY = 0;
+            this.isJumping = false;
+        }
         
-        // We no longer need the floor collision check here as it's handled in Game.js with curved terrain
-        
-        // Boundaries - only check left and right edges
+        // Boundaries
         if (this.x < 0) this.x = 0;
         if (this.x + this.width > this.canvas.width) this.x = this.canvas.width - this.width;
+        
+        // Note: We don't handle shooting and special ability here anymore,
+        // as they are handled by the Game class directly to avoid projectiles reference issues
+        
+        // Update mushroom power-up if active
+        if (this.mushroomPowerActive) {
+            this.updateGrowthAnimation(createParticles);
+        }
         
         // Animate horse legs
         this.legs.forEach((leg, i) => {
@@ -167,7 +176,7 @@ class Player {
         return false;
     }
     
-    shoot(frameCount, projectiles, createParticles) {
+    shoot(frameCount, projectiles, createParticles, playSound) {
         const weapon = this.weapons[this.currentWeaponIndex];
         if (frameCount - this.lastShot > weapon.fireRate) {
             const projX = this.x + (this.direction > 0 ? this.width : 0);
@@ -192,13 +201,19 @@ class Player {
             
             // Add muzzle flash effect
             createParticles(projX, projY, 5, weapon.color);
+
+            // Play weapon sound if callback is provided
+            if (playSound) {
+                playSound(weapon.name);
+            }
+            
             this.lastShot = frameCount;
             return true;
         }
         return false;
     }
     
-    specialAbility(frameCount, projectiles, createParticles) {
+    specialAbility(frameCount, projectiles, createParticles, playSound) {
         // Check if player has tokens to use special ability
         if (this.specialAbilityTokens <= 0 && !this.specialAbilityActive) {
             return false;
@@ -258,6 +273,11 @@ class Player {
                     });
                 }
                 createParticles(this.x + this.width/2, this.y + this.height/2, 10, this.weapons[this.currentWeaponIndex].color);
+                
+                // Play weapon sound if callback is provided
+                if (playSound) {
+                    playSound(weapon.name);
+                }
             }
             
             return true;

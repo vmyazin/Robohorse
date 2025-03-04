@@ -76,7 +76,22 @@ class Game {
             levelAnnounce: new Audio('sounds/level_announce.mp3'),
             explosion: new Audio('audio/explosion.mp3'),
             carHit: new Audio('audio/car_hit.mp3'),
-            toasty: new Audio('audio/toasty.mp3')
+            toasty: new Audio('audio/toasty.mp3'),
+            // Add new weapon sounds
+            blasterGlowing: new Audio('audio/blaster_shot_high.mp3'),
+            blasterNeural: new Audio('audio/blaster_shot_snap.mp3'),
+            blasterTentacle: new Audio('audio/blaster_shots_pee.mp3'),
+            blasterRobo: new Audio('audio/blaster_shots.mp3'),
+            blasterLeg: new Audio('audio/blaster_shots.mp3')
+        };
+
+        // Weapon sound mapping
+        this.weaponSounds = {
+            "GLOWING CANNON": "blasterGlowing",
+            "NEURAL BEAM": "blasterNeural",
+            "TENTACLE SCRAMBLER": "blasterTentacle",
+            "ROBOHORSE CANNON": "blasterRobo",
+            "LEG LAUNCHERS": "blasterLeg"
         };
         
         // Simple Elon Toasty effect
@@ -101,6 +116,12 @@ class Game {
             this.sounds.explosion.load();
             this.sounds.carHit.load();
             this.sounds.toasty.load();
+            // Preload weapon sounds
+            this.sounds.blasterGlowing.load();
+            this.sounds.blasterNeural.load();
+            this.sounds.blasterTentacle.load();
+            this.sounds.blasterRobo.load();
+            this.sounds.blasterLeg.load();
         } catch (e) {
             console.warn('Could not load sound effects:', e);
         }
@@ -212,8 +233,20 @@ class Game {
         
         this.frameCount++;
         
-        // Update player
-        this.player.update(this.keys, this.frameCount, this.createParticles.bind(this));
+        // Update player with sound callback
+        this.player.update(this.keys, this.frameCount, this.createParticles.bind(this), (weaponName) => {
+            // Play weapon sound
+            const soundKey = this.weaponSounds[weaponName];
+            if (soundKey && this.sounds[soundKey]) {
+                try {
+                    const sound = this.sounds[soundKey].cloneNode();
+                    sound.volume = 0.3; // Adjust volume as needed
+                    sound.play();
+                } catch (e) {
+                    console.warn('Could not play weapon sound:', e);
+                }
+            }
+        });
         
         // Update obstacles with optimized collision detection
         for (let i = this.obstacles.length - 1; i >= 0; i--) {
@@ -414,18 +447,54 @@ class Game {
         
         // Shooting
         if (this.keys['x']) {
-            this.player.shoot(this.frameCount, this.projectiles, this.createParticles.bind(this));
+            this.player.shoot(this.frameCount, this.projectiles, this.createParticles.bind(this), (weaponName) => {
+                // Play weapon sound
+                const soundKey = this.weaponSounds[weaponName];
+                if (soundKey && this.sounds[soundKey]) {
+                    try {
+                        const sound = this.sounds[soundKey].cloneNode();
+                        sound.volume = 0.3; // Adjust volume as needed
+                        sound.play();
+                    } catch (e) {
+                        console.warn('Could not play weapon sound:', e);
+                    }
+                }
+            });
         }
         
         // Special ability (stampede mode)
         if (this.keys['c']) {
-            if (this.player.specialAbility(this.frameCount, this.projectiles, this.createParticles.bind(this))) {
+            if (this.player.specialAbility(this.frameCount, this.projectiles, this.createParticles.bind(this), (weaponName) => {
+                // Play weapon sound
+                const soundKey = this.weaponSounds[weaponName];
+                if (soundKey && this.sounds[soundKey]) {
+                    try {
+                        const sound = this.sounds[soundKey].cloneNode();
+                        sound.volume = 0.3; // Adjust volume as needed
+                        sound.play();
+                    } catch (e) {
+                        console.warn('Could not play weapon sound:', e);
+                    }
+                }
+            })) {
                 // Update special tokens display
                 this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
             }
         } else if (this.player.specialAbilityActive) {
             // Continue special ability if it's active, even if key is released
-            if (this.player.specialAbility(this.frameCount, this.projectiles, this.createParticles.bind(this))) {
+            if (this.player.specialAbility(this.frameCount, this.projectiles, this.createParticles.bind(this), (weaponName) => {
+                // Play weapon sound
+                const soundKey = this.weaponSounds[weaponName];
+                if (soundKey && this.sounds[soundKey]) {
+                    try {
+                        const sound = this.sounds[soundKey].cloneNode();
+                        sound.volume = 0.3; // Adjust volume as needed
+                        sound.play();
+                    } catch (e) {
+                        console.warn('Could not play weapon sound:', e);
+                    }
+                }
+            })) {
                 // Update special tokens display
                 this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
             }
