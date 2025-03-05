@@ -8,6 +8,7 @@ class InputManager {
         
         // DOM elements for click events
         this.soundToggleElement = document.getElementById('sound-toggle');
+        this.helpToggleElement = document.getElementById('help-toggle');
         this.startInstruction = document.getElementById('start-instruction');
         this.restartInstruction = document.getElementById('restart-instruction');
     }
@@ -33,11 +34,15 @@ class InputManager {
             }
         }
         
-        // Spacebar functionality - now only for starting/restarting game
+        // Spacebar functionality - now for starting/restarting game and resuming from pause
         if (e.code === 'Space') {
             // Start game if on start screen
             if (!this.game.gameStarted && !this.game.gameOver) {
                 this.game.startGame();
+            }
+            // Resume game if paused
+            else if (this.game.isPaused) {
+                this.game.togglePause();
             }
             // Restart game if on game over screen
             else if (this.game.gameOver) {
@@ -81,11 +86,20 @@ class InputManager {
             });
         }
         
+        // Help toggle button click handler
+        if (this.helpToggleElement) {
+            this.helpToggleElement.addEventListener('click', () => {
+                this.game.togglePause();
+            });
+        }
+        
         // Start instruction click handler
         if (this.startInstruction) {
             this.startInstruction.addEventListener('click', () => {
                 if (!this.game.gameStarted && !this.game.gameOver) {
                     this.game.startGame();
+                } else if (this.game.isPaused) {
+                    this.game.togglePause();
                 }
             });
         }

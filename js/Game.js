@@ -15,6 +15,7 @@ class Game {
         // Game state
         this.gameStarted = false;
         this.gameOver = false;
+        this.isPaused = false;
         this.score = 0;
         this.frameCount = 0;
         this.lastSpawnTime = 0;
@@ -28,6 +29,7 @@ class Game {
         
         // Frame rate control - simplified
         this.lastFrameTime = 0;
+        this.animationFrameId = null;
         
         // Mushroom power-up duration
         this.mushroomPowerDuration = 600; // 10 seconds at 60fps
@@ -112,6 +114,26 @@ class Game {
     
     toggleSound() {
         this.soundManager.toggleSound();
+    }
+    
+    togglePause() {
+        if (this.gameStarted && !this.gameOver) {
+            this.isPaused = !this.isPaused;
+            
+            // Show/hide start screen when paused/unpaused
+            if (this.isPaused) {
+                this.startScreen.style.display = 'block';
+                document.getElementById('help-toggle').classList.add('active');
+                document.getElementById('start-instruction').textContent = 'Press SPACE to resume';
+            } else {
+                this.startScreen.style.display = 'none';
+                document.getElementById('help-toggle').classList.remove('active');
+                // Continue the animation loop if unpausing
+                if (!this.animationFrameId) {
+                    this.animate(performance.now());
+                }
+            }
+        }
     }
     
     playSound(soundKey, volume = 0.5) {
@@ -1183,7 +1205,7 @@ class Game {
         const deltaTime = timestamp - this.lastFrameTime;
         this.lastFrameTime = timestamp;
         
-        if (!this.gameOver) {
+        if (!this.gameOver && !this.isPaused) {
             // Update game state
             this.update();
             
@@ -1191,7 +1213,14 @@ class Game {
             this.draw();
             
             // Request the next frame
-            requestAnimationFrame(this.animate.bind(this));
+            this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
+        } else if (this.isPaused) {
+            // When paused, only redraw the game (no updates) and keep requesting frames
+            // This ensures the game remains visible behind the pause screen
+            this.draw();
+            this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
+        } else {
+            this.animationFrameId = null;
         }
     }
     

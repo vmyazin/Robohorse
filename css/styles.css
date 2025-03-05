@@ -209,4 +209,34 @@ button:hover {
     color: #777;
     text-shadow: none;
     border-color: #777;
+}
+
+/* Help Toggle Button */
+#help-toggle {
+    position: absolute;
+    bottom: 15px;
+    right: 60px; /* Position to the left of sound toggle */
+    color: #0ff;
+    font-size: 18px;
+    text-shadow: 0 0 5px #0ff;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 3px 8px;
+    border: 2px solid #0ff;
+    border-radius: 5px;
+    cursor: pointer;
+    user-select: none;
+    z-index: 10;
+    transition: all 0.2s ease;
+}
+
+#help-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px #0ff;
+}
+
+#help-toggle.active {
+    color: #ff0;
+    text-shadow: 0 0 5px #ff0;
+    border-color: #ff0;
+    box-shadow: 0 0 10px #ff0;
 } 
