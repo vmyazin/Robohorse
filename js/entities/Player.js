@@ -81,18 +81,18 @@ class Player {
             this.updateShrinkAnimation(createParticles);
         }
         
-        // Handle movement
-        if (keys['ArrowLeft']) {
+        // Handle movement - support both arrow keys and WASD
+        if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
             this.x -= this.speed;
             this.direction = -1;
         }
-        if (keys['ArrowRight']) {
+        if (keys['ArrowRight'] || keys['d'] || keys['D']) {
             this.x += this.speed;
             this.direction = 1;
         }
         
-        // Handle jumping - allow both 'z' key and 'ArrowUp' key
-        if ((keys['z'] || keys['ArrowUp']) && !this.isJumping) {
+        // Handle jumping - allow 'z' key, 'ArrowUp' key, and 'w' key
+        if ((keys['z'] || keys['ArrowUp'] || keys['w'] || keys['W']) && !this.isJumping) {
             this.velY = -this.jumpPower;
             this.isJumping = true;
             this.standingOnObstacle = null; // Clear obstacle reference when jumping
@@ -834,7 +834,7 @@ class Player {
         ctx.shadowBlur = 0;
         
         // Add engine exhaust when moving
-        if (keys['ArrowLeft'] || keys['ArrowRight']) {
+        if (keys['ArrowLeft'] || keys['ArrowRight'] || keys['a'] || keys['A'] || keys['d'] || keys['D']) {
             const exhaustX = this.x + (this.direction > 0 ? this.width * 0.2 : this.width * 0.8);
             const exhaustY = this.y + this.height * 0.7;
             

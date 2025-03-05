@@ -24,7 +24,16 @@ class InputManager {
     handleKeyDown(e) {
         this.keys[e.key] = true;
         
-        // Spacebar functionality
+        // Enter key for weapon swapping (changed from Space)
+        if (e.key === 'Enter') {
+            // Switch weapon during gameplay
+            if (this.game.gameStarted && !this.game.gameOver) {
+                const weaponName = this.game.player.switchWeapon();
+                this.game.weaponDisplay.textContent = weaponName;
+            }
+        }
+        
+        // Spacebar functionality - now only for starting/restarting game
         if (e.code === 'Space') {
             // Start game if on start screen
             if (!this.game.gameStarted && !this.game.gameOver) {
@@ -34,11 +43,6 @@ class InputManager {
             else if (this.game.gameOver) {
                 this.game.resetGame();
                 this.game.startGame();
-            }
-            // Switch weapon during gameplay
-            else if (this.game.gameStarted && !this.game.gameOver) {
-                const weaponName = this.game.player.switchWeapon();
-                this.game.weaponDisplay.textContent = weaponName;
             }
         }
         

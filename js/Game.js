@@ -436,7 +436,7 @@ class Game {
         }
         
         // Shooting
-        if (this.inputManager.keys['x']) {
+        if (this.inputManager.keys[' ']) {
             this.player.shoot(this.frameCount, this.projectiles, this.createParticles.bind(this), (weaponName) => {
                 // Play weapon sound
                 const soundKey = this.weaponSounds[weaponName];
