@@ -85,7 +85,7 @@ class Game {
             blasterLeg: 'audio/blaster_shot_leg.mp3',
             // Other sounds
             powerUp: 'audio/power_up.mp3',
-            horseScream: 'audio/horse_scream.mp3',
+            horseScream: 'audio/horse_scream_die.mp3',
             alienWhisper1: 'audio/alien_whisper_1.mp3',
             alienWhisper2: 'audio/alien_whisper_2.mp3',
             alienWhisper3: 'audio/alien_whisper_3.mp3',
@@ -233,8 +233,20 @@ class Game {
                 continue;
             }
             
+            // Remove explosion-only objects that have finished exploding
+            if ((obstacle.type === 'car_explosion' || obstacle.type === 'cybertruck_explosion') && 
+                (!obstacle.isExploding || obstacle.explosionRadius <= 0)) {
+                this.obstacles.splice(i, 1);
+                continue;
+            }
+            
             // Check if player is colliding with obstacle
             if (isColliding(this.player, obstacle)) {
+                // Skip collision for explosion-only objects
+                if (obstacle.type === 'car_explosion' || obstacle.type === 'cybertruck_explosion') {
+                    continue;
+                }
+                
                 // Handle player-obstacle collision
                 this.handlePlayerObstacleCollision(obstacle);
             }
@@ -288,6 +300,33 @@ class Game {
                                 // Trigger explosion but don't remove the car yet
                                 // The car will be removed when the explosion animation completes
                                 obstacle.explode();
+                                
+                                // Remove the car immediately after triggering the explosion
+                                this.obstacles.splice(i, 1);
+                                
+                                // Create a new explosion object to handle the animation
+                                this.obstacles.push({
+                                    ...obstacle,
+                                    // Only keep properties needed for explosion
+                                    type: obstacle.type + '_explosion', // Mark as explosion only
+                                    x: obstacle.x,
+                                    y: obstacle.y,
+                                    width: obstacle.width,
+                                    height: obstacle.height,
+                                    isExploding: true,
+                                    explosionTimer: 0,
+                                    explosionDuration: obstacle.explosionDuration,
+                                    explosionRadius: obstacle.explosionRadius,
+                                    explosionParticles: obstacle.explosionParticles,
+                                    explosionHitEnemies: obstacle.explosionHitEnemies,
+                                    update: obstacle.update,
+                                    draw: function(ctx, frameCount) {
+                                        // Only draw the explosion, not the car
+                                        this.drawExplosion(ctx);
+                                    },
+                                    drawExplosion: obstacle.drawExplosion,
+                                    isInExplosionRadius: obstacle.isInExplosionRadius
+                                });
                                 
                                 // Trigger Elon Toasty easter egg for Cybertruck explosions (10% chance)
                                 if (obstacle.type === 'cybertruck' && Math.random() < 0.1) {
@@ -504,9 +543,10 @@ class Game {
             // Check for enemies in range of exploding vehicles
             for (let j = 0; j < this.obstacles.length; j++) {
                 const obstacle = this.obstacles[j];
-                // Only check exploding vehicles (cars and cybertrucks)
-                if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && 
-                    obstacle.isExploding) {
+                // Only check exploding vehicles (cars and cybertrucks) and explosion-only objects
+                if (((obstacle.type === 'car' || obstacle.type === 'cybertruck' || 
+                      obstacle.type === 'car_explosion' || obstacle.type === 'cybertruck_explosion') && 
+                    obstacle.isExploding)) {
                     
                     // Skip if enemy no longer exists or has already been hit
                     if (!enemy || obstacle.explosionHitEnemies.has(enemy)) {
@@ -1396,7 +1436,8 @@ class Game {
     removeEnemyFromExplosionSets(enemy) {
         // Clean up any references to this enemy in explosion hit sets
         for (const obstacle of this.obstacles) {
-            if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && 
+            if ((obstacle.type === 'car' || obstacle.type === 'cybertruck' || 
+                 obstacle.type === 'car_explosion' || obstacle.type === 'cybertruck_explosion') && 
                 obstacle.isExploding && 
                 obstacle.explosionHitEnemies && 
                 obstacle.explosionHitEnemies.has(enemy)) {
