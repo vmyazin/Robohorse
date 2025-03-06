@@ -12,6 +12,33 @@ A side-scrolling action game where you control RoboHorse, a six-legged cyber-hor
 - Power-ups to enhance your abilities
 - Progressive difficulty with multiple levels
 
+## Playtest Environment
+
+The game includes a dedicated playtest environment for testing and balancing:
+
+- Press **P** to enter playtest mode
+- Health bars are displayed for all entities
+- Debug information shown in top-left corner
+- Enemy spawn rates can be adjusted with **[** and **]**
+- Press **T** to spawn test enemies
+- Invincibility mode available with **I**
+- Frame-by-frame analysis with **F** key
+- Performance metrics visible in playtest mode
+
+## New Boss: The Quantum Kraken
+
+The game now features an epic boss battle against the Quantum Kraken:
+
+- Massive cybernetic cephalopod with quantum abilities
+- Three distinct battle phases
+- Special attacks:
+  - Quantum Tentacle Strike: Creates time-delayed attacks
+  - Dimensional Rift: Spawns mirror images
+  - Temporal Storm: Slows down player movement
+- Requires strategic use of all weapons and abilities
+- Drops unique power-ups during the battle
+- Defeating the Kraken unlocks a special weapon
+
 ## New Feature: Enhanced Vehicle Destruction
 
 The latest update improves vehicle destruction mechanics:
@@ -28,11 +55,11 @@ The latest update improves vehicle destruction mechanics:
 
 ## Controls
 
-- **Arrow Keys**: Move
-- **Z** or **Up Arrow**: Jump
-- **X**: Shoot
-- **C**: Special Ability (requires tokens)
-- **Space**: Change Weapon
+- **←→** or **A D**: Move
+- **↑** or **W** or **Z**: Jump
+- **SPACE**: Shoot
+- **ENTER**: Change Weapon
+- **C**: Power Weapon (requires tokens)
 
 ## How to Play
 
