@@ -7,3 +7,7 @@ globs:
 - Ignore the gallop-protocol-game.html file.
 - Do not start a Python server before checking if it's already running.
 - If you see an opportunity for creating a manager go for it and add to /js/managers
+
+## Reference
+
+- Look inside README.md
