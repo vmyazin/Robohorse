@@ -31,6 +31,42 @@
     
     <link rel="stylesheet" href="css/styles.css">
     <script defer data-domain="games.smoxu.com" src="https://plausible.io/js/script.js"></script>
+    <style>
+        /* Add styles for the enter key button */
+        .enter-key-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #36f;
+            color: #fff;
+            padding: 5px 10px;
+            margin-left: 15px;
+            border-radius: 3px;
+            box-shadow: 0 0 5px #36f;
+            cursor: pointer;
+            vertical-align: middle;
+            height: 40px;
+            width: 40px; /* Make it square */
+        }
+        
+        .enter-key-button:hover {
+            background-color: #48f;
+            box-shadow: 0 0 10px #48f;
+        }
+        
+        .enter-key-button .enter-arrow {
+            font-size: 24px; /* Make the arrow bigger */
+        }
+        
+        /* Adjust the name input container to include the enter key button */
+        .name-input-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+    </style>
 </head>
 <body>
     <div id="game-container">
@@ -48,6 +84,9 @@
                     <div class="name-char">_</div>
                     <div class="name-char">_</div>
                     <div class="name-char">_</div>
+                    <div id="enter-key" class="enter-key-button">
+                        <span class="enter-arrow">↵</span>
+                    </div>
                 </div>
             </div>
             <p id="mission-complete-instruction" class="clickable">Press <span class="control-key">SPACE</span> to restart</p>

@@ -48,6 +48,7 @@ class Game {
         this.levelAnnouncement = document.getElementById('level-announcement');
         this.missionCompleteScreen = document.getElementById('mission-complete');
         this.missionCompleteScore = document.getElementById('mission-complete-score');
+        this.enterKeyButton = document.getElementById('enter-key');
         
         // Name input state
         this.nameChars = Array.from(document.getElementsByClassName('name-char'));
@@ -149,6 +150,20 @@ class Game {
     
     bindEventListeners() {
         this.inputManager.bindEventListeners();
+        
+        // Add click event for the Enter key button
+        if (this.enterKeyButton) {
+            this.enterKeyButton.addEventListener('click', () => {
+                // Only handle if we're on the mission complete screen
+                if (this.missionCompleteScreen.style.display === 'block') {
+                    // Check if at least one character has been entered
+                    const hasEnteredName = this.playerName.some(char => char !== '_');
+                    if (hasEnteredName) {
+                        this.saveScore();
+                    }
+                }
+            });
+        }
     }
     
     startGame() {
@@ -212,6 +227,11 @@ class Game {
         
         // Show start screen
         this.startScreen.style.display = 'block';
+        
+        // Reset enter key button
+        if (this.enterKeyButton) {
+            this.enterKeyButton.style.display = 'flex';
+        }
         
         // Stop background music
         this.soundManager.stopBackgroundMusic();
@@ -1704,12 +1724,10 @@ class Game {
         // Get player name from input
         const playerName = this.playerName.join('').replace(/_/g, '');
         
-        // Prepare score data
-        const scoreData = {
-            gameId: 'robohorse-v1',
-            playerId: playerName,
-            score: this.score
-        };
+        // Hide the enter key button
+        if (this.enterKeyButton) {
+            this.enterKeyButton.style.display = 'none';
+        }
         
         // Save score to database
         fetch('/api/scores', {
@@ -1717,7 +1735,11 @@ class Game {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(scoreData)
+            body: JSON.stringify({
+                gameId: 'robohorse-v1',
+                playerId: playerName,
+                score: this.score
+            })
         })
         .then(response => {
             if (!response.ok) {
