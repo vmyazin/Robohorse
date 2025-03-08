@@ -73,6 +73,14 @@ class LevelManager {
         // Check if we need to load the next level
         if (this.levelPosition >= this.levelLength) {
             console.log("Level complete! Loading next level");
+            
+            // Check if we just completed level 3
+            if (this.currentLevel === 2) { // 0-based index, so 2 is level 3
+                // Show mission complete screen instead of loading next level
+                this.game.showMissionComplete();
+                return;
+            }
+            
             this.currentLevel = (this.currentLevel + 1) % LEVELS.length;
             const levelData = this.loadLevel(this.currentLevel);
             this.levelPosition = 0;

@@ -170,6 +170,42 @@ button:hover {
     transition: opacity 0.8s ease-in;
 }
 
+/* Mission Complete Screen */
+#mission-complete {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 30, 0.9);
+    color: #0ff;
+    padding: 40px;
+    border-radius: 15px;
+    border: 4px solid #36f;
+    box-shadow: 0 0 30px #36f, inset 0 0 20px rgba(51, 102, 255, 0.7);
+    text-align: center;
+    font-family: 'Press Start 2P', cursive;
+    display: none;
+    z-index: 1000;
+}
+
+#mission-complete h1 {
+    color: #0ff;
+    text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+    font-size: 32px;
+    margin-bottom: 30px;
+}
+
+#mission-complete p {
+    margin: 20px 0;
+    font-size: 16px;
+}
+
+#mission-complete #mission-complete-score {
+    color: #ff0;
+    text-shadow: 0 0 10px #ff0;
+    font-size: 24px;
+}
+
 .clickable {
     cursor: pointer;
     transition: all 0.2s ease;

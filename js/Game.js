@@ -46,6 +46,8 @@ class Game {
         this.startScreen = document.getElementById('start-screen');
         this.levelDisplay = document.getElementById('level');
         this.levelAnnouncement = document.getElementById('level-announcement');
+        this.missionCompleteScreen = document.getElementById('mission-complete');
+        this.missionCompleteScore = document.getElementById('mission-complete-score');
         
         // Weapons
         this.weapons = [
@@ -199,9 +201,12 @@ class Game {
         }
         this.updateHealthDisplay();
         
-        // Hide game over screen
+        // Hide game over and mission complete screens
         if (this.gameOverScreen) {
             this.gameOverScreen.style.display = 'none';
+        }
+        if (this.missionCompleteScreen) {
+            this.missionCompleteScreen.style.display = 'none';
         }
         
         // Stop background music
@@ -1575,6 +1580,16 @@ class Game {
         
         // Draw score
         ctx.fillText(`Score: ${this.score}`, 20, 30);
+    }
+
+    showMissionComplete() {
+        this.gameStarted = false;
+        this.missionCompleteScore.textContent = this.score;
+        this.missionCompleteScreen.style.display = 'block';
+        
+        // Play victory sound
+        this.soundManager.stopBackgroundMusic();
+        this.soundManager.playSound('powerUp', 0.7);
     }
 }
 

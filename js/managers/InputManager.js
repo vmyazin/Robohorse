@@ -37,15 +37,15 @@ class InputManager {
         // Spacebar functionality - now for starting/restarting game and resuming from pause
         if (e.code === 'Space') {
             // Start game if on start screen
-            if (!this.game.gameStarted && !this.game.gameOver) {
+            if (!this.game.gameStarted && !this.game.gameOver && this.game.missionCompleteScreen.style.display !== 'block') {
                 this.game.startGame();
             }
             // Resume game if paused
             else if (this.game.isPaused) {
                 this.game.togglePause();
             }
-            // Restart game if on game over screen
-            else if (this.game.gameOver) {
+            // Restart game if on game over or mission complete screen
+            else if (this.game.gameOver || this.game.missionCompleteScreen.style.display === 'block') {
                 this.game.resetGame();
                 this.game.startGame();
             }
