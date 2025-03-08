@@ -1,0 +1,338 @@
+<!-- src/public/scoreboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RoboHorse Scoreboard</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    h1 {
+      color: #2c3e50;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .container {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .score-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    label {
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, select, button {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    button {
+      grid-column: span 2;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      background-color: #eee;
+      border: 1px solid #ddd;
+      cursor: pointer;
+      border-radius: 4px 4px 0 0;
+      margin-right: 5px;
+    }
+    .tab.active {
+      background-color: white;
+      border-bottom: 1px solid white;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+    tr:hover {
+      background-color: #f5f5f5;
+    }
+    .message {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .loading {
+      text-align: center;
+      padding: 20px;
+      font-style: italic;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>RoboHorse Scoreboard</h1>
+  
+  <div class="container">
+    <h2>Add New Score</h2>
+    <form id="scoreForm" class="score-form">
+      <div class="form-group">
+        <label for="gameId">Game ID</label>
+        <select id="gameId" required>
+          <option value="test-game-1">Test Game 1</option>
+          <option value="test-game-2">Test Game 2</option>
+          <option value="robohorse-v1">RoboHorse v1</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="playerId">Player ID</label>
+        <input type="text" id="playerId" placeholder="Enter player ID" required>
+      </div>
+      <div class="form-group">
+        <label for="score">Score</label>
+        <input type="number" id="score" placeholder="Enter score" required>
+      </div>
+      <button type="submit">Submit Score</button>
+    </form>
+    <div id="message" class="message" style="display: none;"></div>
+  </div>
+  
+  <div class="container">
+    <div class="tabs">
+      <div class="tab active" data-tab="all">All Scores</div>
+      <div class="tab" data-tab="game1">Test Game 1</div>
+      <div class="tab" data-tab="game2">Test Game 2</div>
+    </div>
+    
+    <div id="all" class="tab-content active">
+      <h2>All Scores</h2>
+      <div id="allScores">
+        <p class="loading">Loading scores...</p>
+      </div>
+    </div>
+    
+    <div id="game1" class="tab-content">
+      <h2>Test Game 1 Scores</h2>
+      <div id="game1Scores">
+        <p class="loading">Loading scores...</p>
+      </div>
+    </div>
+    
+    <div id="game2" class="tab-content">
+      <h2>Test Game 2 Scores</h2>
+      <div id="game2Scores">
+        <p class="loading">Loading scores...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Tab switching
+      const tabs = document.querySelectorAll('.tab');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          // Remove active class from all tabs and content
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          
+          // Add active class to clicked tab and corresponding content
+          tab.classList.add('active');
+          const tabId = tab.getAttribute('data-tab');
+          document.getElementById(tabId).classList.add('active');
+        });
+      });
+      
+      // Load scores
+      loadAllScores();
+      loadGameScores('test-game-1', 'game1Scores');
+      loadGameScores('test-game-2', 'game2Scores');
+      
+      // Form submission
+      const scoreForm = document.getElementById('scoreForm');
+      scoreForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const gameId = document.getElementById('gameId').value;
+        const playerId = document.getElementById('playerId').value;
+        const score = parseInt(document.getElementById('score').value);
+        
+        addScore(gameId, playerId, score);
+      });
+    });
+    
+    // Function to load all scores
+    function loadAllScores() {
+      fetch('/api/scores')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
+        .then(data => {
+          displayScores(data, 'allScores');
+        })
+        .catch(error => {
+          document.getElementById('allScores').innerHTML = `
+            <div class="error">Error loading scores: ${error.message}</div>
+          `;
+        });
+    }
+    
+    // Function to load scores for a specific game
+    function loadGameScores(gameId, elementId) {
+      fetch(`/api/scores/${gameId}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
+        .then(data => {
+          displayScores(data, elementId);
+        })
+        .catch(error => {
+          document.getElementById(elementId).innerHTML = `
+            <div class="error">Error loading scores: ${error.message}</div>
+          `;
+        });
+    }
+    
+    // Function to display scores in a table
+    function displayScores(scores, elementId) {
+      const element = document.getElementById(elementId);
+      
+      if (scores.length === 0) {
+        element.innerHTML = '<p>No scores available.</p>';
+        return;
+      }
+      
+      let html = `
+        <table>
+          <thead>
+            <tr>
+              <th>Game ID</th>
+              <th>Player ID</th>
+              <th>Score</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      
+      scores.forEach(score => {
+        const date = new Date(score.timestamp).toLocaleString();
+        html += `
+          <tr>
+            <td>${score.game_id}</td>
+            <td>${score.player_id}</td>
+            <td>${score.score}</td>
+            <td>${date}</td>
+          </tr>
+        `;
+      });
+      
+      html += `
+          </tbody>
+        </table>
+      `;
+      
+      element.innerHTML = html;
+    }
+    
+    // Function to add a new score
+    function addScore(gameId, playerId, score) {
+      const messageElement = document.getElementById('message');
+      
+      fetch('/api/scores', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ gameId, playerId, score })
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // Show success message
+          messageElement.className = 'message success';
+          messageElement.textContent = 'Score added successfully!';
+          messageElement.style.display = 'block';
+          
+          // Reset form
+          document.getElementById('scoreForm').reset();
+          
+          // Reload scores
+          loadAllScores();
+          loadGameScores('test-game-1', 'game1Scores');
+          loadGameScores('test-game-2', 'game2Scores');
+          
+          // Hide message after 3 seconds
+          setTimeout(() => {
+            messageElement.style.display = 'none';
+          }, 3000);
+        })
+        .catch(error => {
+          // Show error message
+          messageElement.className = 'message error';
+          messageElement.textContent = `Error adding score: ${error.message}`;
+          messageElement.style.display = 'block';
+        });
+    }
+  </script>
+</body>
+</html> 

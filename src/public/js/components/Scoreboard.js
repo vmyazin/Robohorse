@@ -7,17 +7,22 @@ class Scoreboard {
         this.ctx = canvas.getContext('2d');
         this.x = x;
         this.y = y;
-        this.width = 300; // Increased width
-        this.height = 200; // Added explicit height
-        this.padding = 15; // Increased padding
+        this.width = 350; // Increased width
+        this.height = 240; // Increased height
+        this.padding = {
+            left: 15,
+            right: 30, // Added more padding on the right
+            top: 15,
+            bottom: 15
+        };
         
-        // Mock data for testing
+        // Mock data with 6-character names
         this.scores = [
-            { name: "QUANTUM", score: 25000 },
-            { name: "CYBER_X", score: 21500 },
-            { name: "ROBO_PRO", score: 18750 },
-            { name: "GALLOPER", score: 15200 },
-            { name: "NEO_HORSE", score: 12800 }
+            { name: "VORTEX", score: 25000 },
+            { name: "CYBRX", score: 21500 },
+            { name: "NEOX", score: 18750 },
+            { name: "GLITCH", score: 15200 },
+            { name: "PULSE", score: 12800 }
         ];
     }
 
@@ -34,18 +39,18 @@ class Scoreboard {
         ctx.fillRect(this.x, this.y, this.width, this.height);
         
         // Title
-        ctx.font = 'bold 24px "Press Start 2P", monospace'; // Increased font size
+        ctx.font = 'bold 24px "Press Start 2P", monospace';
         ctx.fillStyle = '#FFD700'; // Gold color
-        ctx.fillText('TOP SCORES', this.x + this.padding, this.y + 40);
+        ctx.fillText('TOP SCORES', this.x + this.padding.left, this.y + 45);
         
         // Scores
-        ctx.font = '16px "Press Start 2P", monospace'; // Increased font size
+        ctx.font = '18px "Press Start 2P", monospace'; // Increased font size
         this.scores.forEach((score, index) => {
-            const yPos = this.y + 80 + (index * 25);
+            const yPos = this.y + 90 + (index * 30); // Increased spacing
             
             // Rank
             ctx.fillStyle = '#00FF00'; // Neon green
-            ctx.fillText(`${index + 1}.`, this.x + this.padding, yPos);
+            ctx.fillText(`${index + 1}.`, this.x + this.padding.left, yPos);
             
             // Name
             ctx.fillStyle = '#FFFFFF';
@@ -54,7 +59,7 @@ class Scoreboard {
             // Score
             ctx.fillStyle = '#00FFFF'; // Cyan
             const scoreText = score.score.toString().padStart(6, '0');
-            ctx.fillText(scoreText, this.x + this.width - 100, yPos);
+            ctx.fillText(scoreText, this.x + this.width - this.padding.right - 80, yPos);
         });
     }
 

@@ -106,6 +106,12 @@ The game is built with vanilla JavaScript using a modular approach, served via N
 - Vanilla JavaScript (Game Engine)
 - HTML5 Canvas
 
+### Database
+
+#### Console
+
+https://console.neon.tech/app/projects/silent-resonance-05246388/branches/br-black-mud-a85kor69/tables?database=neondb
+
 ## Credits
 
 Developed as a demonstration of HTML5 Canvas and JavaScript game development by Vasily Simon + Cursor + Claude Sonnet.

@@ -58,15 +58,15 @@
         <button onclick="shuffleScores()">Shuffle Scores (R)</button>
         <button onclick="resetScores()">Reset Scores</button>
     </div>
-    <canvas id="gameCanvas" width="400" height="300"></canvas>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
     <script type="module">
         import Scoreboard from '/js/components/Scoreboard.js';
 
         // Wait for font to load before starting
         document.fonts.ready.then(() => {
             const canvas = document.getElementById('gameCanvas');
-            // Position the scoreboard more to the left and center
-            const scoreboard = new Scoreboard(canvas, 50, 40);
+            // Position the scoreboard more centered
+            const scoreboard = new Scoreboard(canvas, 125, 80);
             
             // Make scoreboard accessible globally for testing
             window.scoreboard = scoreboard;
@@ -78,11 +78,11 @@
             
             window.resetScores = () => {
                 scoreboard.scores = [
-                    { name: "QUANTUM", score: 25000 },
-                    { name: "CYBER_X", score: 21500 },
-                    { name: "ROBO_PRO", score: 18750 },
-                    { name: "GALLOPER", score: 15200 },
-                    { name: "NEO_HORSE", score: 12800 }
+                    { name: "VORTEX", score: 25000 },
+                    { name: "CYBRX", score: 21500 },
+                    { name: "NEOX", score: 18750 },
+                    { name: "GLITCH", score: 15200 },
+                    { name: "PULSE", score: 12800 }
                 ];
             };
 

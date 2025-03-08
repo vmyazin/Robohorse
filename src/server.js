@@ -6,6 +6,9 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
+// Import scores API
+const scoresApi = require('./api/scores');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -29,6 +32,44 @@ app.get('/test/scoreboard', (req, res) => {
 
 app.get('/legacy', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'gallop-protocol-game.html'));
+});
+
+app.get('/scoreboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'scoreboard.html'));
+});
+
+// Scores API endpoints
+app.get('/api/scores', async (req, res, next) => {
+  try {
+    const scores = await scoresApi.getAllScores();
+    res.json(scores);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/scores/:gameId', async (req, res, next) => {
+  try {
+    const scores = await scoresApi.getScoresByGame(req.params.gameId);
+    res.json(scores);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/scores', async (req, res, next) => {
+  try {
+    const { gameId, playerId, score } = req.body;
+    
+    if (!gameId || !playerId || score === undefined) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    const newScore = await scoresApi.addScore(gameId, playerId, score);
+    res.status(201).json(newScore);
+  } catch (error) {
+    next(error);
+  }
 });
 
 // Error handling middleware
