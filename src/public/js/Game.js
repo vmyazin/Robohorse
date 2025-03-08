@@ -207,12 +207,11 @@ class Game {
         this.updateHealthDisplay();
         
         // Hide game over and mission complete screens
-        if (this.gameOverScreen) {
-            this.gameOverScreen.style.display = 'none';
-        }
-        if (this.missionCompleteScreen) {
-            this.missionCompleteScreen.style.display = 'none';
-        }
+        this.gameOverScreen.style.display = 'none';
+        this.missionCompleteScreen.style.display = 'none';
+        
+        // Show start screen
+        this.startScreen.style.display = 'block';
         
         // Stop background music
         this.soundManager.stopBackgroundMusic();
@@ -227,9 +226,31 @@ class Game {
         this.gameOver = true;
         this.gameStarted = false;
         
+        // Hide the game over screen
+        this.gameOverScreen.style.display = 'none';
+        
         // Update final score display
         this.finalScoreDisplay.textContent = this.score;
-        this.gameOverScreen.style.display = 'block';
+        
+        // Show mission complete screen instead of game over screen
+        this.missionCompleteScreen.style.display = 'block';
+        
+        // Change the title to "GAME OVER" instead of "MISSION COMPLETE"
+        const missionTitle = this.missionCompleteScreen.querySelector('h1');
+        missionTitle.textContent = "GAME OVER";
+        
+        // Update score display
+        this.missionCompleteScore.textContent = this.score;
+        
+        // Reset name input
+        this.currentNameIndex = 0;
+        this.playerName = ['_', '_', '_', '_', '_', '_'];
+        this.updateNameDisplay();
+        this.nameChars[0].classList.add('active');
+        
+        // Hide restart instruction until score is saved
+        const restartInstruction = document.getElementById('mission-complete-instruction');
+        restartInstruction.style.display = 'none';
         
         // Stop background music and play death sound
         this.soundManager.stopBackgroundMusic();
@@ -1597,11 +1618,19 @@ class Game {
         this.missionCompleteScore.textContent = this.score;
         this.missionCompleteScreen.style.display = 'block';
         
+        // Ensure the title is "MISSION COMPLETE"
+        const missionTitle = this.missionCompleteScreen.querySelector('h1');
+        missionTitle.textContent = "MISSION COMPLETE";
+        
         // Reset name input
         this.currentNameIndex = 0;
         this.playerName = ['_', '_', '_', '_', '_', '_'];
         this.updateNameDisplay();
         this.nameChars[0].classList.add('active');
+        
+        // Hide restart instruction until score is saved
+        const restartInstruction = document.getElementById('mission-complete-instruction');
+        restartInstruction.style.display = 'none';
         
         // Play victory sound
         this.soundManager.stopBackgroundMusic();
@@ -1611,6 +1640,16 @@ class Game {
     handleNameInput(key) {
         // Only handle input if we're on the mission complete screen
         if (this.missionCompleteScreen.style.display !== 'block') return;
+
+        // Handle Enter key to save score
+        if (key === 'Enter') {
+            // Check if at least one character has been entered
+            const hasEnteredName = this.playerName.some(char => char !== '_');
+            if (hasEnteredName) {
+                this.saveScore();
+            }
+            return;
+        }
 
         // Handle backspace
         if (key === 'Backspace') {
@@ -1657,6 +1696,48 @@ class Game {
     updateNameDisplay() {
         this.nameChars.forEach((char, index) => {
             char.textContent = this.playerName[index];
+        });
+    }
+
+    // New method to save score to the database
+    saveScore() {
+        // Get player name from input
+        const playerName = this.playerName.join('').replace(/_/g, '');
+        
+        // Prepare score data
+        const scoreData = {
+            gameId: 'robohorse-v1',
+            playerId: playerName,
+            score: this.score
+        };
+        
+        // Save score to database
+        fetch('/api/scores', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(scoreData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to save score');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Score saved successfully:', data);
+            
+            // Show restart instruction after score is saved
+            const restartInstruction = document.getElementById('mission-complete-instruction');
+            restartInstruction.style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Error saving score:', error);
+            
+            // Show restart instruction even if there was an error
+            const restartInstruction = document.getElementById('mission-complete-instruction');
+            restartInstruction.style.display = 'block';
         });
     }
 }

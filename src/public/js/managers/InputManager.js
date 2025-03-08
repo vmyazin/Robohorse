@@ -11,6 +11,7 @@ class InputManager {
         this.helpToggleElement = document.getElementById('help-toggle');
         this.startInstruction = document.getElementById('start-instruction');
         this.restartInstruction = document.getElementById('restart-instruction');
+        this.missionCompleteInstruction = document.getElementById('mission-complete-instruction');
     }
     
     bindEventListeners() {
@@ -28,10 +29,12 @@ class InputManager {
         // Handle name input on mission complete screen
         if (this.game.missionCompleteScreen.style.display === 'block') {
             this.game.handleNameInput(e.key);
-            // Only allow space to restart if a name has been entered
+            
+            // Only allow space to restart if the restart instruction is visible
+            // (which means the score has been saved)
             if (e.code === 'Space') {
-                const hasEnteredName = this.game.playerName.some(char => char !== '_');
-                if (hasEnteredName) {
+                const restartInstruction = document.getElementById('mission-complete-instruction');
+                if (restartInstruction.style.display === 'block') {
                     this.game.resetGame();
                     this.game.startGame();
                 }
@@ -129,6 +132,16 @@ class InputManager {
         if (this.restartInstruction) {
             this.restartInstruction.addEventListener('click', () => {
                 if (this.game.gameOver) {
+                    this.game.resetGame();
+                    this.game.startGame();
+                }
+            });
+        }
+        
+        // Mission complete instruction click handler
+        if (this.missionCompleteInstruction) {
+            this.missionCompleteInstruction.addEventListener('click', () => {
+                if (this.game.missionCompleteScreen.style.display === 'block') {
                     this.game.resetGame();
                     this.game.startGame();
                 }
