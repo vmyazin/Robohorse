@@ -72,17 +72,39 @@ The latest update improves vehicle destruction mechanics:
 
 ## Running the Game
 
-Simply open `index.html` in a web browser to play.
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Start the development server:
+```bash
+npm run dev
+```
+
+3. Open http://localhost:4269 in your web browser to play.
+
+Routes available:
+- `/` - Main game
+- `/playtest` - Playtest environment
+- `/legacy` - Original version of the game
 
 ## Development
 
-The game is built with vanilla JavaScript using a modular approach:
+The game is built with vanilla JavaScript using a modular approach, served via Node.js/Express:
 
-- `js/Game.js`: Main game logic
-- `js/entities/`: Player, Enemy, and Obstacle classes
-- `js/components/`: UI components like Background
-- `js/levels/`: Level management
-- `js/utils/`: Helper functions
+- `src/server.js`: Express server configuration
+- `src/public/js/Game.js`: Main game logic
+- `src/public/js/entities/`: Player, Enemy, and Obstacle classes
+- `src/public/js/components/`: UI components like Background
+- `src/public/js/levels/`: Level management
+- `src/public/js/utils/`: Helper functions
+
+### Tech Stack
+- Node.js
+- Express.js
+- Vanilla JavaScript (Game Engine)
+- HTML5 Canvas
 
 ## Credits
 
