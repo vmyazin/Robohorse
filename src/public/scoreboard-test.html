@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scoreboard Test - RoboHorse</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: #222;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Press Start 2P', monospace;
+            color: #00ff00;
+        }
+        canvas {
+            background-image: 
+                linear-gradient(rgba(0, 255, 0, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 0, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-color: #111;
+            border: 2px solid #444;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+        }
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        button {
+            font-family: 'Press Start 2P', monospace;
+            background: #000;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #00ff00;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div>Test Controls:</div>
+        <button onclick="shuffleScores()">Shuffle Scores (R)</button>
+        <button onclick="resetScores()">Reset Scores</button>
+    </div>
+    <canvas id="gameCanvas" width="400" height="300"></canvas>
+    <script type="module">
+        import Scoreboard from '/js/components/Scoreboard.js';
+
+        // Wait for font to load before starting
+        document.fonts.ready.then(() => {
+            const canvas = document.getElementById('gameCanvas');
+            // Position the scoreboard more to the left and center
+            const scoreboard = new Scoreboard(canvas, 50, 40);
+            
+            // Make scoreboard accessible globally for testing
+            window.scoreboard = scoreboard;
+            
+            // Test functions
+            window.shuffleScores = () => {
+                scoreboard.scores.sort(() => Math.random() - 0.5);
+            };
+            
+            window.resetScores = () => {
+                scoreboard.scores = [
+                    { name: "QUANTUM", score: 25000 },
+                    { name: "CYBER_X", score: 21500 },
+                    { name: "ROBO_PRO", score: 18750 },
+                    { name: "GALLOPER", score: 15200 },
+                    { name: "NEO_HORSE", score: 12800 }
+                ];
+            };
+
+            // Draw grid background
+            function drawGrid(ctx) {
+                ctx.strokeStyle = 'rgba(0, 255, 0, 0.1)';
+                ctx.lineWidth = 0.5;
+                
+                for(let x = 0; x < canvas.width; x += 20) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+                
+                for(let y = 0; y < canvas.height; y += 20) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+            }
+
+            // Animation loop
+            function animate() {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawGrid(ctx);
+                scoreboard.draw();
+                requestAnimationFrame(animate);
+            }
+
+            // Start animation
+            animate();
+
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                if (e.key.toLowerCase() === 'r') {
+                    shuffleScores();
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

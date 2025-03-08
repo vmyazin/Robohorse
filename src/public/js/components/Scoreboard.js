@@ -1,0 +1,67 @@
+// src/public/js/components/Scoreboard.js
+// Scoreboard component with mock data for UI testing
+
+class Scoreboard {
+    constructor(canvas, x, y) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.x = x;
+        this.y = y;
+        this.width = 300; // Increased width
+        this.height = 200; // Added explicit height
+        this.padding = 15; // Increased padding
+        
+        // Mock data for testing
+        this.scores = [
+            { name: "QUANTUM", score: 25000 },
+            { name: "CYBER_X", score: 21500 },
+            { name: "ROBO_PRO", score: 18750 },
+            { name: "GALLOPER", score: 15200 },
+            { name: "NEO_HORSE", score: 12800 }
+        ];
+    }
+
+    draw() {
+        const ctx = this.ctx;
+        
+        // Border
+        ctx.strokeStyle = '#00FF00';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(this.x - 2, this.y - 2, this.width + 4, this.height + 4);
+        
+        // Background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        
+        // Title
+        ctx.font = 'bold 24px "Press Start 2P", monospace'; // Increased font size
+        ctx.fillStyle = '#FFD700'; // Gold color
+        ctx.fillText('TOP SCORES', this.x + this.padding, this.y + 40);
+        
+        // Scores
+        ctx.font = '16px "Press Start 2P", monospace'; // Increased font size
+        this.scores.forEach((score, index) => {
+            const yPos = this.y + 80 + (index * 25);
+            
+            // Rank
+            ctx.fillStyle = '#00FF00'; // Neon green
+            ctx.fillText(`${index + 1}.`, this.x + this.padding, yPos);
+            
+            // Name
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText(score.name, this.x + 50, yPos);
+            
+            // Score
+            ctx.fillStyle = '#00FFFF'; // Cyan
+            const scoreText = score.score.toString().padStart(6, '0');
+            ctx.fillText(scoreText, this.x + this.width - 100, yPos);
+        });
+    }
+
+    update() {
+        // In the future, this could update with real-time scores
+        // For now, it's static mock data
+    }
+}
+
+export default Scoreboard; 

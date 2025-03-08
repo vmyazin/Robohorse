@@ -23,6 +23,10 @@ app.get('/playtest', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'playtest.html'));
 });
 
+app.get('/test/scoreboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'scoreboard-test.html'));
+});
+
 app.get('/legacy', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'gallop-protocol-game.html'));
 });
