@@ -16,6 +16,9 @@ class Scoreboard {
             bottom: 15
         };
         
+        // Default title
+        this.title = 'TOP SCORES';
+        
         // Mock data with 6-character names
         this.scores = [
             { name: "VORTEX", score: 25000 },
@@ -41,7 +44,13 @@ class Scoreboard {
         // Title
         ctx.font = 'bold 24px "Press Start 2P", monospace';
         ctx.fillStyle = '#FFD700'; // Gold color
-        ctx.fillText('TOP SCORES', this.x + this.padding.left, this.y + 45);
+        
+        // Adjust font size based on title length
+        if (this.title.length > 10) {
+            ctx.font = 'bold 18px "Press Start 2P", monospace';
+        }
+        
+        ctx.fillText(this.title, this.x + this.padding.left, this.y + 45);
         
         // Scores
         ctx.font = '18px "Press Start 2P", monospace'; // Increased font size

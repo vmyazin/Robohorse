@@ -50,13 +50,33 @@
             background: #00ff00;
             color: #000;
         }
+        .game-selector {
+            margin-top: 10px;
+        }
+        select {
+            font-family: 'Press Start 2P', monospace;
+            background: #000;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 8px;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
     <div class="controls">
         <div>Test Controls:</div>
+        <button onclick="fetchRealScores()">Fetch Real Scores</button>
         <button onclick="shuffleScores()">Shuffle Scores (R)</button>
-        <button onclick="resetScores()">Reset Scores</button>
+        <button onclick="resetScores()">Reset Mock Scores</button>
+        <div class="game-selector">
+            <div>Game ID:</div>
+            <select id="gameSelector" onchange="changeGame()">
+                <option value="test-game-1">Test Game 1</option>
+                <option value="test-game-2">Test Game 2</option>
+                <option value="robohorse-v1">RoboHorse v1</option>
+            </select>
+        </div>
     </div>
     <canvas id="gameCanvas" width="600" height="400"></canvas>
     <script type="module">
@@ -71,6 +91,50 @@
             // Make scoreboard accessible globally for testing
             window.scoreboard = scoreboard;
             
+            // Current game ID
+            window.currentGameId = 'test-game-1';
+            
+            // Fetch real scores from the database
+            window.fetchRealScores = async () => {
+                try {
+                    const response = await fetch(`/api/scores/${window.currentGameId}`);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch scores');
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Convert database scores to scoreboard format
+                    scoreboard.scores = data.map(item => ({
+                        name: item.player_id.substring(0, 6).toUpperCase(), // Limit to 6 chars and uppercase
+                        score: item.score
+                    }));
+                    
+                    // Sort by score (highest first)
+                    scoreboard.scores.sort((a, b) => b.score - a.score);
+                    
+                    // Limit to top 5
+                    scoreboard.scores = scoreboard.scores.slice(0, 5);
+                    
+                    // If we have fewer than 5 scores, pad with empty entries
+                    while (scoreboard.scores.length < 5) {
+                        scoreboard.scores.push({ name: "------", score: 0 });
+                    }
+                    
+                    // Update scoreboard title
+                    scoreboard.title = `${window.currentGameId.toUpperCase()}`;
+                } catch (error) {
+                    console.error('Error fetching scores:', error);
+                }
+            };
+            
+            // Change game ID
+            window.changeGame = () => {
+                const selector = document.getElementById('gameSelector');
+                window.currentGameId = selector.value;
+                fetchRealScores();
+            };
+            
             // Test functions
             window.shuffleScores = () => {
                 scoreboard.scores.sort(() => Math.random() - 0.5);
@@ -84,6 +148,7 @@
                     { name: "GLITCH", score: 15200 },
                     { name: "PULSE", score: 12800 }
                 ];
+                scoreboard.title = 'TOP SCORES';
             };
 
             // Draw grid background
@@ -124,6 +189,9 @@
                     shuffleScores();
                 }
             });
+            
+            // Fetch real scores on load
+            fetchRealScores();
         });
     </script>
 </body>
