@@ -25,6 +25,20 @@ class InputManager {
     handleKeyDown(e) {
         this.keys[e.key] = true;
         
+        // Handle name input on mission complete screen
+        if (this.game.missionCompleteScreen.style.display === 'block') {
+            this.game.handleNameInput(e.key);
+            // Only allow space to restart if a name has been entered
+            if (e.code === 'Space') {
+                const hasEnteredName = this.game.playerName.some(char => char !== '_');
+                if (hasEnteredName) {
+                    this.game.resetGame();
+                    this.game.startGame();
+                }
+            }
+            return;
+        }
+        
         // Enter key for weapon swapping (changed from Space)
         if (e.key === 'Enter') {
             // Switch weapon during gameplay
@@ -37,15 +51,15 @@ class InputManager {
         // Spacebar functionality - now for starting/restarting game and resuming from pause
         if (e.code === 'Space') {
             // Start game if on start screen
-            if (!this.game.gameStarted && !this.game.gameOver && this.game.missionCompleteScreen.style.display !== 'block') {
+            if (!this.game.gameStarted && !this.game.gameOver) {
                 this.game.startGame();
             }
             // Resume game if paused
             else if (this.game.isPaused) {
                 this.game.togglePause();
             }
-            // Restart game if on game over or mission complete screen
-            else if (this.game.gameOver || this.game.missionCompleteScreen.style.display === 'block') {
+            // Restart game if on game over screen
+            else if (this.game.gameOver) {
                 this.game.resetGame();
                 this.game.startGame();
             }
@@ -71,6 +85,13 @@ class InputManager {
             e.preventDefault(); // Prevent browser's default behavior
             this.game.triggerElonToasty();
             console.log("Elon Toasty triggered by keyboard shortcut");
+        }
+
+        // Debug shortcut: Ctrl+1 shows mission complete screen
+        if (e.code === 'Digit1' && e.ctrlKey && this.game.gameStarted && !this.game.gameOver) {
+            e.preventDefault(); // Prevent browser's default behavior
+            this.game.showMissionComplete();
+            console.log("Mission complete screen triggered by keyboard shortcut");
         }
     }
     

@@ -49,6 +49,11 @@ class Game {
         this.missionCompleteScreen = document.getElementById('mission-complete');
         this.missionCompleteScore = document.getElementById('mission-complete-score');
         
+        // Name input state
+        this.nameChars = Array.from(document.getElementsByClassName('name-char'));
+        this.currentNameIndex = 0;
+        this.playerName = ['_', '_', '_', '_', '_', '_'];
+        
         // Weapons
         this.weapons = [
             { name: "GLOWING CANNON", color: "#ffffff", damage: 15, fireRate: 15, projectileSpeed: 10, width: 10, height: 10, isGlowing: true },
@@ -211,6 +216,11 @@ class Game {
         
         // Stop background music
         this.soundManager.stopBackgroundMusic();
+        
+        // Reset name input
+        this.nameChars.forEach(char => char.classList.remove('active'));
+        this.currentNameIndex = 0;
+        this.playerName = ['_', '_', '_', '_', '_', '_'];
     }
     
     endGame() {
@@ -1587,9 +1597,67 @@ class Game {
         this.missionCompleteScore.textContent = this.score;
         this.missionCompleteScreen.style.display = 'block';
         
+        // Reset name input
+        this.currentNameIndex = 0;
+        this.playerName = ['_', '_', '_', '_', '_', '_'];
+        this.updateNameDisplay();
+        this.nameChars[0].classList.add('active');
+        
         // Play victory sound
         this.soundManager.stopBackgroundMusic();
         this.soundManager.playSound('powerUp', 0.7);
+    }
+
+    handleNameInput(key) {
+        // Only handle input if we're on the mission complete screen
+        if (this.missionCompleteScreen.style.display !== 'block') return;
+
+        // Handle backspace
+        if (key === 'Backspace') {
+            // Remove active class from current position
+            this.nameChars[this.currentNameIndex].classList.remove('active');
+            
+            // Find the rightmost non-underscore character
+            let lastCharIndex = this.playerName.length - 1;
+            while (lastCharIndex >= 0 && this.playerName[lastCharIndex] === '_') {
+                lastCharIndex--;
+            }
+            
+            // If we found a character to delete
+            if (lastCharIndex >= 0) {
+                this.playerName[lastCharIndex] = '_';
+                this.currentNameIndex = lastCharIndex;
+            } else {
+                this.currentNameIndex = 0;
+            }
+            
+            // Add active class to new position
+            this.nameChars[this.currentNameIndex].classList.add('active');
+            this.updateNameDisplay();
+            return;
+        }
+
+        // Only allow letters and numbers
+        if (!/^[A-Za-z0-9]$/.test(key)) return;
+
+        // Update current character
+        if (this.currentNameIndex < 6) {
+            this.playerName[this.currentNameIndex] = key.toUpperCase();
+            this.nameChars[this.currentNameIndex].classList.remove('active');
+            
+            if (this.currentNameIndex < 5) {
+                this.currentNameIndex++;
+                this.nameChars[this.currentNameIndex].classList.add('active');
+            }
+            
+            this.updateNameDisplay();
+        }
+    }
+
+    updateNameDisplay() {
+        this.nameChars.forEach((char, index) => {
+            char.textContent = this.playerName[index];
+        });
     }
 }
 

@@ -206,6 +206,37 @@ button:hover {
     font-size: 24px;
 }
 
+/* Name Input Section */
+#name-input-section {
+    margin: 30px 0;
+}
+
+.name-input-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.name-char {
+    width: 30px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid #36f;
+    color: #0ff;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 0 0 5px #0ff;
+}
+
+.name-char.active {
+    border-color: #0ff;
+    box-shadow: 0 0 10px #0ff;
+    background: rgba(0, 255, 255, 0.1);
+}
+
 .clickable {
     cursor: pointer;
     transition: all 0.2s ease;
