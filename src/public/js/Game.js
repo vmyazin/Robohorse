@@ -49,9 +49,17 @@ class Game {
         this.missionCompleteScreen = document.getElementById('mission-complete');
         this.missionCompleteScore = document.getElementById('mission-complete-score');
         this.enterKeyButton = document.getElementById('enter-key');
+        this.soundToggle = document.getElementById('sound-toggle');
+        this.helpToggle = document.getElementById('help-toggle');
+        
+        // Scoreboard elements
+        this.scoreboardOverlay = document.getElementById('scoreboard-overlay');
+        this.viewScoreboard = document.getElementById('view-scoreboard');
+        this.closeScoreboard = document.getElementById('close-scoreboard');
         
         // Name input state
-        this.nameChars = Array.from(document.getElementsByClassName('name-char'));
+        this.nameInputSection = document.getElementById('name-input-section');
+        this.nameChars = Array.from(document.querySelectorAll('.name-char'));
         this.currentNameIndex = 0;
         this.playerName = ['_', '_', '_', '_', '_', '_'];
         
@@ -164,6 +172,15 @@ class Game {
                 }
             });
         }
+        
+        // Scoreboard event listeners
+        this.viewScoreboard.addEventListener('click', () => {
+            this.showScoreboard();
+        });
+        
+        this.closeScoreboard.addEventListener('click', () => {
+            this.hideScoreboard();
+        });
     }
     
     startGame() {
@@ -233,9 +250,6 @@ class Game {
             this.enterKeyButton.style.display = 'flex';
         }
         
-        // Stop background music
-        this.soundManager.stopBackgroundMusic();
-        
         // Reset name input
         this.nameChars.forEach(char => char.classList.remove('active'));
         this.currentNameIndex = 0;
@@ -246,31 +260,11 @@ class Game {
         this.gameOver = true;
         this.gameStarted = false;
         
-        // Hide the game over screen
-        this.gameOverScreen.style.display = 'none';
-        
         // Update final score display
         this.finalScoreDisplay.textContent = this.score;
         
-        // Show mission complete screen instead of game over screen
-        this.missionCompleteScreen.style.display = 'block';
-        
-        // Change the title to "GAME OVER" instead of "MISSION COMPLETE"
-        const missionTitle = this.missionCompleteScreen.querySelector('h1');
-        missionTitle.textContent = "GAME OVER";
-        
-        // Update score display
-        this.missionCompleteScore.textContent = this.score;
-        
-        // Reset name input
-        this.currentNameIndex = 0;
-        this.playerName = ['_', '_', '_', '_', '_', '_'];
-        this.updateNameDisplay();
-        this.nameChars[0].classList.add('active');
-        
-        // Hide restart instruction until score is saved
-        const restartInstruction = document.getElementById('mission-complete-instruction');
-        restartInstruction.style.display = 'none';
+        // Show game over screen
+        this.gameOverScreen.style.display = 'block';
         
         // Stop background music and play death sound
         this.soundManager.stopBackgroundMusic();
@@ -1635,12 +1629,26 @@ class Game {
 
     showMissionComplete() {
         this.gameStarted = false;
+        this.gameOver = false;  // This is a mission complete, not a game over
+        
+        // Update score display
         this.missionCompleteScore.textContent = this.score;
+        
+        // Show mission complete screen
         this.missionCompleteScreen.style.display = 'block';
         
         // Ensure the title is "MISSION COMPLETE"
         const missionTitle = this.missionCompleteScreen.querySelector('h1');
         missionTitle.textContent = "MISSION COMPLETE";
+        
+        // Show name input section
+        if (this.nameInputSection) {
+            this.nameInputSection.style.display = 'block';
+        }
+        
+        if (this.enterKeyButton) {
+            this.enterKeyButton.style.display = 'flex';
+        }
         
         // Reset name input
         this.currentNameIndex = 0;
@@ -1652,8 +1660,10 @@ class Game {
         const restartInstruction = document.getElementById('mission-complete-instruction');
         restartInstruction.style.display = 'none';
         
-        // Play victory sound
+        // Stop background music
         this.soundManager.stopBackgroundMusic();
+        
+        // Play victory sound
         this.soundManager.playSound('powerUp', 0.7);
     }
 
@@ -1721,25 +1731,25 @@ class Game {
 
     // New method to save score to the database
     saveScore() {
-        // Get player name from input
-        const playerName = this.playerName.join('').replace(/_/g, '');
+        // Get the player name from the input
+        const playerName = this.playerName.join('').replace(/_/g, ' ').trim();
         
-        // Hide the enter key button
-        if (this.enterKeyButton) {
-            this.enterKeyButton.style.display = 'none';
-        }
+        // If no name was entered, use "UNKNOWN"
+        const finalName = playerName || 'UNKNOWN';
         
-        // Save score to database
+        console.log(`Saving score for ${finalName}: ${this.score}`);
+        
+        // Make API call to save the score
         fetch('/api/scores', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                gameId: 'robohorse-v1',
-                playerId: playerName,
-                score: this.score
-            })
+                name: finalName,
+                score: this.score,
+                level: this.currentLevel ? this.currentLevel.name : 'Unknown'
+            }),
         })
         .then(response => {
             if (!response.ok) {
@@ -1749,18 +1759,18 @@ class Game {
         })
         .then(data => {
             console.log('Score saved successfully:', data);
-            
-            // Show restart instruction after score is saved
-            const restartInstruction = document.getElementById('mission-complete-instruction');
-            restartInstruction.style.display = 'block';
         })
         .catch(error => {
             console.error('Error saving score:', error);
-            
-            // Show restart instruction even if there was an error
-            const restartInstruction = document.getElementById('mission-complete-instruction');
-            restartInstruction.style.display = 'block';
         });
+    }
+
+    showScoreboard() {
+        this.scoreboardOverlay.style.display = 'flex';
+    }
+    
+    hideScoreboard() {
+        this.scoreboardOverlay.style.display = 'none';
     }
 }
 

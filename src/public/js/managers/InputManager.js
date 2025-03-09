@@ -141,7 +141,7 @@ class InputManager {
         // Mission complete instruction click handler
         if (this.missionCompleteInstruction) {
             this.missionCompleteInstruction.addEventListener('click', () => {
-                if (this.game.missionCompleteScreen.style.display === 'block') {
+                if (this.missionCompleteInstruction.style.display === 'block') {
                     this.game.resetGame();
                     this.game.startGame();
                 }

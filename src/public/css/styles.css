@@ -78,7 +78,8 @@ canvas {
     margin: 0 8px;
 }
 
-#game-over, #start-screen {
+/* Game Over and Start Screen */
+#start-screen {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -92,12 +93,12 @@ canvas {
     border: 3px solid #36f;
     box-shadow: 0 0 20px #36f, inset 0 0 15px rgba(51, 102, 255, 0.5);
     display: none;
+    width: 60%;
+    max-width: 600px;
 }
 
 #start-screen {
     display: block;
-    width: 60%;
-    max-width: 600px;
 }
 
 #start-screen h1 {
@@ -105,6 +106,64 @@ canvas {
     text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
     font-size: 28px;
     margin-bottom: 30px;
+}
+
+/* Game Over Screen - Enhanced Design */
+#game-over {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 30, 0.9);
+    color: #0ff;
+    padding: 40px;
+    border-radius: 15px;
+    border: 4px solid #36f;
+    box-shadow: 0 0 30px #36f, inset 0 0 20px rgba(51, 102, 255, 0.7);
+    text-align: center;
+    font-family: 'Press Start 2P', cursive;
+    display: none;
+    z-index: 1000;
+    width: 60%;
+    max-width: 600px;
+    animation: gameOverPulse 2s infinite alternate;
+}
+
+@keyframes gameOverPulse {
+    0% {
+        box-shadow: 0 0 30px #36f, inset 0 0 20px rgba(51, 102, 255, 0.7);
+    }
+    100% {
+        box-shadow: 0 0 40px #f55, inset 0 0 25px rgba(255, 85, 85, 0.7);
+    }
+}
+
+#game-over h1 {
+    color: #f55;
+    text-shadow: 0 0 10px #f55, 0 0 20px #f55;
+    font-size: 32px;
+    margin-bottom: 30px;
+    animation: gameOverTextPulse 1.5s infinite alternate;
+}
+
+@keyframes gameOverTextPulse {
+    0% {
+        text-shadow: 0 0 10px #f55, 0 0 20px #f55;
+    }
+    100% {
+        text-shadow: 0 0 15px #f55, 0 0 30px #f55, 0 0 45px #f55;
+    }
+}
+
+#game-over #final-score {
+    color: #ff0;
+    text-shadow: 0 0 10px #ff0;
+    font-size: 24px;
+}
+
+#game-over p {
+    margin: 20px 0;
+    font-size: 16px;
 }
 
 button {
@@ -306,4 +365,107 @@ button:hover {
     text-shadow: 0 0 5px #ff0;
     border-color: #ff0;
     box-shadow: 0 0 10px #ff0;
+}
+
+/* Scoreboard Overlay Styles */
+#scoreboard-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.scoreboard-content {
+    background-color: #000;
+    border: 4px solid #36f;
+    box-shadow: 0 0 20px #36f, 0 0 40px rgba(51, 102, 255, 0.5);
+    padding: 20px;
+    width: 80%;
+    max-width: 600px;
+    text-align: center;
+}
+
+.scoreboard-content h2 {
+    color: #0ff;
+    font-size: 24px;
+    margin-bottom: 20px;
+    text-shadow: 0 0 5px #0ff;
+}
+
+.scoreboard-table {
+    margin-bottom: 20px;
+}
+
+.scoreboard-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 2px solid #36f;
+    color: #0ff;
+    font-size: 14px;
+}
+
+.scoreboard-header .rank {
+    width: 20%;
+    text-align: center;
+}
+
+.scoreboard-header .name {
+    width: 50%;
+    text-align: center;
+}
+
+.scoreboard-header .score {
+    width: 30%;
+    text-align: center;
+}
+
+.scoreboard-body {
+    padding: 20px 0;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.empty-message {
+    color: #666;
+    font-size: 14px;
+    text-align: center;
+}
+
+#close-scoreboard {
+    color: #0ff;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 20px;
+    display: inline-block;
+}
+
+#close-scoreboard:hover {
+    text-shadow: 0 0 5px #0ff;
+}
+
+#view-scoreboard {
+    margin-top: 10px;
+    color: #0ff;
+    background-color: rgba(0, 255, 255, 0.1);
+    padding: 10px 15px;
+    border: 2px solid #0ff;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+#view-scoreboard:hover {
+    background-color: rgba(0, 255, 255, 0.3);
+    box-shadow: 0 0 15px #0ff;
+    transform: scale(1.05);
 } 

@@ -111,9 +111,10 @@
             LEVEL: <span id="level">Training Grounds</span>
         </div>
         <div id="game-over">
-            GAME OVER<br>
-            FINAL SCORE: <span id="final-score">0</span><br>
+            <h1>GAME OVER</h1>
+            <p>Final Score: <span id="final-score">0</span></p>
             <p id="restart-instruction" class="clickable">Press <span class="control-key">SPACE</span> to restart</p>
+            <p id="view-scoreboard" class="clickable">View scoreboard</p>
         </div>
         <div id="start-screen">
             <h1>ROBOHORSE GALLOP</h1>
@@ -127,6 +128,24 @@
             </p>
             <p>Collect tokens (★) for special abilities</p>
             <p id="start-instruction" class="clickable">Press <span class="control-key">SPACE</span> to start</p>
+        </div>
+        
+        <div id="scoreboard-overlay">
+            <div class="scoreboard-content">
+                <h2>SCOREBOARD</h2>
+                <div class="scoreboard-table">
+                    <div class="scoreboard-header">
+                        <div class="rank">RANK</div>
+                        <div class="name">NAME</div>
+                        <div class="score">SCORE</div>
+                    </div>
+                    <div class="scoreboard-body">
+                        <!-- Scoreboard entries will be populated here -->
+                        <div class="empty-message">No scores available yet</div>
+                    </div>
+                </div>
+                <p id="close-scoreboard" class="clickable">Close</p>
+            </div>
         </div>
     </div>
 
