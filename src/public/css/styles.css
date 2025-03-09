@@ -434,6 +434,38 @@ button:hover {
     justify-content: center;
 }
 
+.scoreboard-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #36f;
+    color: #fff;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+
+.scoreboard-row:hover {
+    background-color: rgba(51, 102, 255, 0.2);
+}
+
+.scoreboard-row .rank {
+    width: 20%;
+    text-align: center;
+    color: #ff0;
+}
+
+.scoreboard-row .name {
+    width: 50%;
+    text-align: center;
+    color: #0ff;
+}
+
+.scoreboard-row .score {
+    width: 30%;
+    text-align: center;
+    color: #f0f;
+}
+
 .empty-message {
     color: #666;
     font-size: 14px;
