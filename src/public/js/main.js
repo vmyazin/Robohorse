@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize the game
     game.resetGame();
     
-    // The game will start when the start button is clicked
+    // Start the animation loop to enable toggle functionality
+    requestAnimationFrame(game.animate);
+    
+    // The game will start when the space key is pressed
     // This is already handled in the Game class with event listeners
 }); 

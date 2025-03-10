@@ -137,6 +137,14 @@ class Game {
         // Add a lastKeyTime property to track when the last key was pressed
         this.lastKeyTime = 0;
         this.keyDebounceTime = 100; // 100ms debounce time
+        
+        // Start screen toggle timer
+        this.startScreenToggleTimer = 0;
+        this.showingScoreboard = false;
+        this.startInstructionElement = null;
+        
+        // Bind the animate method to this instance
+        this.animate = this.animate.bind(this);
     }
     
     toggleSound() {
@@ -236,6 +244,19 @@ class Game {
         this.lastSpawnTime = 0;
         this.gameSpeed = 1;
         this.mushroomPowerTimer = 0;
+        
+        // Reset start screen toggle timer
+        this.startScreenToggleTimer = 0;
+        this.showingScoreboard = false;
+        
+        // Make sure start screen is visible initially
+        this.startScreen.style.display = 'block';
+        this.hideScoreboard();
+        
+        // Save reference to start instruction element if not already saved
+        if (!this.startInstructionElement) {
+            this.startInstructionElement = document.getElementById('start-instruction');
+        }
         
         // Reset player using the reset method
         this.player.reset();
@@ -1322,6 +1343,23 @@ class Game {
         const deltaTime = timestamp - this.lastFrameTime;
         this.lastFrameTime = timestamp;
         
+        // Handle start screen toggle if game hasn't started
+        if (!this.gameStarted && !this.gameOver) {
+            // First time initialization of timer
+            if (this.startScreenToggleTimer === 0) {
+                console.log("Timer started: 5s");
+            }
+            
+            this.startScreenToggleTimer += deltaTime;
+            
+            // Toggle between start screen and scoreboard every 5 seconds (5000ms)
+            if (this.startScreenToggleTimer >= 5000) {
+                console.log("Timer completed");
+                this.startScreenToggleTimer = 0;
+                this.toggleStartScreenAndScoreboard();
+            }
+        }
+        
         if (!this.gameOver && !this.isPaused) {
             // Update game state
             this.update();
@@ -1330,12 +1368,12 @@ class Game {
             this.draw();
             
             // Request the next frame
-            this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
-        } else if (this.isPaused) {
-            // When paused, only redraw the game (no updates) and keep requesting frames
-            // This ensures the game remains visible behind the pause screen
+            this.animationFrameId = requestAnimationFrame(this.animate);
+        } else if (this.isPaused || (!this.gameStarted && !this.gameOver)) {
+            // When paused or on start screen/scoreboard, only redraw the game (no updates) and keep requesting frames
+            // This ensures the game remains visible behind the pause screen or start screen/scoreboard
             this.draw();
-            this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
+            this.animationFrameId = requestAnimationFrame(this.animate);
         } else {
             this.animationFrameId = null;
         }
@@ -1913,6 +1951,48 @@ class Game {
         // Show the scoreboard overlay
         this.scoreboardOverlay.style.display = 'flex';
         
+        // If toggling between start screen and scoreboard, ensure "Press SPACE to start" is visible
+        // and hide the close button
+        if (!this.gameStarted && !this.gameOver) {
+            // Hide the close button when auto-toggling
+            const closeButton = document.getElementById('close-scoreboard');
+            if (closeButton) {
+                closeButton.style.display = 'none';
+            }
+            
+            // Make sure we have a reference to the start instruction element
+            if (!this.startInstructionElement) {
+                this.startInstructionElement = document.getElementById('start-instruction');
+            }
+            
+            // Create or update the start instruction in the scoreboard if it doesn't exist
+            let scoreboardStartInstruction = document.querySelector('#scoreboard-start-instruction');
+            
+            if (!scoreboardStartInstruction) {
+                scoreboardStartInstruction = document.createElement('p');
+                scoreboardStartInstruction.id = 'scoreboard-start-instruction';
+                scoreboardStartInstruction.className = 'clickable';
+                
+                if (this.startInstructionElement) {
+                    scoreboardStartInstruction.innerHTML = this.startInstructionElement.innerHTML;
+                } else {
+                    scoreboardStartInstruction.innerHTML = 'Press <span class="control-key">SPACE</span> to start';
+                }
+                
+                // Add to scoreboard content
+                const scoreboardContent = document.querySelector('.scoreboard-content');
+                if (scoreboardContent) {
+                    scoreboardContent.appendChild(scoreboardStartInstruction);
+                }
+            }
+        } else {
+            // Show the close button when manually viewing scoreboard
+            const closeButton = document.getElementById('close-scoreboard');
+            if (closeButton) {
+                closeButton.style.display = 'block';
+            }
+        }
+        
         // Fetch scores from the database
         fetch('/api/scores/robohorse-v1')
             .then(response => {
@@ -1984,6 +2064,20 @@ class Game {
     
     hideScoreboard() {
         this.scoreboardOverlay.style.display = 'none';
+    }
+
+    toggleStartScreenAndScoreboard() {
+        if (this.showingScoreboard) {
+            // Switch back to start screen
+            this.startScreen.style.display = 'block';
+            this.hideScoreboard();
+            this.showingScoreboard = false;
+        } else {
+            // Switch to scoreboard
+            this.startScreen.style.display = 'none';
+            this.showScoreboard();
+            this.showingScoreboard = true;
+        }
     }
 }
 
