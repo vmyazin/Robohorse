@@ -2,11 +2,11 @@
   "name": "robohorse",
   "version": "1.0.0",
   "description": "A side-scrolling action game where you control RoboHorse, a six-legged cyber-horse, against the invading Cephalopod Armada!",
-  "main": "index.js",
+  "main": "api/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "setup-db": "node src/db/setup.js",
+    "start": "node api/server.js",
+    "dev": "nodemon api/server.js",
+    "setup-db": "node api/db/setup.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

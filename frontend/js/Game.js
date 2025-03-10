@@ -1862,14 +1862,15 @@ class Game {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                gameId: 'robohorse-v1',
-                playerId: finalName,
+                name: finalName,
                 score: this.score
             }),
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error('Failed to save score');
+                return response.json().then(err => {
+                    throw new Error(err.error || 'Failed to save score');
+                });
             }
             return response.json();
         })
@@ -1915,14 +1916,15 @@ class Game {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                gameId: 'robohorse-v1',
-                playerId: finalName,
+                name: finalName,
                 score: this.score
             }),
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error('Failed to save score');
+                return response.json().then(err => {
+                    throw new Error(err.error || 'Failed to save score');
+                });
             }
             return response.json();
         })

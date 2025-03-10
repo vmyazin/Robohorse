@@ -29,6 +29,9 @@
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
     <link rel="stylesheet" href="css/styles.css">
     <script defer data-domain="games.smoxu.com" src="https://plausible.io/js/script.js"></script>
     <style>
@@ -66,6 +69,24 @@
             gap: 10px;
             margin-top: 15px;
         }
+
+        /* Loading spinner */
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        [x-cloak] { display: none !important; }
     </style>
 </head>
 <body>
@@ -75,17 +96,44 @@
         <div id="mission-complete">
             <h1>MISSION COMPLETE</h1>
             <p>Final Score: <span id="mission-complete-score">0</span></p>
-            <div id="name-input-section">
+            <div id="name-input-section" x-data="{ 
+                name: ['_', '_', '_', '_', '_', '_'],
+                currentIndex: 0,
+                isSubmitting: false,
+                async submitScore() {
+                    this.isSubmitting = true;
+                    try {
+                        const response = await fetch('/api/scores', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                name: this.name.join(''),
+                                score: document.getElementById('mission-complete-score').textContent
+                            })
+                        });
+                        if (!response.ok) throw new Error('Failed to submit score');
+                    } catch (error) {
+                        console.error('Error submitting score:', error);
+                    } finally {
+                        this.isSubmitting = false;
+                    }
+                }
+            }">
                 <p>Enter your name:</p>
                 <div class="name-input-container">
-                    <div class="name-char">_</div>
-                    <div class="name-char">_</div>
-                    <div class="name-char">_</div>
-                    <div class="name-char">_</div>
-                    <div class="name-char">_</div>
-                    <div class="name-char">_</div>
-                    <div id="enter-key" class="enter-key-button">
-                        <span class="enter-arrow">↵</span>
+                    <template x-for="(char, index) in name" :key="index">
+                        <div class="name-char" 
+                             :class="{ 'active': currentIndex === index }"
+                             x-text="char"></div>
+                    </template>
+                    <div id="enter-key" 
+                         class="enter-key-button"
+                         @click="submitScore()"
+                         :class="{ 'disabled': isSubmitting }">
+                        <span class="enter-arrow" x-show="!isSubmitting">↵</span>
+                        <div class="loading-spinner" x-show="isSubmitting" x-cloak></div>
                     </div>
                 </div>
             </div>
@@ -113,17 +161,44 @@
         <div id="game-over">
             <h1>GAME OVER</h1>
             <p>Final Score: <span id="final-score">0</span></p>
-            <div id="game-over-name-input-section">
+            <div id="game-over-name-input-section" x-data="{ 
+                name: ['_', '_', '_', '_', '_', '_'],
+                currentIndex: 0,
+                isSubmitting: false,
+                async submitScore() {
+                    this.isSubmitting = true;
+                    try {
+                        const response = await fetch('/api/scores', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                name: this.name.join(''),
+                                score: document.getElementById('final-score').textContent
+                            })
+                        });
+                        if (!response.ok) throw new Error('Failed to submit score');
+                    } catch (error) {
+                        console.error('Error submitting score:', error);
+                    } finally {
+                        this.isSubmitting = false;
+                    }
+                }
+            }">
                 <p>Enter your name:</p>
                 <div class="name-input-container">
-                    <div class="game-over-name-char">_</div>
-                    <div class="game-over-name-char">_</div>
-                    <div class="game-over-name-char">_</div>
-                    <div class="game-over-name-char">_</div>
-                    <div class="game-over-name-char">_</div>
-                    <div class="game-over-name-char">_</div>
-                    <div id="game-over-enter-key" class="enter-key-button">
-                        <span class="enter-arrow">↵</span>
+                    <template x-for="(char, index) in name" :key="index">
+                        <div class="game-over-name-char" 
+                             :class="{ 'active': currentIndex === index }"
+                             x-text="char"></div>
+                    </template>
+                    <div id="game-over-enter-key" 
+                         class="enter-key-button"
+                         @click="submitScore()"
+                         :class="{ 'disabled': isSubmitting }">
+                        <span class="enter-arrow" x-show="!isSubmitting">↵</span>
+                        <div class="loading-spinner" x-show="isSubmitting" x-cloak></div>
                     </div>
                 </div>
             </div>
@@ -144,7 +219,23 @@
             <p id="start-instruction" class="clickable">Press <span class="control-key">SPACE</span> to start</p>
         </div>
         
-        <div id="scoreboard-overlay">
+        <div id="scoreboard-overlay" x-data="{ 
+            scores: [],
+            isLoading: false,
+            async fetchScores() {
+                this.isLoading = true;
+                try {
+                    const response = await fetch('/api/scores');
+                    if (!response.ok) throw new Error('Failed to fetch scores');
+                    this.scores = await response.json();
+                } catch (error) {
+                    console.error('Error fetching scores:', error);
+                    this.scores = [];
+                } finally {
+                    this.isLoading = false;
+                }
+            }
+        }" x-init="fetchScores()">
             <div class="scoreboard-content">
                 <h2>SCOREBOARD</h2>
                 <div class="scoreboard-table">
@@ -154,8 +245,17 @@
                         <div class="score">SCORE</div>
                     </div>
                     <div class="scoreboard-body">
-                        <!-- Scoreboard entries will be populated here -->
-                        <div class="empty-message">No scores available yet</div>
+                        <div class="loading-spinner" x-show="isLoading" x-cloak></div>
+                        <template x-if="!isLoading && scores.length === 0">
+                            <div class="empty-message">No scores available yet</div>
+                        </template>
+                        <template x-for="(score, index) in scores" :key="index">
+                            <div class="scoreboard-row">
+                                <div class="rank" x-text="index + 1"></div>
+                                <div class="name" x-text="score.name"></div>
+                                <div class="score" x-text="score.score"></div>
+                            </div>
+                        </template>
                     </div>
                 </div>
                 <p id="close-scoreboard" class="clickable">Close</p>
