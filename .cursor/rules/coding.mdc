@@ -11,7 +11,7 @@ alwaysApply: false
 
 ## Server
 
-- Do not offer to start the server (i.e. `npm run dev`), only suggest it in plain text
+- Do not offer to start the server (i.e. `npm run dev` or `npm server`), only suggest it in plain text
 
 ## Reference
 
