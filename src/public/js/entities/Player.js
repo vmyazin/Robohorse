@@ -5,6 +5,7 @@ class Player {
         this.canvas = canvas;
         this.weapons = weapons;
         this.currentWeaponIndex = 0;
+        this.currentWeapon = weapons[0];
         
         // Initialize player properties
         this.x = 100;
@@ -25,8 +26,8 @@ class Player {
         this.standingOnObstacle = null;
         
         // Special ability tokens
-        this.specialAbilityTokens = 0;
-        this.maxSpecialAbilityTokens = 5;
+        this.specialTokens = 0;
+        this.maxSpecialTokens = 5;
         
         // Special ability duration tracking
         this.specialAbilityActive = false;
@@ -225,18 +226,18 @@ class Player {
     
     specialAbility(frameCount, projectiles, createParticles, playSound) {
         // Check if player has tokens to use special ability
-        if (this.specialAbilityTokens <= 0 && !this.specialAbilityActive) {
+        if (this.specialTokens <= 0 && !this.specialAbilityActive) {
             return false;
         }
         
         // Activate special ability if not already active
-        if (!this.specialAbilityActive && this.specialAbilityTokens > 0) {
+        if (!this.specialAbilityActive && this.specialTokens > 0) {
             this.specialAbilityActive = true;
             this.specialAbilityDuration = 0;
             this.specialAbilityLastConsumption = frameCount;
             
             // Consume one token to start
-            this.specialAbilityTokens--;
+            this.specialTokens--;
             
             // Create initial particle burst
             createParticles(this.x + this.width/2, this.y + this.height/2, 30, this.weapons[this.currentWeaponIndex].color);
@@ -249,8 +250,8 @@ class Player {
             
             // Check if we need to consume another token
             if (frameCount - this.specialAbilityLastConsumption >= this.specialAbilityConsumptionRate) {
-                if (this.specialAbilityTokens > 0) {
-                    this.specialAbilityTokens--;
+                if (this.specialTokens > 0) {
+                    this.specialTokens--;
                     this.specialAbilityLastConsumption = frameCount;
                     // Reset duration when consuming a new token to extend the ability
                     this.specialAbilityDuration = 0;
@@ -258,7 +259,7 @@ class Player {
             }
             
             // Check if special ability should end
-            if (this.specialAbilityDuration >= this.specialAbilityMaxDuration && this.specialAbilityTokens <= 0) {
+            if (this.specialAbilityDuration >= this.specialAbilityMaxDuration && this.specialTokens <= 0) {
                 this.specialAbilityActive = false;
                 return false;
             }
@@ -298,6 +299,7 @@ class Player {
     
     switchWeapon() {
         this.currentWeaponIndex = (this.currentWeaponIndex + 1) % this.weapons.length;
+        this.currentWeapon = this.weapons[this.currentWeaponIndex];
         return this.weapons[this.currentWeaponIndex].name;
     }
     
@@ -935,57 +937,81 @@ class Player {
     
     // New method to deactivate mushroom power-up
     deactivateMushroomPower(createParticles) {
-        if (this.mushroomPowerActive && !this.isShrinking) {
-            // Start the shrinking animation sequence
-            this.isShrinking = true;
-            this.shrinkStage = 0;
-            this.shrinkAnimationFrame = 0;
-            
-            // We'll set mushroomPowerActive to false after the animation completes
-            return true;
+        this.mushroomPowerActive = false;
+        this.mushroomPowerTimer = 0;
+        this.width = 60;
+        this.height = 40;
+        this.speed = 5;
+        this.jumpPower = 12;
+        this.isShrinking = true;
+        this.growthScale = 1;
+        
+        // Create particles to show the power-down effect
+        if (createParticles) {
+            createParticles(this.x + this.width / 2, this.y + this.height / 2, 20, '#8B4513');
         }
-        return false;
     }
     
     // Helper method to handle the shrinking animation
     updateShrinkAnimation(createParticles) {
-        if (!this.isShrinking) return;
-        
-        this.shrinkAnimationFrame++;
-        
-        // Progress shrinking every 5 frames instead of toggling visibility
-        if (this.shrinkAnimationFrame % 5 === 0) {
-            // Calculate smooth shrink progress (0 to 1 over 30 frames)
-            const shrinkProgress = Math.min(this.shrinkAnimationFrame / 30, 1);
+        // Similar to growth animation but in reverse
+        if (this.isShrinking) {
+            this.shrinkScale = Math.max(1, this.shrinkScale - 0.05);
             
-            // Apply smooth scaling from powered-up size to original
-            // Match the same proportions used in growth
-            this.width = this.originalWidth * (2 - shrinkProgress);
-            this.height = this.originalHeight * (2.5 - shrinkProgress * 1.5);
-            
-            // Create particles during shrinking
-            if (this.shrinkAnimationFrame % 10 === 0 && createParticles) {
-                createParticles(this.x + this.width/2, this.y + this.height/2, 10, '#ff0000');
+            if (this.shrinkScale <= 1) {
+                this.isShrinking = false;
+                this.shrinkScale = 1;
             }
             
-            // Animation complete after 30 frames (about 0.5 seconds)
-            if (this.shrinkAnimationFrame >= 30) {
-                this.isShrinking = false;
-                this.mushroomPowerActive = false;
-                this.width = this.originalWidth;
-                this.height = this.originalHeight;
-                
-                // Adjust position to prevent clipping through floor
-                if (this.y + this.height > this.canvas.height - 50) {
-                    this.y = this.canvas.height - 50 - this.height;
-                }
-                
-                // Create a final burst of particles
-                if (createParticles) {
-                    createParticles(this.x + this.width/2, this.y + this.height/2, 30, '#ff0000');
-                }
+            if (createParticles && Math.random() < 0.3) {
+                createParticles(
+                    this.x + Math.random() * this.width,
+                    this.y + Math.random() * this.height,
+                    1,
+                    '#8B4513'
+                );
             }
         }
+    }
+    
+    reset() {
+        // Reset position
+        this.x = 100;
+        this.y = this.canvas.height / 2;
+        
+        // Reset movement
+        this.velY = 0;
+        this.isJumping = false;
+        this.direction = 1;
+        
+        // Reset health
+        this.health = 100;
+        
+        // Reset weapons
+        this.currentWeaponIndex = 0;
+        this.currentWeapon = this.weapons[0];
+        this.lastShot = 0;
+        
+        // Reset special abilities
+        this.specialTokens = 0;
+        this.specialAbilityActive = false;
+        this.specialAbilityDuration = 0;
+        this.specialAbilityLastConsumption = 0;
+        
+        // Reset mushroom power
+        this.mushroomPowerActive = false;
+        this.mushroomPowerTimer = 0;
+        this.isGrowing = false;
+        this.isShrinking = false;
+        this.growthScale = 1;
+        this.shrinkScale = 1;
+        
+        // Reset standing on obstacle
+        this.standingOnObstacle = null;
+        
+        // Reset box smashing
+        this.isLanding = false;
+        this.lastVelY = 0;
     }
 }
 

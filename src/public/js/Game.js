@@ -63,6 +63,12 @@ class Game {
         this.currentNameIndex = 0;
         this.playerName = ['_', '_', '_', '_', '_', '_'];
         
+        // Game Over name input state
+        this.gameOverNameInputSection = document.getElementById('game-over-name-input-section');
+        this.gameOverNameChars = Array.from(document.querySelectorAll('.game-over-name-char'));
+        this.gameOverCurrentNameIndex = 0;
+        this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
+        
         // Weapons
         this.weapons = [
             { name: "GLOWING CANNON", color: "#ffffff", damage: 15, fireRate: 15, projectileSpeed: 10, width: 10, height: 10, isGlowing: true },
@@ -103,6 +109,7 @@ class Game {
             blasterLeg: 'audio/blaster_shot_leg.mp3',
             // Other sounds
             powerUp: 'audio/power_up.mp3',
+            victory: 'audio/power_up.mp3', // Use power_up sound for victory until we have a dedicated one
             horseScream: 'audio/horse_scream_die.mp3',
             alienWhisper1: 'audio/alien_whisper_1.mp3',
             alienWhisper2: 'audio/alien_whisper_2.mp3',
@@ -126,6 +133,10 @@ class Game {
         
         // Bind event listeners
         this.bindEventListeners();
+        
+        // Add a lastKeyTime property to track when the last key was pressed
+        this.lastKeyTime = 0;
+        this.keyDebounceTime = 100; // 100ms debounce time
     }
     
     toggleSound() {
@@ -159,7 +170,7 @@ class Game {
     bindEventListeners() {
         this.inputManager.bindEventListeners();
         
-        // Add click event for the Enter key button
+        // Add click event for the Enter key button (Mission Complete)
         if (this.enterKeyButton) {
             this.enterKeyButton.addEventListener('click', () => {
                 // Only handle if we're on the mission complete screen
@@ -168,6 +179,21 @@ class Game {
                     const hasEnteredName = this.playerName.some(char => char !== '_');
                     if (hasEnteredName) {
                         this.saveScore();
+                    }
+                }
+            });
+        }
+        
+        // Add click event for the Game Over Enter key button
+        const gameOverEnterKey = document.getElementById('game-over-enter-key');
+        if (gameOverEnterKey) {
+            gameOverEnterKey.addEventListener('click', () => {
+                // Only handle if we're on the game over screen
+                if (this.gameOverScreen.style.display === 'block') {
+                    // Check if at least one character has been entered
+                    const hasEnteredName = this.gameOverPlayerName.some(char => char !== '_');
+                    if (hasEnteredName) {
+                        this.saveGameOverScore();
                     }
                 }
             });
@@ -209,34 +235,38 @@ class Game {
         this.frameCount = 0;
         this.lastSpawnTime = 0;
         this.gameSpeed = 1;
+        this.mushroomPowerTimer = 0;
         
-        // Reset player by creating a new instance
-        this.player = new Player(this.canvas, this.weapons);
+        // Reset player using the reset method
+        this.player.reset();
         
-        // Clear all game objects
+        // Clear game entities
         this.enemies = [];
-        this.obstacles = [];
-        this.powerUps = [];
-        this.particles = [];
         this.projectiles = [];
+        this.powerUps = [];
         this.specialTokens = [];
+        this.obstacles = [];
+        this.particles = [];
+        this.platforms = [];
         
         // Reset level manager
-        if (this.levelManager) {
-            this.levelManager.resetToFirstLevel();
-            this.currentLevel = this.levelManager.getCurrentLevel();
-            
-            // Update level display
-            if (this.levelDisplay) {
-                this.levelDisplay.textContent = this.currentLevel.name;
-            }
+        this.levelManager.resetToFirstLevel();
+        
+        // Update level display
+        const currentLevel = this.levelManager.getCurrentLevel();
+        if (this.levelDisplay && currentLevel) {
+            this.levelDisplay.textContent = currentLevel.name;
         }
         
         // Reset UI
-        if (this.scoreDisplay) {
-            this.scoreDisplay.textContent = '0';
-        }
         this.updateHealthDisplay();
+        this.scoreDisplay.textContent = '0';
+        if (this.weaponDisplay) {
+            this.weaponDisplay.textContent = this.player.currentWeapon.name;
+        }
+        if (this.specialTokensDisplay) {
+            this.specialTokensDisplay.textContent = this.player.specialTokens;
+        }
         
         // Hide game over and mission complete screens
         this.gameOverScreen.style.display = 'none';
@@ -245,15 +275,24 @@ class Game {
         // Show start screen
         this.startScreen.style.display = 'block';
         
-        // Reset enter key button
-        if (this.enterKeyButton) {
-            this.enterKeyButton.style.display = 'flex';
-        }
-        
-        // Reset name input
+        // Reset name input for mission complete
         this.nameChars.forEach(char => char.classList.remove('active'));
         this.currentNameIndex = 0;
         this.playerName = ['_', '_', '_', '_', '_', '_'];
+        
+        // Reset name input for game over
+        this.gameOverNameChars.forEach(char => char.classList.remove('active'));
+        this.gameOverCurrentNameIndex = 0;
+        this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
+        
+        // Bind event listeners
+        this.bindEventListeners();
+        
+        // Generate terrain
+        this.generateTerrain();
+        
+        // Start animation loop
+        this.animate(0);
     }
     
     endGame() {
@@ -265,6 +304,34 @@ class Game {
         
         // Show game over screen
         this.gameOverScreen.style.display = 'block';
+        
+        // Initialize game over name input
+        this.gameOverNameChars = Array.from(document.querySelectorAll('.game-over-name-char'));
+        this.gameOverCurrentNameIndex = 0;
+        this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
+        
+        // Show name input section
+        if (this.gameOverNameInputSection) {
+            this.gameOverNameInputSection.style.display = 'block';
+        }
+        
+        // Show enter key button
+        const gameOverEnterKey = document.getElementById('game-over-enter-key');
+        if (gameOverEnterKey) {
+            gameOverEnterKey.style.display = 'flex';
+        }
+        
+        // Hide restart instruction and view scoreboard initially
+        const restartInstruction = document.getElementById('restart-instruction');
+        if (restartInstruction) {
+            restartInstruction.style.display = 'none';
+            restartInstruction.innerHTML = 'Press <span class="control-key">SPACE</span> to restart';
+        }
+        
+        const viewScoreboard = document.getElementById('view-scoreboard');
+        if (viewScoreboard) {
+            viewScoreboard.style.display = 'none';
+        }
         
         // Stop background music and play death sound
         this.soundManager.stopBackgroundMusic();
@@ -1641,6 +1708,12 @@ class Game {
         const missionTitle = this.missionCompleteScreen.querySelector('h1');
         missionTitle.textContent = "MISSION COMPLETE";
         
+        // Initialize name input
+        this.nameChars = Array.from(document.querySelectorAll('.name-char'));
+        this.currentNameIndex = 0;
+        this.playerName = ['_', '_', '_', '_', '_', '_'];
+        this.updateNameDisplay(true);
+        
         // Show name input section
         if (this.nameInputSection) {
             this.nameInputSection.style.display = 'block';
@@ -1650,82 +1723,70 @@ class Game {
             this.enterKeyButton.style.display = 'flex';
         }
         
-        // Reset name input
-        this.currentNameIndex = 0;
-        this.playerName = ['_', '_', '_', '_', '_', '_'];
-        this.updateNameDisplay();
-        this.nameChars[0].classList.add('active');
+        // Hide restart instruction initially
+        const missionCompleteInstruction = document.getElementById('mission-complete-instruction');
+        if (missionCompleteInstruction) {
+            missionCompleteInstruction.style.display = 'none';
+            missionCompleteInstruction.innerHTML = 'Press <span class="control-key">SPACE</span> to restart';
+        }
         
-        // Hide restart instruction until score is saved
-        const restartInstruction = document.getElementById('mission-complete-instruction');
-        restartInstruction.style.display = 'none';
-        
-        // Stop background music
+        // Stop background music and play victory sound
         this.soundManager.stopBackgroundMusic();
-        
-        // Play victory sound
-        this.soundManager.playSound('powerUp', 0.7);
+        this.soundManager.playSound('victory', 0.7);
     }
 
     handleNameInput(key) {
-        // Only handle input if we're on the mission complete screen
-        if (this.missionCompleteScreen.style.display !== 'block') return;
-
-        // Handle Enter key to save score
-        if (key === 'Enter') {
-            // Check if at least one character has been entered
-            const hasEnteredName = this.playerName.some(char => char !== '_');
-            if (hasEnteredName) {
-                this.saveScore();
-            }
-            return;
+        // Only handle input if we're on the mission complete or game over screen
+        const onMissionComplete = this.missionCompleteScreen.style.display === 'block';
+        const onGameOver = this.gameOverScreen.style.display === 'block';
+        
+        if (!onMissionComplete && !onGameOver) return;
+        
+        // Debounce mechanism to prevent double input
+        const currentTime = Date.now();
+        if (currentTime - this.lastKeyTime < this.keyDebounceTime) {
+            return; // Ignore this key press if it's too soon after the last one
         }
-
+        this.lastKeyTime = currentTime;
+        
+        // Determine which set of variables to use based on the current screen
+        const nameChars = onMissionComplete ? this.nameChars : this.gameOverNameChars;
+        const playerName = onMissionComplete ? this.playerName : this.gameOverPlayerName;
+        let currentNameIndex = onMissionComplete ? this.currentNameIndex : this.gameOverCurrentNameIndex;
+        
         // Handle backspace
         if (key === 'Backspace') {
-            // Remove active class from current position
-            this.nameChars[this.currentNameIndex].classList.remove('active');
-            
-            // Find the rightmost non-underscore character
-            let lastCharIndex = this.playerName.length - 1;
-            while (lastCharIndex >= 0 && this.playerName[lastCharIndex] === '_') {
-                lastCharIndex--;
+            if (currentNameIndex > 0) {
+                currentNameIndex--;
+                playerName[currentNameIndex] = '_';
             }
-            
-            // If we found a character to delete
-            if (lastCharIndex >= 0) {
-                this.playerName[lastCharIndex] = '_';
-                this.currentNameIndex = lastCharIndex;
-            } else {
-                this.currentNameIndex = 0;
-            }
-            
-            // Add active class to new position
-            this.nameChars[this.currentNameIndex].classList.add('active');
-            this.updateNameDisplay();
-            return;
+        } 
+        // Handle letters, numbers, and space
+        else if (/^[a-zA-Z0-9 ]$/.test(key) && currentNameIndex < 6) {
+            playerName[currentNameIndex] = key.toUpperCase();
+            currentNameIndex = Math.min(currentNameIndex + 1, 5);
         }
-
-        // Only allow letters and numbers
-        if (!/^[A-Za-z0-9]$/.test(key)) return;
-
-        // Update current character
-        if (this.currentNameIndex < 6) {
-            this.playerName[this.currentNameIndex] = key.toUpperCase();
-            this.nameChars[this.currentNameIndex].classList.remove('active');
-            
-            if (this.currentNameIndex < 5) {
-                this.currentNameIndex++;
-                this.nameChars[this.currentNameIndex].classList.add('active');
-            }
-            
-            this.updateNameDisplay();
+        
+        // Update the current index based on which screen we're on
+        if (onMissionComplete) {
+            this.currentNameIndex = currentNameIndex;
+        } else {
+            this.gameOverCurrentNameIndex = currentNameIndex;
         }
+        
+        // Update the display
+        this.updateNameDisplay(onMissionComplete);
     }
 
-    updateNameDisplay() {
-        this.nameChars.forEach((char, index) => {
-            char.textContent = this.playerName[index];
+    updateNameDisplay(isMissionComplete = true) {
+        const nameChars = isMissionComplete ? this.nameChars : this.gameOverNameChars;
+        const playerName = isMissionComplete ? this.playerName : this.gameOverPlayerName;
+        const currentNameIndex = isMissionComplete ? this.currentNameIndex : this.gameOverCurrentNameIndex;
+        
+        // Update each character display
+        nameChars.forEach((charElement, index) => {
+            charElement.textContent = playerName[index];
+            charElement.classList.toggle('active', index === currentNameIndex);
         });
     }
 
@@ -1739,6 +1800,11 @@ class Game {
         
         console.log(`Saving score for ${finalName}: ${this.score}`);
         
+        // Hide name input section and show loading message
+        if (this.nameInputSection) {
+            this.nameInputSection.style.display = 'none';
+        }
+        
         // Make API call to save the score
         fetch('/api/scores', {
             method: 'POST',
@@ -1746,8 +1812,8 @@ class Game {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                game_id: 'robohorse-v1',
-                player_id: finalName,
+                gameId: 'robohorse-v1',
+                playerId: finalName,
                 score: this.score
             }),
         })
@@ -1759,9 +1825,87 @@ class Game {
         })
         .then(data => {
             console.log('Score saved successfully:', data);
+            
+            // Show success message
+            const missionCompleteInstruction = document.getElementById('mission-complete-instruction');
+            if (missionCompleteInstruction) {
+                missionCompleteInstruction.style.display = 'block';
+            }
         })
         .catch(error => {
             console.error('Error saving score:', error);
+            
+            // Show error message
+            const missionCompleteInstruction = document.getElementById('mission-complete-instruction');
+            if (missionCompleteInstruction) {
+                missionCompleteInstruction.innerHTML = 'Error saving score. Press <span class="control-key">SPACE</span> to restart';
+                missionCompleteInstruction.style.display = 'block';
+            }
+        });
+    }
+
+    saveGameOverScore() {
+        // Get the player name from the input
+        const playerName = this.gameOverPlayerName.join('').replace(/_/g, ' ').trim();
+        
+        // If no name was entered, use "UNKNOWN"
+        const finalName = playerName || 'UNKNOWN';
+        
+        console.log(`Saving game over score for ${finalName}: ${this.score}`);
+        
+        // Hide name input section
+        if (this.gameOverNameInputSection) {
+            this.gameOverNameInputSection.style.display = 'none';
+        }
+        
+        // Make API call to save the score
+        fetch('/api/scores', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                gameId: 'robohorse-v1',
+                playerId: finalName,
+                score: this.score
+            }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to save score');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Game over score saved successfully:', data);
+            
+            // Show success message
+            const restartInstruction = document.getElementById('restart-instruction');
+            if (restartInstruction) {
+                restartInstruction.style.display = 'block';
+            }
+            
+            // Show view scoreboard button
+            const viewScoreboard = document.getElementById('view-scoreboard');
+            if (viewScoreboard) {
+                viewScoreboard.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error saving game over score:', error);
+            
+            // Show error message
+            const restartInstruction = document.getElementById('restart-instruction');
+            if (restartInstruction) {
+                restartInstruction.innerHTML = 'Error saving score. Press <span class="control-key">SPACE</span> to restart';
+                restartInstruction.style.display = 'block';
+            }
+            
+            // Show view scoreboard button
+            const viewScoreboard = document.getElementById('view-scoreboard');
+            if (viewScoreboard) {
+                viewScoreboard.style.display = 'block';
+            }
         });
     }
 

@@ -5,6 +5,7 @@ class InputManager {
     constructor(game) {
         this.game = game;
         this.keys = {};
+        this.isProcessingKey = false; // Flag to track if a key is being processed
         
         // DOM elements for click events
         this.soundToggleElement = document.getElementById('sound-toggle');
@@ -24,20 +25,50 @@ class InputManager {
     }
     
     handleKeyDown(e) {
+        // Set the key state
         this.keys[e.key] = true;
         
-        // Handle name input on mission complete screen
-        if (this.game.missionCompleteScreen.style.display === 'block') {
-            this.game.handleNameInput(e.key);
+        // Handle name input on mission complete or game over screen
+        if (this.game.missionCompleteScreen.style.display === 'block' || this.game.gameOverScreen.style.display === 'block') {
+            // Prevent default behavior for letter, number, space, and backspace keys
+            if (/^[a-zA-Z0-9 ]$/.test(e.key) || e.key === 'Backspace' || e.key === 'Enter') {
+                e.preventDefault();
+                
+                // Prevent double input by checking if we're already processing a key
+                if (this.isProcessingKey) return;
+                this.isProcessingKey = true;
+                
+                // Process the key input
+                this.game.handleNameInput(e.key);
+                
+                // Reset the flag after a short delay
+                setTimeout(() => {
+                    this.isProcessingKey = false;
+                }, 50);
+            }
             
-            // Only allow space to restart if the restart instruction is visible
-            // (which means the score has been saved)
-            if (e.code === 'Space') {
-                const restartInstruction = document.getElementById('mission-complete-instruction');
-                if (restartInstruction.style.display === 'block') {
-                    this.game.resetGame();
-                    this.game.startGame();
+            // Handle Enter key to save score
+            if (e.key === 'Enter') {
+                if (this.game.missionCompleteScreen.style.display === 'block') {
+                    // Check if at least one character has been entered
+                    const hasEnteredName = this.game.playerName.some(char => char !== '_');
+                    if (hasEnteredName) {
+                        this.game.saveScore();
+                    }
+                } else if (this.game.gameOverScreen.style.display === 'block') {
+                    // Check if at least one character has been entered
+                    const hasEnteredName = this.game.gameOverPlayerName.some(char => char !== '_');
+                    if (hasEnteredName) {
+                        this.game.saveGameOverScore();
+                    }
                 }
+                return;
+            }
+            
+            // Only allow space to restart if on the appropriate screen
+            if (e.code === 'Space') {
+                this.game.resetGame();
+                this.game.startGame();
             }
             return;
         }

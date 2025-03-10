@@ -108,7 +108,7 @@ canvas {
     margin-bottom: 30px;
 }
 
-/* Game Over Screen - Enhanced Design */
+/* Game Over Screen - Matched with Mission Complete */
 #game-over {
     position: absolute;
     top: 50%;
@@ -126,16 +126,6 @@ canvas {
     z-index: 1000;
     width: 60%;
     max-width: 600px;
-    animation: gameOverPulse 2s infinite alternate;
-}
-
-@keyframes gameOverPulse {
-    0% {
-        box-shadow: 0 0 30px #36f, inset 0 0 20px rgba(51, 102, 255, 0.7);
-    }
-    100% {
-        box-shadow: 0 0 40px #f55, inset 0 0 25px rgba(255, 85, 85, 0.7);
-    }
 }
 
 #game-over h1 {
@@ -143,16 +133,11 @@ canvas {
     text-shadow: 0 0 10px #f55, 0 0 20px #f55;
     font-size: 32px;
     margin-bottom: 30px;
-    animation: gameOverTextPulse 1.5s infinite alternate;
 }
 
-@keyframes gameOverTextPulse {
-    0% {
-        text-shadow: 0 0 10px #f55, 0 0 20px #f55;
-    }
-    100% {
-        text-shadow: 0 0 15px #f55, 0 0 30px #f55, 0 0 45px #f55;
-    }
+#game-over p {
+    margin: 20px 0;
+    font-size: 16px;
 }
 
 #game-over #final-score {
@@ -161,9 +146,27 @@ canvas {
     font-size: 24px;
 }
 
-#game-over p {
-    margin: 20px 0;
-    font-size: 16px;
+/* Game Over Name Input Section */
+#game-over-name-input-section {
+    margin: 30px 0;
+}
+
+.game-over-name-char {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 40px;
+    margin: 0 5px;
+    font-size: 24px;
+    color: #0ff;
+    text-shadow: 0 0 5px #0ff;
+    border-bottom: 2px solid #0ff;
+}
+
+.game-over-name-char.active {
+    box-shadow: 0 0 10px #0ff;
+    background: rgba(0, 255, 255, 0.1);
 }
 
 button {
@@ -486,18 +489,6 @@ button:hover {
 
 #view-scoreboard {
     margin-top: 10px;
-    color: #0ff;
-    background-color: rgba(0, 255, 255, 0.1);
-    padding: 10px 15px;
-    border: 2px solid #0ff;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: inline-block;
 }
 
-#view-scoreboard:hover {
-    background-color: rgba(0, 255, 255, 0.3);
-    box-shadow: 0 0 15px #0ff;
-    transform: scale(1.05);
-} 
+/* The hover effect will be handled by the .clickable class */ 
