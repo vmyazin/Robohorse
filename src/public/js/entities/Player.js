@@ -68,7 +68,7 @@ class Player {
         this.shrinkAnimationFrame = 0;
     }
     
-    update(keys, frameCount, createParticles, playSound) {
+    update(keys, frameCount, createParticles, playSound, timeScale = 1) {
         // Store previous velocity for landing detection
         this.lastVelY = this.velY;
         
@@ -84,11 +84,11 @@ class Player {
         
         // Handle movement - support both arrow keys and WASD
         if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
-            this.x -= this.speed;
+            this.x -= this.speed * timeScale;
             this.direction = -1;
         }
         if (keys['ArrowRight'] || keys['d'] || keys['D']) {
-            this.x += this.speed;
+            this.x += this.speed * timeScale;
             this.direction = 1;
         }
         
@@ -101,8 +101,8 @@ class Player {
         }
         
         // Apply gravity
-        this.velY += 0.5;
-        this.y += this.velY;
+        this.velY += 0.5 * timeScale;
+        this.y += this.velY * timeScale;
         
         // Floor collision
         if (this.y + this.height > this.canvas.height - 50) {

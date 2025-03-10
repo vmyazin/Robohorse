@@ -359,19 +359,22 @@ class Game {
         this.soundManager.playSound('horseScream', 0.7);
     }
     
-    update() {
+    update(timeScale) {
         if (!this.gameStarted || this.gameOver) return;
+        
+        // Use a default timeScale of 1 if not provided (for backward compatibility)
+        timeScale = timeScale || 1;
         
         this.frameCount++;
         
-        // Update player with sound callback
+        // Update player with sound callback and timeScale
         this.player.update(this.inputManager.keys, this.frameCount, this.createParticles.bind(this), (weaponName) => {
             // Play weapon sound
             const soundKey = this.weaponSounds[weaponName];
             if (soundKey) {
                 this.soundManager.playSound(soundKey, 0.3);
             }
-        });
+        }, timeScale);
         
         // Update obstacles with optimized collision detection
         for (let i = this.obstacles.length - 1; i >= 0; i--) {
@@ -383,8 +386,10 @@ class Game {
                 continue;
             }
             
-            // Update obstacle state
-            obstacle.update();
+            // Update obstacle state with timeScale
+            if (obstacle.update) {
+                obstacle.update(timeScale);
+            }
             
             // Remove obstacles that have finished exploding
             if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && 
@@ -639,12 +644,12 @@ class Game {
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const proj = this.projectiles[i];
             
-            proj.x += proj.velX;
+            proj.x += proj.velX * timeScale;
             
             // Apply sine wave motion for Robohorse Cannon shots
             if (proj.isSineWave) {
                 // Update the phase with each frame
-                proj.sinePhase += proj.sineFrequency;
+                proj.sinePhase += proj.sineFrequency * timeScale;
                 // Calculate Y position based on sine wave (around the initial Y position)
                 proj.y = proj.initialY + Math.sin(proj.sinePhase) * proj.sineAmplitude;
                 
@@ -654,7 +659,7 @@ class Game {
                 }
             } else {
                 // Normal straight-line movement for other projectiles
-                proj.y += proj.velY;
+                proj.y += proj.velY * timeScale;
             }
             
             // Ensure projectiles don't go below the floor level
@@ -691,7 +696,7 @@ class Game {
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const enemy = this.enemies[i];
             
-            enemy.update(this.player, this.frameCount, this.createParticles.bind(this));
+            enemy.update(this.player, this.frameCount, this.createParticles.bind(this), timeScale);
             
             // Remove enemies that are off-screen to the left or too far to the right
             if (enemy.x + enemy.width < -100 || enemy.x > this.canvas.width + 300) {
@@ -1340,8 +1345,15 @@ class Game {
     }
     
     animate(timestamp) {
+        // Calculate deltaTime and normalize it (target 60fps)
         const deltaTime = timestamp - this.lastFrameTime;
-        this.lastFrameTime = timestamp;
+        this.lastFrameTime = timestamp || 0;
+        
+        // Limit deltaTime to prevent huge jumps after tab switch or lag
+        const cappedDeltaTime = Math.min(deltaTime, 100);
+        
+        // Calculate time scale factor (1.0 at 60fps)
+        const timeScale = cappedDeltaTime / 16.67;
         
         // Handle start screen toggle if game hasn't started
         if (!this.gameStarted && !this.gameOver) {
@@ -1350,7 +1362,7 @@ class Game {
                 console.log("Timer started: 5s");
             }
             
-            this.startScreenToggleTimer += deltaTime;
+            this.startScreenToggleTimer += cappedDeltaTime;
             
             // Toggle between start screen and scoreboard every 5 seconds (5000ms)
             if (this.startScreenToggleTimer >= 5000) {
@@ -1361,19 +1373,19 @@ class Game {
         }
         
         if (!this.gameOver && !this.isPaused) {
-            // Update game state
-            this.update();
+            // Update game state with time scale
+            this.update(timeScale);
             
             // Draw the game
             this.draw();
             
             // Request the next frame
-            this.animationFrameId = requestAnimationFrame(this.animate);
+            this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
         } else if (this.isPaused || (!this.gameStarted && !this.gameOver)) {
             // When paused or on start screen/scoreboard, only redraw the game (no updates) and keep requesting frames
             // This ensures the game remains visible behind the pause screen or start screen/scoreboard
             this.draw();
-            this.animationFrameId = requestAnimationFrame(this.animate);
+            this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
         } else {
             this.animationFrameId = null;
         }

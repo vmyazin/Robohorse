@@ -14,7 +14,13 @@ class Enemy {
         this.maxHealth = type.maxHealth;
         this.points = type.points;
         this.color = type.color;
-        this.tentacles = type.tentacles;
+        
+        // Initialize tentacles as an array of objects
+        this.tentacles = Array(type.tentacles || 8).fill().map((_, i) => ({
+            angle: (i / (type.tentacles || 8)) * Math.PI * 2,
+            speed: 0.02 + Math.random() * 0.01,
+            phase: Math.random() * Math.PI * 2
+        }));
         
         // Add damage visual effect
         this.damageFeedbackTimer = 0;
@@ -47,12 +53,12 @@ class Enemy {
         console.log("Enhanced enemy created at", x, y, "with health", this.health, "and aggression", this.aggressionFactor);
     }
     
-    update(player, frameCount, createParticles) {
+    update(player, frameCount, createParticles, timeScale = 1) {
         // Handle spawn timer
         if (this.spawnTimer > 0) {
             this.spawnTimer--;
             // Gradually increase velocity during spawn period
-            this.x -= this.scrollCompensation * (1 - this.spawnTimer/30);
+            this.x -= this.scrollCompensation * (1 - this.spawnTimer/30) * timeScale;
             return null;
         }
         
@@ -94,21 +100,26 @@ class Enemy {
             if (this.directionChangeTimer === 0 || dist > 200) {
                 if (this.behaviorState === 'curious') {
                     // Orbit around the player when curious
-                    this.orbitAngle += this.orbitSpeed;
+                    this.orbitAngle += this.orbitSpeed * timeScale;
                     const orbitRadius = Math.min(dist, this.curiosityRadius * 0.7);
                     const orbitX = targetX + Math.cos(this.orbitAngle) * orbitRadius;
                     const orbitY = targetY + Math.sin(this.orbitAngle) * orbitRadius;
                     
-                    const toDest = Math.sqrt(Math.pow(orbitX - this.x, 2) + Math.pow(orbitY - this.y, 2));
-                    if (toDest > 0) {
-                        this.velX = ((orbitX - this.x) / toDest) * this.speed * this.aggressionFactor + this.scrollCompensation;
-                        this.velY = ((orbitY - this.y) / toDest) * this.speed * this.aggressionFactor;
+                    // Calculate direction to orbit position
+                    const orbitDx = orbitX - this.x;
+                    const orbitDy = orbitY - this.y;
+                    const orbitDist = Math.sqrt(orbitDx*orbitDx + orbitDy*orbitDy);
+                    
+                    // Set velocity based on orbit position
+                    if (orbitDist > 0) {
+                        this.velX = (orbitDx / orbitDist) * this.speed * timeScale;
+                        this.velY = (orbitDy / orbitDist) * this.speed * timeScale;
                     }
                 } else {
                     // Direct pursuit when aggressive
                     if (dist > 0) {
-                        this.velX = (dx / dist) * this.speed * this.aggressionFactor + this.scrollCompensation;
-                        this.velY = (dy / dist) * this.speed * this.aggressionFactor;
+                        this.velX = (dx / dist) * this.speed * this.aggressionFactor * timeScale;
+                        this.velY = (dy / dist) * this.speed * this.aggressionFactor * timeScale;
                     }
                 }
                 
@@ -215,6 +226,26 @@ class Enemy {
                 color: this.color,
                 isPlayerProjectile: false
             };
+        }
+        
+        // Apply velocity with scroll compensation
+        this.x += this.velX - this.scrollCompensation * timeScale;
+        this.y += this.velY;
+        
+        // Apply boundaries to keep enemies on screen
+        if (this.y < 0) this.y = 0;
+        if (this.y + this.height > this.canvas.height - 50) this.y = this.canvas.height - 50 - this.height;
+        
+        // Decrement damage feedback timer if active
+        if (this.damageFeedbackTimer > 0) {
+            this.damageFeedbackTimer--;
+        }
+        
+        // Animate tentacles
+        if (this.tentacles) {
+            this.tentacles.forEach(tentacle => {
+                tentacle.angle += tentacle.speed * timeScale;
+            });
         }
         
         return null;
@@ -347,9 +378,9 @@ class Enemy {
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         
-        for (let i = 0; i < this.tentacles; i++) {
-            const angle = (i / this.tentacles) * Math.PI * 2;
-            const tentaclePhase = frameCount * 0.1 + i;
+        this.tentacles.forEach((tentacle, i) => {
+            const angle = tentacle.angle + Math.sin(frameCount * tentacle.speed) * 0.3;
+            const tentaclePhase = frameCount * 0.1 + tentacle.phase;
             
             // Create a gradient for each tentacle
             const tentacleGradient = ctx.createLinearGradient(
@@ -404,7 +435,7 @@ class Enemy {
                     ctx.fill();
                 }
             }
-        }
+        });
         
         // Draw health bar with glow effect for low health
         const healthPercent = this.health / this.maxHealth;
