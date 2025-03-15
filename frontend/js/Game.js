@@ -181,17 +181,36 @@ class Game {
     }
     
     togglePause() {
+        console.log('togglePause called, gameStarted:', this.gameStarted, 'gameOver:', this.gameOver);
+        
+        // If help is clicked before game starts, show instructions anyway
+        if (!this.gameStarted && !this.gameOver) {
+            console.log('Game not started - showing help/instructions');
+            this.startScreen.style.display = 'block';
+            if (this.helpToggle) this.helpToggle.classList.add('active');
+            return;
+        }
+        
         if (this.gameStarted && !this.gameOver) {
             this.isPaused = !this.isPaused;
+            console.log('Game paused:', this.isPaused);
             
             // Show/hide start screen when paused/unpaused
             if (this.isPaused) {
                 this.startScreen.style.display = 'block';
-                document.getElementById('help-toggle').classList.add('active');
-                document.getElementById('start-instruction').textContent = 'Press SPACE to resume';
+                if (this.helpToggle) {
+                    this.helpToggle.classList.add('active');
+                } else {
+                    console.warn('Help toggle element not found');
+                }
+                if (document.getElementById('start-instruction')) {
+                    document.getElementById('start-instruction').textContent = 'Press SPACE to resume';
+                }
             } else {
                 this.startScreen.style.display = 'none';
-                document.getElementById('help-toggle').classList.remove('active');
+                if (this.helpToggle) {
+                    this.helpToggle.classList.remove('active');
+                }
                 // Continue the animation loop if unpausing
                 if (!this.animationFrameId) {
                     this.animate(performance.now());

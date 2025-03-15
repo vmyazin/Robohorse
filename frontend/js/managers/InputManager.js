@@ -13,6 +13,17 @@ class InputManager {
         this.startInstruction = document.getElementById('start-instruction');
         this.restartInstruction = document.getElementById('restart-instruction');
         this.missionCompleteInstruction = document.getElementById('mission-complete-instruction');
+        
+        // Directly bind the help toggle in constructor to ensure it's set up early
+        if (this.helpToggleElement) {
+            this.helpToggleElement.onclick = (e) => {
+                console.log('Help toggle clicked');
+                e.preventDefault();
+                e.stopPropagation();
+                this.game.togglePause();
+                return false;
+            };
+        }
     }
     
     bindEventListeners() {
@@ -151,13 +162,6 @@ class InputManager {
         if (this.soundToggleElement) {
             this.soundToggleElement.addEventListener('click', () => {
                 this.game.soundManager.toggleSound();
-            });
-        }
-        
-        // Help toggle button click handler
-        if (this.helpToggleElement) {
-            this.helpToggleElement.addEventListener('click', () => {
-                this.game.togglePause();
             });
         }
         
