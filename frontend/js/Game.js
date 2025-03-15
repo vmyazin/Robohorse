@@ -22,6 +22,11 @@ class Game {
         this.gameSpeed = 1;
         this.lastPoliceRadioTime = 0;
         
+        // Scores data
+        this.scores = [];
+        this.scoresLoaded = false;
+        this.scoresError = null;
+        
         // Initialize managers
         this.soundManager = new SoundManager(this);
         this.inputManager = new InputManager(this);
@@ -145,6 +150,30 @@ class Game {
         
         // Bind the animate method to this instance
         this.animate = this.animate.bind(this);
+        
+        // Pre-fetch scores
+        this.fetchScores();
+    }
+    
+    fetchScores() {
+        console.log("Pre-fetching scores on app load");
+        fetch('/api/scores')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch scores');
+                }
+                return response.json();
+            })
+            .then(data => {
+                this.scores = data;
+                this.scoresLoaded = true;
+                this.scoresError = null;
+                console.log("Scores pre-fetched successfully:", data.length);
+            })
+            .catch(error => {
+                console.error('Error pre-fetching scores:', error);
+                this.scoresError = error.message;
+            });
     }
     
     toggleSound() {
@@ -1879,6 +1908,9 @@ class Game {
         .then(data => {
             console.log('Score saved successfully:', data);
             
+            // Refresh scores after saving
+            this.fetchScores();
+            
             // Show success message
             const missionCompleteInstruction = document.getElementById('mission-complete-instruction');
             if (missionCompleteInstruction) {
@@ -1930,6 +1962,9 @@ class Game {
         })
         .then(data => {
             console.log('Game over score saved successfully:', data);
+            
+            // Refresh scores after saving
+            this.fetchScores();
             
             // Show success message
             const restartInstruction = document.getElementById('restart-instruction');
@@ -2007,73 +2042,98 @@ class Game {
             }
         }
         
-        // Fetch scores from the database
-        fetch('/api/scores')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch scores');
-                }
-                return response.json();
-            })
-            .then(data => {
-                // Get the scoreboard body element
-                const scoreboardBody = document.querySelector('.scoreboard-body');
-                
-                // Clear existing entries
-                scoreboardBody.innerHTML = '';
-                
-                // Check if we have scores
-                if (data && data.length > 0) {
-                    // Sort scores by highest first
-                    data.sort((a, b) => b.score - a.score);
-                    
-                    // Display top 10 scores
-                    const topScores = data.slice(0, 10);
-                    
-                    topScores.forEach((scoreData, index) => {
-                        // Create a new row for each score
-                        const scoreRow = document.createElement('div');
-                        scoreRow.className = 'scoreboard-row';
-                        
-                        // Create rank element
-                        const rankElement = document.createElement('div');
-                        rankElement.className = 'rank';
-                        rankElement.textContent = (index + 1).toString();
-                        
-                        // Create name element
-                        const nameElement = document.createElement('div');
-                        nameElement.className = 'name';
-                        // Use name field from the database
-                        nameElement.textContent = scoreData.name ? 
-                            scoreData.name.substring(0, 6).toUpperCase() : 'UNKNOWN';
-                        
-                        // Create score element
-                        const scoreElement = document.createElement('div');
-                        scoreElement.className = 'score';
-                        scoreElement.textContent = scoreData.score.toString();
-                        
-                        // Add elements to the row
-                        scoreRow.appendChild(rankElement);
-                        scoreRow.appendChild(nameElement);
-                        scoreRow.appendChild(scoreElement);
-                        
-                        // Add row to the scoreboard
-                        scoreboardBody.appendChild(scoreRow);
+        // Get the scoreboard body element
+        const scoreboardBody = document.querySelector('.scoreboard-body');
+        
+        // If scores are already loaded, display them
+        if (this.scoresLoaded && this.scores.length > 0) {
+            this.displayScores(this.scores, scoreboardBody);
+        } 
+        // If there was an error loading scores, show error message
+        else if (this.scoresError) {
+            scoreboardBody.innerHTML = `<div class="empty-message">Failed to load scores: ${this.scoresError}</div>`;
+            
+            // Try fetching scores again
+            this.fetchScores();
+        }
+        // If scores are still loading, show loading indicator and fetch them
+        else {
+            scoreboardBody.innerHTML = '<div class="loading-spinner"></div>';
+            
+            // If scores haven't been loaded yet, fetch them now
+            if (!this.scoresLoaded) {
+                fetch('/api/scores')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to fetch scores');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        this.scores = data;
+                        this.scoresLoaded = true;
+                        this.scoresError = null;
+                        this.displayScores(data, scoreboardBody);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching scores:', error);
+                        scoreboardBody.innerHTML = '<div class="empty-message">Failed to load scores</div>';
+                        this.scoresError = error.message;
                     });
-                } else {
-                    // If no scores, show a message
-                    const emptyMessage = document.createElement('div');
-                    emptyMessage.className = 'empty-message';
-                    emptyMessage.textContent = 'No scores available yet';
-                    scoreboardBody.appendChild(emptyMessage);
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching scores:', error);
-                // Show error message in scoreboard
-                const scoreboardBody = document.querySelector('.scoreboard-body');
-                scoreboardBody.innerHTML = '<div class="empty-message">Failed to load scores</div>';
+            }
+        }
+    }
+    
+    // Helper method to display scores in the scoreboard
+    displayScores(data, scoreboardBody) {
+        // Clear existing entries
+        scoreboardBody.innerHTML = '';
+        
+        // Check if we have scores
+        if (data && data.length > 0) {
+            // Sort scores by highest first
+            data.sort((a, b) => b.score - a.score);
+            
+            // Display top 10 scores
+            const topScores = data.slice(0, 10);
+            
+            topScores.forEach((scoreData, index) => {
+                // Create a new row for each score
+                const scoreRow = document.createElement('div');
+                scoreRow.className = 'scoreboard-row';
+                
+                // Create rank element
+                const rankElement = document.createElement('div');
+                rankElement.className = 'rank';
+                rankElement.textContent = (index + 1).toString();
+                
+                // Create name element
+                const nameElement = document.createElement('div');
+                nameElement.className = 'name';
+                // Use name field from the database
+                nameElement.textContent = scoreData.name ? 
+                    scoreData.name.substring(0, 6).toUpperCase() : 'UNKNOWN';
+                
+                // Create score element
+                const scoreElement = document.createElement('div');
+                scoreElement.className = 'score';
+                scoreElement.textContent = scoreData.score.toString();
+                
+                // Add elements to the row
+                scoreRow.appendChild(rankElement);
+                scoreRow.appendChild(nameElement);
+                scoreRow.appendChild(scoreElement);
+                
+                // Add row to the scoreboard
+                scoreboardBody.appendChild(scoreRow);
             });
+        } else {
+            // If no scores, show a message
+            const emptyMessage = document.createElement('div');
+            emptyMessage.className = 'empty-message';
+            emptyMessage.textContent = 'No scores available yet';
+            scoreboardBody.appendChild(emptyMessage);
+        }
     }
     
     hideScoreboard() {
