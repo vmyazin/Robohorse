@@ -13,6 +13,17 @@ class InputManager {
         this.startInstruction = document.getElementById('start-instruction');
         this.restartInstruction = document.getElementById('restart-instruction');
         this.missionCompleteInstruction = document.getElementById('mission-complete-instruction');
+        
+        // Directly bind the help toggle in constructor to ensure it's set up early
+        if (this.helpToggleElement) {
+            this.helpToggleElement.onclick = (e) => {
+                console.log('Help toggle clicked');
+                e.preventDefault();
+                e.stopPropagation();
+                this.game.togglePause();
+                return false;
+            };
+        }
     }
     
     bindEventListeners() {
@@ -25,6 +36,14 @@ class InputManager {
     }
     
     handleKeyDown(e) {
+        // Allow browser shortcuts to pass through
+        // Skip handling if Command (Meta), Control, or Alt keys are pressed (except for specific shortcuts)
+        if ((e.metaKey || e.ctrlKey) && 
+            // Only handle Ctrl+S, Ctrl+E, and Ctrl+1 as game shortcuts
+            !(e.ctrlKey && (e.code === 'KeyS' || e.code === 'KeyE' || e.code === 'Digit1'))) {
+            return; // Let the browser handle this shortcut
+        }
+        
         // Set the key state
         this.keys[e.key] = true;
         
@@ -130,6 +149,11 @@ class InputManager {
     }
     
     handleKeyUp(e) {
+        // Allow browser shortcuts to pass through
+        if (e.metaKey || (e.ctrlKey && !(e.code === 'KeyS' || e.code === 'KeyE' || e.code === 'Digit1'))) {
+            return; // Let the browser handle this shortcut
+        }
+        
         this.keys[e.key] = false;
     }
     
@@ -138,13 +162,6 @@ class InputManager {
         if (this.soundToggleElement) {
             this.soundToggleElement.addEventListener('click', () => {
                 this.game.soundManager.toggleSound();
-            });
-        }
-        
-        // Help toggle button click handler
-        if (this.helpToggleElement) {
-            this.helpToggleElement.addEventListener('click', () => {
-                this.game.togglePause();
             });
         }
         

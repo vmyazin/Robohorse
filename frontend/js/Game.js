@@ -22,6 +22,11 @@ class Game {
         this.gameSpeed = 1;
         this.lastPoliceRadioTime = 0;
         
+        // Scores data
+        this.scores = [];
+        this.scoresLoaded = false;
+        this.scoresError = null;
+        
         // Initialize managers
         this.soundManager = new SoundManager(this);
         this.inputManager = new InputManager(this);
@@ -145,6 +150,30 @@ class Game {
         
         // Bind the animate method to this instance
         this.animate = this.animate.bind(this);
+        
+        // Pre-fetch scores
+        this.fetchScores();
+    }
+    
+    fetchScores() {
+        console.log("Pre-fetching scores on app load");
+        fetch('/api/scores')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch scores');
+                }
+                return response.json();
+            })
+            .then(data => {
+                this.scores = data;
+                this.scoresLoaded = true;
+                this.scoresError = null;
+                console.log("Scores pre-fetched successfully:", data.length);
+            })
+            .catch(error => {
+                console.error('Error pre-fetching scores:', error);
+                this.scoresError = error.message;
+            });
     }
     
     toggleSound() {
@@ -152,17 +181,36 @@ class Game {
     }
     
     togglePause() {
+        console.log('togglePause called, gameStarted:', this.gameStarted, 'gameOver:', this.gameOver);
+        
+        // If help is clicked before game starts, show instructions anyway
+        if (!this.gameStarted && !this.gameOver) {
+            console.log('Game not started - showing help/instructions');
+            this.startScreen.style.display = 'block';
+            if (this.helpToggle) this.helpToggle.classList.add('active');
+            return;
+        }
+        
         if (this.gameStarted && !this.gameOver) {
             this.isPaused = !this.isPaused;
+            console.log('Game paused:', this.isPaused);
             
             // Show/hide start screen when paused/unpaused
             if (this.isPaused) {
                 this.startScreen.style.display = 'block';
-                document.getElementById('help-toggle').classList.add('active');
-                document.getElementById('start-instruction').textContent = 'Press SPACE to resume';
+                if (this.helpToggle) {
+                    this.helpToggle.classList.add('active');
+                } else {
+                    console.warn('Help toggle element not found');
+                }
+                if (document.getElementById('start-instruction')) {
+                    document.getElementById('start-instruction').textContent = 'Press SPACE to resume';
+                }
             } else {
                 this.startScreen.style.display = 'none';
-                document.getElementById('help-toggle').classList.remove('active');
+                if (this.helpToggle) {
+                    this.helpToggle.classList.remove('active');
+                }
                 // Continue the animation loop if unpausing
                 if (!this.animationFrameId) {
                     this.animate(performance.now());
@@ -221,6 +269,10 @@ class Game {
         this.gameStarted = true;
         this.gameOver = false;
         this.startScreen.style.display = 'none';
+        
+        // Always hide scoreboard when starting the game
+        this.hideScoreboard();
+        this.showingScoreboard = false;
         
         // Play background music if sound is enabled
         this.soundManager.playBackgroundMusic();
@@ -286,7 +338,7 @@ class Game {
             this.weaponDisplay.textContent = this.player.currentWeapon.name;
         }
         if (this.specialTokensDisplay) {
-            this.specialTokensDisplay.textContent = this.player.specialTokens;
+            this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
         }
         
         // Hide game over and mission complete screens
@@ -325,33 +377,90 @@ class Game {
         
         // Show game over screen
         this.gameOverScreen.style.display = 'block';
-        
-        // Initialize game over name input
-        this.gameOverNameChars = Array.from(document.querySelectorAll('.game-over-name-char'));
-        this.gameOverCurrentNameIndex = 0;
-        this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
-        
-        // Show name input section
-        if (this.gameOverNameInputSection) {
-            this.gameOverNameInputSection.style.display = 'block';
-        }
-        
-        // Show enter key button
-        const gameOverEnterKey = document.getElementById('game-over-enter-key');
-        if (gameOverEnterKey) {
-            gameOverEnterKey.style.display = 'flex';
-        }
-        
-        // Hide restart instruction and view scoreboard initially
-        const restartInstruction = document.getElementById('restart-instruction');
-        if (restartInstruction) {
-            restartInstruction.style.display = 'none';
-            restartInstruction.innerHTML = 'Press <span class="control-key">SPACE</span> to restart';
-        }
-        
-        const viewScoreboard = document.getElementById('view-scoreboard');
-        if (viewScoreboard) {
-            viewScoreboard.style.display = 'none';
+
+        // Skip name entry if score is 0
+        if (this.score === 0) {
+            // Hide name input section
+            if (this.gameOverNameInputSection) {
+                this.gameOverNameInputSection.style.display = 'none';
+            }
+            
+            // Hide enter key button
+            const gameOverEnterKey = document.getElementById('game-over-enter-key');
+            if (gameOverEnterKey) {
+                gameOverEnterKey.style.display = 'none';
+            }
+
+            // Show restart instruction and view scoreboard immediately
+            const restartInstruction = document.getElementById('restart-instruction');
+            if (restartInstruction) {
+                restartInstruction.style.display = 'block';
+                restartInstruction.innerHTML = 'Press <span class="control-key">SPACE</span> to restart';
+            }
+
+            const viewScoreboard = document.getElementById('view-scoreboard');
+            if (viewScoreboard) {
+                viewScoreboard.style.display = 'block';
+            }
+        } else {
+            // Make sure the name input section is visible first
+            if (this.gameOverNameInputSection) {
+                this.gameOverNameInputSection.style.display = 'block';
+            }
+            
+            // Re-initialize game over name input elements for non-zero scores
+            // Make sure the elements exist
+            this.gameOverNameChars = Array.from(document.querySelectorAll('.game-over-name-char'));
+            
+            // If no characters found, wait briefly and try again (Alpine.js might need time to render)
+            if (this.gameOverNameChars.length === 0) {
+                setTimeout(() => {
+                    this.gameOverNameChars = Array.from(document.querySelectorAll('.game-over-name-char'));
+                    this.gameOverCurrentNameIndex = 0;
+                    this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
+                    this.updateNameDisplay(false);
+                }, 100);
+            } else {
+                this.gameOverCurrentNameIndex = 0;
+                this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
+                
+                // Update the name display to show the cursor on the first character
+                this.updateNameDisplay(false);
+            }
+            
+            // Ensure the name input section is visible
+            const nameInputContainer = document.querySelector('.name-input-container');
+            if (nameInputContainer) {
+                nameInputContainer.style.display = 'flex';
+            }
+            
+            // Show enter key button
+            const gameOverEnterKey = document.getElementById('game-over-enter-key');
+            if (gameOverEnterKey) {
+                gameOverEnterKey.style.display = 'flex';
+            }
+            
+            // Hide restart instruction and view scoreboard initially
+            const restartInstruction = document.getElementById('restart-instruction');
+            if (restartInstruction) {
+                restartInstruction.style.display = 'none';
+                restartInstruction.innerHTML = 'Press <span class="control-key">SPACE</span> to restart';
+            }
+            
+            const viewScoreboard = document.getElementById('view-scoreboard');
+            if (viewScoreboard) {
+                viewScoreboard.style.display = 'none';
+            }
+            
+            // Force a refresh of the Alpine.js component if it exists
+            if (this.gameOverNameInputSection && this.gameOverNameInputSection.__x) {
+                try {
+                    this.gameOverNameInputSection.__x.$data.name = ['_', '_', '_', '_', '_', '_'];
+                    this.gameOverNameInputSection.__x.$data.currentIndex = 0;
+                } catch (error) {
+                    console.error('Error updating Alpine.js state:', error);
+                }
+            }
         }
         
         // Stop background music and play death sound
@@ -1820,8 +1929,30 @@ class Game {
         // Update the current index based on which screen we're on
         if (onMissionComplete) {
             this.currentNameIndex = currentNameIndex;
+            
+            // Also update Alpine.js state if it exists
+            try {
+                const nameInputSection = document.getElementById('name-input-section');
+                if (nameInputSection && nameInputSection.__x) {
+                    nameInputSection.__x.$data.name = [...playerName];
+                    nameInputSection.__x.$data.currentIndex = currentNameIndex;
+                }
+            } catch (error) {
+                console.error('Error updating Alpine.js state:', error);
+            }
         } else {
             this.gameOverCurrentNameIndex = currentNameIndex;
+            
+            // Also update Alpine.js state if it exists
+            try {
+                const gameOverNameInputSection = document.getElementById('game-over-name-input-section');
+                if (gameOverNameInputSection && gameOverNameInputSection.__x) {
+                    gameOverNameInputSection.__x.$data.name = [...playerName];
+                    gameOverNameInputSection.__x.$data.currentIndex = currentNameIndex;
+                }
+            } catch (error) {
+                console.error('Error updating Alpine.js state:', error);
+            }
         }
         
         // Update the display
@@ -1833,17 +1964,77 @@ class Game {
         const playerName = isMissionComplete ? this.playerName : this.gameOverPlayerName;
         const currentNameIndex = isMissionComplete ? this.currentNameIndex : this.gameOverCurrentNameIndex;
         
+        // Check if nameChars is defined and has elements
+        if (!nameChars || nameChars.length === 0) {
+            console.warn(`Name characters not found for ${isMissionComplete ? 'mission complete' : 'game over'} screen`);
+            
+            // Try to requery elements
+            if (isMissionComplete) {
+                this.nameChars = Array.from(document.querySelectorAll('.name-char'));
+            } else {
+                this.gameOverNameChars = Array.from(document.querySelectorAll('.game-over-name-char'));
+            }
+            
+            // If still no elements, log error and return
+            if ((isMissionComplete && this.nameChars.length === 0) || 
+                (!isMissionComplete && this.gameOverNameChars.length === 0)) {
+                console.error(`Unable to find name character elements for ${isMissionComplete ? 'mission complete' : 'game over'} screen`);
+                return;
+            }
+        }
+        
+        // Get the latest elements
+        const updatedNameChars = isMissionComplete ? this.nameChars : this.gameOverNameChars;
+        
         // Update each character display
-        nameChars.forEach((charElement, index) => {
-            charElement.textContent = playerName[index];
-            charElement.classList.toggle('active', index === currentNameIndex);
+        updatedNameChars.forEach((charElement, index) => {
+            if (!charElement) {
+                console.warn(`Character element at index ${index} is undefined`);
+                return;
+            }
+            
+            try {
+                charElement.textContent = playerName[index];
+                charElement.classList.toggle('active', index === currentNameIndex);
+                
+                // Ensure visibility
+                charElement.style.display = 'inline-flex';
+                charElement.style.visibility = 'visible';
+            } catch (error) {
+                console.error(`Error updating character element at index ${index}:`, error);
+            }
         });
+        
+        // Update Alpine.js state if it exists
+        try {
+            const section = isMissionComplete ? 
+                document.getElementById('name-input-section') : 
+                document.getElementById('game-over-name-input-section');
+                
+            if (section && section.__x) {
+                section.__x.$data.name = [...playerName];
+                section.__x.$data.currentIndex = currentNameIndex;
+            }
+        } catch (error) {
+            console.error('Error updating Alpine.js state:', error);
+        }
     }
 
     // New method to save score to the database
     saveScore() {
-        // Get the player name from the input
-        const playerName = this.playerName.join('').replace(/_/g, ' ').trim();
+        // Try to get the name from Alpine.js first, then fall back to our internal state
+        let playerName;
+        try {
+            const nameInputSection = document.getElementById('name-input-section');
+            if (nameInputSection && nameInputSection.__x) {
+                playerName = nameInputSection.__x.$data.name.join('').replace(/_/g, ' ').trim();
+            } else {
+                playerName = this.playerName.join('').replace(/_/g, ' ').trim();
+            }
+        } catch (error) {
+            console.error('Error accessing Alpine.js state:', error);
+            playerName = this.playerName.join('').replace(/_/g, ' ').trim();
+        }
         
         // If no name was entered, use "UNKNOWN"
         const finalName = playerName || 'UNKNOWN';
@@ -1862,9 +2053,8 @@ class Game {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                gameId: 'robohorse-v1',
-                playerId: finalName,
-                score: this.score
+                name: finalName,
+                score: String(this.score) // Convert to string as server expects
             }),
         })
         .then(response => {
@@ -1875,6 +2065,9 @@ class Game {
         })
         .then(data => {
             console.log('Score saved successfully:', data);
+            
+            // Refresh scores after saving
+            this.fetchScores();
             
             // Show success message
             const missionCompleteInstruction = document.getElementById('mission-complete-instruction');
@@ -1895,8 +2088,19 @@ class Game {
     }
 
     saveGameOverScore() {
-        // Get the player name from the input
-        const playerName = this.gameOverPlayerName.join('').replace(/_/g, ' ').trim();
+        // Try to get the name from Alpine.js first, then fall back to our internal state
+        let playerName;
+        try {
+            const gameOverNameInputSection = document.getElementById('game-over-name-input-section');
+            if (gameOverNameInputSection && gameOverNameInputSection.__x) {
+                playerName = gameOverNameInputSection.__x.$data.name.join('').replace(/_/g, ' ').trim();
+            } else {
+                playerName = this.gameOverPlayerName.join('').replace(/_/g, ' ').trim();
+            }
+        } catch (error) {
+            console.error('Error accessing Alpine.js state:', error);
+            playerName = this.gameOverPlayerName.join('').replace(/_/g, ' ').trim();
+        }
         
         // If no name was entered, use "UNKNOWN"
         const finalName = playerName || 'UNKNOWN';
@@ -1915,9 +2119,8 @@ class Game {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                gameId: 'robohorse-v1',
-                playerId: finalName,
-                score: this.score
+                name: finalName,
+                score: String(this.score) // Convert to string as server expects
             }),
         })
         .then(response => {
@@ -1928,6 +2131,9 @@ class Game {
         })
         .then(data => {
             console.log('Game over score saved successfully:', data);
+            
+            // Refresh scores after saving
+            this.fetchScores();
             
             // Show success message
             const restartInstruction = document.getElementById('restart-instruction');
@@ -2005,73 +2211,98 @@ class Game {
             }
         }
         
-        // Fetch scores from the database
-        fetch('/api/scores/robohorse-v1')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch scores');
-                }
-                return response.json();
-            })
-            .then(data => {
-                // Get the scoreboard body element
-                const scoreboardBody = document.querySelector('.scoreboard-body');
-                
-                // Clear existing entries
-                scoreboardBody.innerHTML = '';
-                
-                // Check if we have scores
-                if (data && data.length > 0) {
-                    // Sort scores by highest first
-                    data.sort((a, b) => b.score - a.score);
-                    
-                    // Display top 10 scores
-                    const topScores = data.slice(0, 10);
-                    
-                    topScores.forEach((scoreData, index) => {
-                        // Create a new row for each score
-                        const scoreRow = document.createElement('div');
-                        scoreRow.className = 'scoreboard-row';
-                        
-                        // Create rank element
-                        const rankElement = document.createElement('div');
-                        rankElement.className = 'rank';
-                        rankElement.textContent = (index + 1).toString();
-                        
-                        // Create name element
-                        const nameElement = document.createElement('div');
-                        nameElement.className = 'name';
-                        // Use player_id as name, limit to 6 characters and uppercase
-                        nameElement.textContent = scoreData.player_id ? 
-                            scoreData.player_id.substring(0, 6).toUpperCase() : 'UNKNOWN';
-                        
-                        // Create score element
-                        const scoreElement = document.createElement('div');
-                        scoreElement.className = 'score';
-                        scoreElement.textContent = scoreData.score.toString();
-                        
-                        // Add elements to the row
-                        scoreRow.appendChild(rankElement);
-                        scoreRow.appendChild(nameElement);
-                        scoreRow.appendChild(scoreElement);
-                        
-                        // Add row to the scoreboard
-                        scoreboardBody.appendChild(scoreRow);
+        // Get the scoreboard body element
+        const scoreboardBody = document.querySelector('.scoreboard-body');
+        
+        // If scores are already loaded, display them
+        if (this.scoresLoaded && this.scores.length > 0) {
+            this.displayScores(this.scores, scoreboardBody);
+        } 
+        // If there was an error loading scores, show error message
+        else if (this.scoresError) {
+            scoreboardBody.innerHTML = `<div class="empty-message">Failed to load scores: ${this.scoresError}</div>`;
+            
+            // Try fetching scores again
+            this.fetchScores();
+        }
+        // If scores are still loading, show loading indicator and fetch them
+        else {
+            scoreboardBody.innerHTML = '<div class="loading-spinner"></div>';
+            
+            // If scores haven't been loaded yet, fetch them now
+            if (!this.scoresLoaded) {
+                fetch('/api/scores')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to fetch scores');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        this.scores = data;
+                        this.scoresLoaded = true;
+                        this.scoresError = null;
+                        this.displayScores(data, scoreboardBody);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching scores:', error);
+                        scoreboardBody.innerHTML = '<div class="empty-message">Failed to load scores</div>';
+                        this.scoresError = error.message;
                     });
-                } else {
-                    // If no scores, show a message
-                    const emptyMessage = document.createElement('div');
-                    emptyMessage.className = 'empty-message';
-                    emptyMessage.textContent = 'No scores available yet';
-                    scoreboardBody.appendChild(emptyMessage);
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching scores:', error);
-                // Show error message in scoreboard
-                const scoreboardBody = document.querySelector('.scoreboard-body');
-                scoreboardBody.innerHTML = '<div class="empty-message">Failed to load scores</div>';
+            }
+        }
+    }
+    
+    // Helper method to display scores in the scoreboard
+    displayScores(data, scoreboardBody) {
+        // Clear existing entries
+        scoreboardBody.innerHTML = '';
+        
+        // Check if we have scores
+        if (data && data.length > 0) {
+            // Sort scores by highest first
+            data.sort((a, b) => b.score - a.score);
+            
+            // Display top 10 scores
+            const topScores = data.slice(0, 10);
+            
+            topScores.forEach((scoreData, index) => {
+                // Create a new row for each score
+                const scoreRow = document.createElement('div');
+                scoreRow.className = 'scoreboard-row';
+                
+                // Create rank element
+                const rankElement = document.createElement('div');
+                rankElement.className = 'rank';
+                rankElement.textContent = (index + 1).toString();
+                
+                // Create name element
+                const nameElement = document.createElement('div');
+                nameElement.className = 'name';
+                // Use name field from the database
+                nameElement.textContent = scoreData.name ? 
+                    scoreData.name.substring(0, 6).toUpperCase() : 'UNKNOWN';
+                
+                // Create score element
+                const scoreElement = document.createElement('div');
+                scoreElement.className = 'score';
+                scoreElement.textContent = scoreData.score.toString();
+                
+                // Add elements to the row
+                scoreRow.appendChild(rankElement);
+                scoreRow.appendChild(nameElement);
+                scoreRow.appendChild(scoreElement);
+                
+                // Add row to the scoreboard
+                scoreboardBody.appendChild(scoreRow);
             });
+        } else {
+            // If no scores, show a message
+            const emptyMessage = document.createElement('div');
+            emptyMessage.className = 'empty-message';
+            emptyMessage.textContent = 'No scores available yet';
+            scoreboardBody.appendChild(emptyMessage);
+        }
     }
     
     hideScoreboard() {
