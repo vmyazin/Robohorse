@@ -188,11 +188,13 @@
             }">
                 <p>Enter your name:</p>
                 <div class="name-input-container">
-                    <template x-for="(char, index) in name" :key="index">
-                        <div class="game-over-name-char" 
-                             :class="{ 'active': currentIndex === index }"
-                             x-text="char"></div>
-                    </template>
+                    <!-- Manual rendering of character elements for reliability -->
+                    <div class="game-over-name-char" :class="{ 'active': currentIndex === 0 }" x-text="name[0]"></div>
+                    <div class="game-over-name-char" :class="{ 'active': currentIndex === 1 }" x-text="name[1]"></div>
+                    <div class="game-over-name-char" :class="{ 'active': currentIndex === 2 }" x-text="name[2]"></div>
+                    <div class="game-over-name-char" :class="{ 'active': currentIndex === 3 }" x-text="name[3]"></div>
+                    <div class="game-over-name-char" :class="{ 'active': currentIndex === 4 }" x-text="name[4]"></div>
+                    <div class="game-over-name-char" :class="{ 'active': currentIndex === 5 }" x-text="name[5]"></div>
                     <div id="game-over-enter-key" 
                          class="enter-key-button"
                          @click="submitScore()"

@@ -149,10 +149,15 @@ canvas {
 /* Game Over Name Input Section */
 #game-over-name-input-section {
     margin: 30px 0;
+    display: block;
+}
+
+#game-over-name-input-section p {
+    margin-bottom: 10px;
 }
 
 .game-over-name-char {
-    display: inline-flex;
+    display: inline-flex !important;
     align-items: center;
     justify-content: center;
     width: 30px;
@@ -162,6 +167,7 @@ canvas {
     color: #0ff;
     text-shadow: 0 0 5px #0ff;
     border-bottom: 2px solid #0ff;
+    visibility: visible !important;
 }
 
 .game-over-name-char.active {
@@ -274,10 +280,11 @@ button:hover {
 }
 
 .name-input-container {
-    display: flex;
+    display: flex !important;
     justify-content: center;
     gap: 10px;
     margin-top: 15px;
+    visibility: visible !important;
 }
 
 .name-char {

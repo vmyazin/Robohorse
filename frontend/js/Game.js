@@ -384,17 +384,35 @@ class Game {
                 viewScoreboard.style.display = 'block';
             }
         } else {
-            // Re-initialize game over name input elements for non-zero scores
-            this.gameOverNameChars = Array.from(document.querySelectorAll('.game-over-name-char'));
-            this.gameOverCurrentNameIndex = 0;
-            this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
-            
-            // Update the name display to show the cursor on the first character
-            this.updateNameDisplay(false);
-            
-            // Show name input section
+            // Make sure the name input section is visible first
             if (this.gameOverNameInputSection) {
                 this.gameOverNameInputSection.style.display = 'block';
+            }
+            
+            // Re-initialize game over name input elements for non-zero scores
+            // Make sure the elements exist
+            this.gameOverNameChars = Array.from(document.querySelectorAll('.game-over-name-char'));
+            
+            // If no characters found, wait briefly and try again (Alpine.js might need time to render)
+            if (this.gameOverNameChars.length === 0) {
+                setTimeout(() => {
+                    this.gameOverNameChars = Array.from(document.querySelectorAll('.game-over-name-char'));
+                    this.gameOverCurrentNameIndex = 0;
+                    this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
+                    this.updateNameDisplay(false);
+                }, 100);
+            } else {
+                this.gameOverCurrentNameIndex = 0;
+                this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
+                
+                // Update the name display to show the cursor on the first character
+                this.updateNameDisplay(false);
+            }
+            
+            // Ensure the name input section is visible
+            const nameInputContainer = document.querySelector('.name-input-container');
+            if (nameInputContainer) {
+                nameInputContainer.style.display = 'flex';
             }
             
             // Show enter key button
@@ -413,6 +431,16 @@ class Game {
             const viewScoreboard = document.getElementById('view-scoreboard');
             if (viewScoreboard) {
                 viewScoreboard.style.display = 'none';
+            }
+            
+            // Force a refresh of the Alpine.js component if it exists
+            if (this.gameOverNameInputSection && this.gameOverNameInputSection.__x) {
+                try {
+                    this.gameOverNameInputSection.__x.$data.name = ['_', '_', '_', '_', '_', '_'];
+                    this.gameOverNameInputSection.__x.$data.currentIndex = 0;
+                } catch (error) {
+                    console.error('Error updating Alpine.js state:', error);
+                }
             }
         }
         
@@ -1917,11 +1945,60 @@ class Game {
         const playerName = isMissionComplete ? this.playerName : this.gameOverPlayerName;
         const currentNameIndex = isMissionComplete ? this.currentNameIndex : this.gameOverCurrentNameIndex;
         
+        // Check if nameChars is defined and has elements
+        if (!nameChars || nameChars.length === 0) {
+            console.warn(`Name characters not found for ${isMissionComplete ? 'mission complete' : 'game over'} screen`);
+            
+            // Try to requery elements
+            if (isMissionComplete) {
+                this.nameChars = Array.from(document.querySelectorAll('.name-char'));
+            } else {
+                this.gameOverNameChars = Array.from(document.querySelectorAll('.game-over-name-char'));
+            }
+            
+            // If still no elements, log error and return
+            if ((isMissionComplete && this.nameChars.length === 0) || 
+                (!isMissionComplete && this.gameOverNameChars.length === 0)) {
+                console.error(`Unable to find name character elements for ${isMissionComplete ? 'mission complete' : 'game over'} screen`);
+                return;
+            }
+        }
+        
+        // Get the latest elements
+        const updatedNameChars = isMissionComplete ? this.nameChars : this.gameOverNameChars;
+        
         // Update each character display
-        nameChars.forEach((charElement, index) => {
-            charElement.textContent = playerName[index];
-            charElement.classList.toggle('active', index === currentNameIndex);
+        updatedNameChars.forEach((charElement, index) => {
+            if (!charElement) {
+                console.warn(`Character element at index ${index} is undefined`);
+                return;
+            }
+            
+            try {
+                charElement.textContent = playerName[index];
+                charElement.classList.toggle('active', index === currentNameIndex);
+                
+                // Ensure visibility
+                charElement.style.display = 'inline-flex';
+                charElement.style.visibility = 'visible';
+            } catch (error) {
+                console.error(`Error updating character element at index ${index}:`, error);
+            }
         });
+        
+        // Update Alpine.js state if it exists
+        try {
+            const section = isMissionComplete ? 
+                document.getElementById('name-input-section') : 
+                document.getElementById('game-over-name-input-section');
+                
+            if (section && section.__x) {
+                section.__x.$data.name = [...playerName];
+                section.__x.$data.currentIndex = currentNameIndex;
+            }
+        } catch (error) {
+            console.error('Error updating Alpine.js state:', error);
+        }
     }
 
     // New method to save score to the database
