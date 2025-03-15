@@ -358,33 +358,62 @@ class Game {
         
         // Show game over screen
         this.gameOverScreen.style.display = 'block';
-        
-        // Initialize game over name input
-        this.gameOverNameChars = Array.from(document.querySelectorAll('.game-over-name-char'));
-        this.gameOverCurrentNameIndex = 0;
-        this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
-        
-        // Show name input section
-        if (this.gameOverNameInputSection) {
-            this.gameOverNameInputSection.style.display = 'block';
-        }
-        
-        // Show enter key button
-        const gameOverEnterKey = document.getElementById('game-over-enter-key');
-        if (gameOverEnterKey) {
-            gameOverEnterKey.style.display = 'flex';
-        }
-        
-        // Hide restart instruction and view scoreboard initially
-        const restartInstruction = document.getElementById('restart-instruction');
-        if (restartInstruction) {
-            restartInstruction.style.display = 'none';
-            restartInstruction.innerHTML = 'Press <span class="control-key">SPACE</span> to restart';
-        }
-        
-        const viewScoreboard = document.getElementById('view-scoreboard');
-        if (viewScoreboard) {
-            viewScoreboard.style.display = 'none';
+
+        // Skip name entry if score is 0
+        if (this.score === 0) {
+            // Hide name input section
+            if (this.gameOverNameInputSection) {
+                this.gameOverNameInputSection.style.display = 'none';
+            }
+            
+            // Hide enter key button
+            const gameOverEnterKey = document.getElementById('game-over-enter-key');
+            if (gameOverEnterKey) {
+                gameOverEnterKey.style.display = 'none';
+            }
+
+            // Show restart instruction and view scoreboard immediately
+            const restartInstruction = document.getElementById('restart-instruction');
+            if (restartInstruction) {
+                restartInstruction.style.display = 'block';
+                restartInstruction.innerHTML = 'Press <span class="control-key">SPACE</span> to restart';
+            }
+
+            const viewScoreboard = document.getElementById('view-scoreboard');
+            if (viewScoreboard) {
+                viewScoreboard.style.display = 'block';
+            }
+        } else {
+            // Re-initialize game over name input elements for non-zero scores
+            this.gameOverNameChars = Array.from(document.querySelectorAll('.game-over-name-char'));
+            this.gameOverCurrentNameIndex = 0;
+            this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
+            
+            // Update the name display to show the cursor on the first character
+            this.updateNameDisplay(false);
+            
+            // Show name input section
+            if (this.gameOverNameInputSection) {
+                this.gameOverNameInputSection.style.display = 'block';
+            }
+            
+            // Show enter key button
+            const gameOverEnterKey = document.getElementById('game-over-enter-key');
+            if (gameOverEnterKey) {
+                gameOverEnterKey.style.display = 'flex';
+            }
+            
+            // Hide restart instruction and view scoreboard initially
+            const restartInstruction = document.getElementById('restart-instruction');
+            if (restartInstruction) {
+                restartInstruction.style.display = 'none';
+                restartInstruction.innerHTML = 'Press <span class="control-key">SPACE</span> to restart';
+            }
+            
+            const viewScoreboard = document.getElementById('view-scoreboard');
+            if (viewScoreboard) {
+                viewScoreboard.style.display = 'none';
+            }
         }
         
         // Stop background music and play death sound
@@ -1853,8 +1882,30 @@ class Game {
         // Update the current index based on which screen we're on
         if (onMissionComplete) {
             this.currentNameIndex = currentNameIndex;
+            
+            // Also update Alpine.js state if it exists
+            try {
+                const nameInputSection = document.getElementById('name-input-section');
+                if (nameInputSection && nameInputSection.__x) {
+                    nameInputSection.__x.$data.name = [...playerName];
+                    nameInputSection.__x.$data.currentIndex = currentNameIndex;
+                }
+            } catch (error) {
+                console.error('Error updating Alpine.js state:', error);
+            }
         } else {
             this.gameOverCurrentNameIndex = currentNameIndex;
+            
+            // Also update Alpine.js state if it exists
+            try {
+                const gameOverNameInputSection = document.getElementById('game-over-name-input-section');
+                if (gameOverNameInputSection && gameOverNameInputSection.__x) {
+                    gameOverNameInputSection.__x.$data.name = [...playerName];
+                    gameOverNameInputSection.__x.$data.currentIndex = currentNameIndex;
+                }
+            } catch (error) {
+                console.error('Error updating Alpine.js state:', error);
+            }
         }
         
         // Update the display
@@ -1875,8 +1926,19 @@ class Game {
 
     // New method to save score to the database
     saveScore() {
-        // Get the player name from the input
-        const playerName = this.playerName.join('').replace(/_/g, ' ').trim();
+        // Try to get the name from Alpine.js first, then fall back to our internal state
+        let playerName;
+        try {
+            const nameInputSection = document.getElementById('name-input-section');
+            if (nameInputSection && nameInputSection.__x) {
+                playerName = nameInputSection.__x.$data.name.join('').replace(/_/g, ' ').trim();
+            } else {
+                playerName = this.playerName.join('').replace(/_/g, ' ').trim();
+            }
+        } catch (error) {
+            console.error('Error accessing Alpine.js state:', error);
+            playerName = this.playerName.join('').replace(/_/g, ' ').trim();
+        }
         
         // If no name was entered, use "UNKNOWN"
         const finalName = playerName || 'UNKNOWN';
@@ -1930,8 +1992,19 @@ class Game {
     }
 
     saveGameOverScore() {
-        // Get the player name from the input
-        const playerName = this.gameOverPlayerName.join('').replace(/_/g, ' ').trim();
+        // Try to get the name from Alpine.js first, then fall back to our internal state
+        let playerName;
+        try {
+            const gameOverNameInputSection = document.getElementById('game-over-name-input-section');
+            if (gameOverNameInputSection && gameOverNameInputSection.__x) {
+                playerName = gameOverNameInputSection.__x.$data.name.join('').replace(/_/g, ' ').trim();
+            } else {
+                playerName = this.gameOverPlayerName.join('').replace(/_/g, ' ').trim();
+            }
+        } catch (error) {
+            console.error('Error accessing Alpine.js state:', error);
+            playerName = this.gameOverPlayerName.join('').replace(/_/g, ' ').trim();
+        }
         
         // If no name was entered, use "UNKNOWN"
         const finalName = playerName || 'UNKNOWN';
