@@ -8,6 +8,9 @@
     "dev": "nodemon api/server.js",
     "setup-db": "node api/db/setup.js",
     "build": "webpack",
+    "deploy": "npm run build && mkdir -p deploy/robohorse && cp frontend/*.html deploy/robohorse/ && mkdir -p deploy/robohorse/dist && cp frontend/dist/*.bundle.js deploy/robohorse/dist/ && cp -r frontend/css deploy/robohorse/ && cp -r frontend/images deploy/robohorse/ && cp -r frontend/audio deploy/robohorse/ && cp README.md deploy/robohorse/ && ([ -f frontend/favicon.png ] && cp frontend/favicon.png deploy/robohorse/ || cp frontend/images/elon.png deploy/robohorse/favicon.png || echo 'No favicon found')",
+    "deploy:prod": "npm run deploy && rsync -avz --delete deploy/robohorse/ apprunner@games.smoxu.com:/var/www/games.smoxu.com/robohorse/ && npm run post-deploy",
+    "post-deploy": "echo '\n⚠️  REMINDER: Make sure to check/update the .env file on the server if needed.\n   ssh apprunner@games.smoxu.com\n   cd /var/www/games.smoxu.com/robohorse\n   nano .env\n'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

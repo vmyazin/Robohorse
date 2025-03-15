@@ -49,7 +49,7 @@
                 async submitScore() {
                     this.isSubmitting = true;
                     try {
-                        const response = await fetch('/api/scores', {
+                        const response = await fetch('./api/scores', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
@@ -114,7 +114,7 @@
                 async submitScore() {
                     this.isSubmitting = true;
                     try {
-                        const response = await fetch('/api/scores', {
+                        const response = await fetch('./api/scores', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
@@ -173,7 +173,7 @@
             async fetchScores() {
                 this.isLoading = true;
                 try {
-                    const response = await fetch('/api/scores');
+                    const response = await fetch('./api/scores');
                     if (!response.ok) throw new Error('Failed to fetch scores');
                     this.scores = await response.json();
                 } catch (error) {

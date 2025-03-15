@@ -157,7 +157,7 @@ class Game {
     
     fetchScores() {
         console.log("Pre-fetching scores on app load");
-        fetch('/api/scores')
+        fetch('./api/scores')
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Failed to fetch scores');
@@ -2047,7 +2047,7 @@ class Game {
         }
         
         // Make API call to save the score
-        fetch('/api/scores', {
+        fetch('./api/scores', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -2084,6 +2084,11 @@ class Game {
                 missionCompleteInstruction.innerHTML = 'Error saving score. Press <span class="control-key">SPACE</span> to restart';
                 missionCompleteInstruction.style.display = 'block';
             }
+            
+            // Show name input section again in case of error
+            if (this.nameInputSection) {
+                this.nameInputSection.style.display = 'block';
+            }
         });
     }
 
@@ -2095,10 +2100,12 @@ class Game {
             if (gameOverNameInputSection && gameOverNameInputSection.__x) {
                 playerName = gameOverNameInputSection.__x.$data.name.join('').replace(/_/g, ' ').trim();
             } else {
+                // Use the gameOverPlayerName array instead of gameOverName
                 playerName = this.gameOverPlayerName.join('').replace(/_/g, ' ').trim();
             }
         } catch (error) {
             console.error('Error accessing Alpine.js state:', error);
+            // Use the gameOverPlayerName array instead of gameOverName
             playerName = this.gameOverPlayerName.join('').replace(/_/g, ' ').trim();
         }
         
@@ -2107,13 +2114,13 @@ class Game {
         
         console.log(`Saving game over score for ${finalName}: ${this.score}`);
         
-        // Hide name input section
+        // Hide name input section before making the API call
         if (this.gameOverNameInputSection) {
             this.gameOverNameInputSection.style.display = 'none';
         }
         
         // Make API call to save the score
-        fetch('/api/scores', {
+        fetch('./api/scores', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -2161,6 +2168,11 @@ class Game {
             const viewScoreboard = document.getElementById('view-scoreboard');
             if (viewScoreboard) {
                 viewScoreboard.style.display = 'block';
+            }
+            
+            // Show name input section again in case of error
+            if (this.gameOverNameInputSection) {
+                this.gameOverNameInputSection.style.display = 'block';
             }
         });
     }
@@ -2231,7 +2243,7 @@ class Game {
             
             // If scores haven't been loaded yet, fetch them now
             if (!this.scoresLoaded) {
-                fetch('/api/scores')
+                fetch('./api/scores')
                     .then(response => {
                         if (!response.ok) {
                             throw new Error('Failed to fetch scores');

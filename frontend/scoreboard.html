@@ -212,7 +212,7 @@
     
     // Function to load all scores
     function loadAllScores() {
-      fetch('/api/scores')
+      fetch('./api/scores')
         .then(response => {
           if (!response.ok) {
             throw new Error('Network response was not ok');
@@ -231,7 +231,7 @@
     
     // Function to load scores for a specific game
     function loadGameScores(gameId, elementId) {
-      fetch(`/api/scores/${gameId}`)
+      fetch(`./api/scores/${gameId}`)
         .then(response => {
           if (!response.ok) {
             throw new Error('Network response was not ok');
@@ -294,7 +294,7 @@
     function addScore(gameId, playerId, score) {
       const messageElement = document.getElementById('message');
       
-      fetch('/api/scores', {
+      fetch('./api/scores', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

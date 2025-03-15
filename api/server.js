@@ -45,7 +45,8 @@ app.get('/api/scores', async (req, res) => {
     try {
         console.log('GET /api/scores - Fetching scores from database');
         const result = await pool.query(
-            'SELECT player_id as name, score FROM scores ORDER BY score DESC LIMIT 10'
+            'SELECT player_id as name, score FROM scores WHERE game_id = $1 ORDER BY score DESC LIMIT 10',
+            ['robohorse-v1']
         );
         console.log('GET /api/scores - Fetched scores:', result.rows);
         res.json(result.rows);
@@ -55,27 +56,71 @@ app.get('/api/scores', async (req, res) => {
     }
 });
 
-app.post('/api/scores', async (req, res) => {
-    const { name, score } = req.body;
-    
-    console.log('POST /api/scores - Received data:', { name, score });
-    
-    // Basic validation
-    if (!name || !score || typeof score !== 'string') {
-        console.error('Invalid score data:', { name, score, scoreType: typeof score });
-        return res.status(400).json({ error: 'Invalid score data' });
-    }
+// Route to get scores for a specific game (used by test pages)
+app.get('/api/scores/:gameId', async (req, res) => {
+    const { gameId } = req.params;
     
     try {
-        await pool.query(
-            'INSERT INTO scores (game_id, player_id, score) VALUES ($1, $2, $3)',
-            ['robohorse', name.trim(), parseInt(score, 10)]
+        console.log(`GET /api/scores/${gameId} - Fetching scores for game: ${gameId}`);
+        const result = await pool.query(
+            'SELECT player_id as name, score FROM scores WHERE game_id = $1 ORDER BY score DESC LIMIT 10',
+            [gameId]
         );
-        console.log('POST /api/scores - Score saved successfully');
-        res.status(201).json({ message: 'Score saved successfully' });
+        console.log(`GET /api/scores/${gameId} - Fetched scores:`, result.rows);
+        res.json(result.rows);
     } catch (err) {
-        console.error('Error saving score:', err);
-        res.status(500).json({ error: 'Failed to save score', details: err.message });
+        console.error(`Error fetching scores for game ${gameId}:`, err);
+        res.status(500).json({ error: 'Failed to fetch scores', details: err.message });
+    }
+});
+
+app.post('/api/scores', async (req, res) => {
+    // Check if this is a test page request with gameId and playerId
+    if (req.body.gameId && req.body.playerId) {
+        const { gameId, playerId, score } = req.body;
+        
+        console.log('POST /api/scores - Received test data:', { gameId, playerId, score });
+        
+        // Basic validation for test page
+        if (!gameId || !playerId || !score) {
+            console.error('Invalid test score data:', { gameId, playerId, score });
+            return res.status(400).json({ error: 'Invalid score data' });
+        }
+        
+        try {
+            await pool.query(
+                'INSERT INTO scores (game_id, player_id, score) VALUES ($1, $2, $3)',
+                [gameId, playerId.trim(), parseInt(score, 10)]
+            );
+            console.log('POST /api/scores - Test score saved successfully');
+            res.status(201).json({ message: 'Score saved successfully' });
+        } catch (err) {
+            console.error('Error saving test score:', err);
+            res.status(500).json({ error: 'Failed to save score', details: err.message });
+        }
+    } else {
+        // This is a main game request
+        const { name, score } = req.body;
+        
+        console.log('POST /api/scores - Received game data:', { name, score });
+        
+        // Basic validation for main game
+        if (!name || !score || typeof score !== 'string') {
+            console.error('Invalid game score data:', { name, score, scoreType: typeof score });
+            return res.status(400).json({ error: 'Invalid score data' });
+        }
+        
+        try {
+            await pool.query(
+                'INSERT INTO scores (game_id, player_id, score) VALUES ($1, $2, $3)',
+                ['robohorse-v1', name.trim(), parseInt(score, 10)]
+            );
+            console.log('POST /api/scores - Game score saved successfully');
+            res.status(201).json({ message: 'Score saved successfully' });
+        } catch (err) {
+            console.error('Error saving game score:', err);
+            res.status(500).json({ error: 'Failed to save score', details: err.message });
+        }
     }
 });
 

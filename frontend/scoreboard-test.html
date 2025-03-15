@@ -97,7 +97,7 @@
             // Fetch real scores from the database
             window.fetchRealScores = async () => {
                 try {
-                    const response = await fetch(`/api/scores/${window.currentGameId}`);
+                    const response = await fetch(`./api/scores/${window.currentGameId}`);
                     if (!response.ok) {
                         throw new Error('Failed to fetch scores');
                     }
