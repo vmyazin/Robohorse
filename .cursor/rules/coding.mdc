@@ -9,7 +9,7 @@ alwaysApply: false
 - Do not start a Python server before checking if it's already running.
 - If you see an opportunity for creating a manager go for it and add to /js/managers
 
-## Server
+## Dev Server
 
 - Do not offer to start the server (i.e. `npm run dev` or `npm server`), only suggest it in plain text
 
