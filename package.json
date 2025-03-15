@@ -7,6 +7,7 @@
     "start": "node api/server.js",
     "dev": "nodemon api/server.js",
     "setup-db": "node api/db/setup.js",
+    "build": "webpack",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -16,12 +17,13 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/vmyazin/Robohorse/issues"
   },
   "homepage": "https://github.com/vmyazin/Robohorse#readme",
   "dependencies": {
+    "alpinejs": "^3.14.9",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
@@ -29,6 +31,11 @@
     "pg": "^8.13.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "@babel/core": "^7.26.10",
+    "@babel/preset-env": "^7.26.9",
+    "babel-loader": "^10.0.0",
+    "nodemon": "^3.1.9",
+    "webpack": "^5.98.0",
+    "webpack-cli": "^6.0.1"
   }
 }

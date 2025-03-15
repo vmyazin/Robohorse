@@ -1,12 +1,22 @@
 // server.js
-const express = require('express');
-const cors = require('cors');
-const { Pool } = require('pg');
-const path = require('path');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import pg from 'pg';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import { dirname } from 'path';
 
+// Initialize environment variables
+dotenv.config();
+
+// Set up __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const { Pool } = pg;
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 4270;
 
 // Database connection
 const pool = new Pool({

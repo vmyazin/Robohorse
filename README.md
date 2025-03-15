@@ -89,6 +89,48 @@ Routes available:
 - `/playtest` - Playtest environment
 - `/legacy` - Original version of the game
 
+## Production Deployment
+
+To build and deploy the game for production:
+
+1. Build frontend assets:
+```bash
+npm run build
+```
+
+This runs webpack to bundle JavaScript modules including Alpine.js, with optimization for production.
+
+2. Deployment options:
+   - Static hosting: Deploy the `frontend` directory to any static hosting service
+   - Node.js hosting: Deploy the entire project to a Node.js-compatible service (Heroku, Render, etc.)
+   
+3. Environment configuration:
+   - Set `NODE_ENV=production` in your production environment
+   - Configure your database connection through environment variables
+
+4. Production considerations:
+   - Enable HTTP compression on your server
+   - Configure proper cache headers for static assets
+   - Use a CDN for global distribution if needed
+
+## Troubleshooting
+
+### Module System Issues
+- Error `require is not defined in ES module scope`: Update file to use ES Module syntax (`import` instead of `require`)
+- Missing `__dirname` or `__filename`: Use the following code for ES Module equivalent:
+  ```javascript
+  import { fileURLToPath } from 'url';
+  import { dirname } from 'path';
+  
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  ```
+
+### Server Issues
+- `EADDRINUSE` error: Another process is using the port
+  - Kill the process: `lsof -i :4269` to find the PID, then `kill -9 [PID]`
+  - Or change the port in `server.js`: `const port = process.env.PORT || [new_port];`
+
 ## Development
 
 The game is built with vanilla JavaScript using a modular approach, served via Node.js/Express:
@@ -105,6 +147,19 @@ The game is built with vanilla JavaScript using a modular approach, served via N
 - Express.js
 - Vanilla JavaScript (Game Engine)
 - HTML5 Canvas
+- Alpine.js (UI Interactions)
+
+### Alpine.js Integration
+- Used for interactive UI components in a modular approach
+- Webpack bundling instead of CDN for better performance and offline functionality
+- Integration path: `alpine-init.js` → Webpack → `alpine.bundle.js`
+- ES module-based configuration for better tree-shaking
+
+### Module System
+- Project uses ES modules (`"type": "module"` in package.json)
+- All imports/exports use ES module syntax (`import`/`export`) instead of CommonJS (`require`/`module.exports`)
+- `__dirname` and `__filename` are replaced with their ES module equivalents
+- If adding new files, ensure they follow ES module pattern or use `.cjs` extension for CommonJS files
 
 ### Database
 
