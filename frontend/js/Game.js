@@ -338,7 +338,7 @@ class Game {
             this.weaponDisplay.textContent = this.player.currentWeapon.name;
         }
         if (this.specialTokensDisplay) {
-            this.specialTokensDisplay.textContent = this.player.specialTokens;
+            this.specialTokensDisplay.textContent = this.player.specialAbilityTokens;
         }
         
         // Hide game over and mission complete screens

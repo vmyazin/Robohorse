@@ -26,8 +26,8 @@ class Player {
         this.standingOnObstacle = null;
         
         // Special ability tokens
-        this.specialTokens = 0;
-        this.maxSpecialTokens = 5;
+        this.specialAbilityTokens = 0;
+        this.maxSpecialAbilityTokens = 5;
         
         // Special ability duration tracking
         this.specialAbilityActive = false;
@@ -226,18 +226,18 @@ class Player {
     
     specialAbility(frameCount, projectiles, createParticles, playSound) {
         // Check if player has tokens to use special ability
-        if (this.specialTokens <= 0 && !this.specialAbilityActive) {
+        if (this.specialAbilityTokens <= 0 && !this.specialAbilityActive) {
             return false;
         }
         
         // Activate special ability if not already active
-        if (!this.specialAbilityActive && this.specialTokens > 0) {
+        if (!this.specialAbilityActive && this.specialAbilityTokens > 0) {
             this.specialAbilityActive = true;
             this.specialAbilityDuration = 0;
             this.specialAbilityLastConsumption = frameCount;
             
             // Consume one token to start
-            this.specialTokens--;
+            this.specialAbilityTokens--;
             
             // Create initial particle burst
             createParticles(this.x + this.width/2, this.y + this.height/2, 30, this.weapons[this.currentWeaponIndex].color);
@@ -250,8 +250,8 @@ class Player {
             
             // Check if we need to consume another token
             if (frameCount - this.specialAbilityLastConsumption >= this.specialAbilityConsumptionRate) {
-                if (this.specialTokens > 0) {
-                    this.specialTokens--;
+                if (this.specialAbilityTokens > 0) {
+                    this.specialAbilityTokens--;
                     this.specialAbilityLastConsumption = frameCount;
                     // Reset duration when consuming a new token to extend the ability
                     this.specialAbilityDuration = 0;
@@ -259,7 +259,7 @@ class Player {
             }
             
             // Check if special ability should end
-            if (this.specialAbilityDuration >= this.specialAbilityMaxDuration && this.specialTokens <= 0) {
+            if (this.specialAbilityDuration >= this.specialAbilityMaxDuration && this.specialAbilityTokens <= 0) {
                 this.specialAbilityActive = false;
                 return false;
             }
@@ -993,7 +993,7 @@ class Player {
         this.lastShot = 0;
         
         // Reset special abilities
-        this.specialTokens = 0;
+        this.specialAbilityTokens = 0;
         this.specialAbilityActive = false;
         this.specialAbilityDuration = 0;
         this.specialAbilityLastConsumption = 0;
