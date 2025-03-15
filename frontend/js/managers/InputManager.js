@@ -25,6 +25,14 @@ class InputManager {
     }
     
     handleKeyDown(e) {
+        // Allow browser shortcuts to pass through
+        // Skip handling if Command (Meta), Control, or Alt keys are pressed (except for specific shortcuts)
+        if ((e.metaKey || e.ctrlKey) && 
+            // Only handle Ctrl+S, Ctrl+E, and Ctrl+1 as game shortcuts
+            !(e.ctrlKey && (e.code === 'KeyS' || e.code === 'KeyE' || e.code === 'Digit1'))) {
+            return; // Let the browser handle this shortcut
+        }
+        
         // Set the key state
         this.keys[e.key] = true;
         
@@ -130,6 +138,11 @@ class InputManager {
     }
     
     handleKeyUp(e) {
+        // Allow browser shortcuts to pass through
+        if (e.metaKey || (e.ctrlKey && !(e.code === 'KeyS' || e.code === 'KeyE' || e.code === 'Digit1'))) {
+            return; // Let the browser handle this shortcut
+        }
+        
         this.keys[e.key] = false;
     }
     
