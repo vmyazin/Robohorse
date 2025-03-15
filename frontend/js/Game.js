@@ -222,6 +222,10 @@ class Game {
         this.gameOver = false;
         this.startScreen.style.display = 'none';
         
+        // Always hide scoreboard when starting the game
+        this.hideScoreboard();
+        this.showingScoreboard = false;
+        
         // Play background music if sound is enabled
         this.soundManager.playBackgroundMusic();
         
