@@ -1863,14 +1863,12 @@ class Game {
             },
             body: JSON.stringify({
                 name: finalName,
-                score: this.score
+                score: String(this.score) // Convert to string as server expects
             }),
         })
         .then(response => {
             if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.error || 'Failed to save score');
-                });
+                throw new Error('Failed to save score');
             }
             return response.json();
         })
@@ -1917,14 +1915,12 @@ class Game {
             },
             body: JSON.stringify({
                 name: finalName,
-                score: this.score
+                score: String(this.score) // Convert to string as server expects
             }),
         })
         .then(response => {
             if (!response.ok) {
-                return response.json().then(err => {
-                    throw new Error(err.error || 'Failed to save score');
-                });
+                throw new Error('Failed to save score');
             }
             return response.json();
         })
@@ -2008,7 +2004,7 @@ class Game {
         }
         
         // Fetch scores from the database
-        fetch('/api/scores/robohorse-v1')
+        fetch('/api/scores')
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Failed to fetch scores');
@@ -2043,9 +2039,9 @@ class Game {
                         // Create name element
                         const nameElement = document.createElement('div');
                         nameElement.className = 'name';
-                        // Use player_id as name, limit to 6 characters and uppercase
-                        nameElement.textContent = scoreData.player_id ? 
-                            scoreData.player_id.substring(0, 6).toUpperCase() : 'UNKNOWN';
+                        // Use name field from the database
+                        nameElement.textContent = scoreData.name ? 
+                            scoreData.name.substring(0, 6).toUpperCase() : 'UNKNOWN';
                         
                         // Create score element
                         const scoreElement = document.createElement('div');

@@ -11,7 +11,16 @@ const port = process.env.PORT || 3000;
 // Database connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    ssl: { rejectUnauthorized: false } // Always use SSL with Neon database
+});
+
+// Test database connection
+pool.query('SELECT NOW()', (err, res) => {
+    if (err) {
+        console.error('Database connection error:', err.stack);
+    } else {
+        console.log('Database connected successfully:', res.rows[0]);
+    }
 });
 
 // Middleware
@@ -24,42 +33,35 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 // API Routes
 app.get('/api/scores', async (req, res) => {
     try {
+        console.log('GET /api/scores - Fetching scores from database');
         const result = await pool.query(
-            'SELECT name, score FROM scores ORDER BY score DESC LIMIT 10'
+            'SELECT player_id as name, score FROM scores ORDER BY score DESC LIMIT 10'
         );
+        console.log('GET /api/scores - Fetched scores:', result.rows);
         res.json(result.rows);
     } catch (err) {
         console.error('Error fetching scores:', err);
-        res.status(500).json({ error: 'Failed to fetch scores' });
+        res.status(500).json({ error: 'Failed to fetch scores', details: err.message });
     }
 });
 
 app.post('/api/scores', async (req, res) => {
     const { name, score } = req.body;
     
-    console.log('Received score submission:', { name, score, body: req.body });
+    console.log('POST /api/scores - Received data:', { name, score });
     
-    // Enhanced validation
-    if (!name || name.trim().length === 0) {
-        return res.status(400).json({ error: 'Name is required' });
-    }
-    
-    if (score === undefined || score === null) {
-        return res.status(400).json({ error: 'Score is required' });
-    }
-    
-    // Convert score to number if it's a string
-    const numericScore = typeof score === 'string' ? parseInt(score, 10) : score;
-    
-    if (isNaN(numericScore)) {
-        return res.status(400).json({ error: 'Score must be a valid number' });
+    // Basic validation
+    if (!name || !score || typeof score !== 'string') {
+        console.error('Invalid score data:', { name, score, scoreType: typeof score });
+        return res.status(400).json({ error: 'Invalid score data' });
     }
     
     try {
         await pool.query(
-            'INSERT INTO scores (name, score) VALUES ($1, $2)',
-            [name.trim(), numericScore]
+            'INSERT INTO scores (game_id, player_id, score) VALUES ($1, $2, $3)',
+            ['robohorse', name.trim(), parseInt(score, 10)]
         );
+        console.log('POST /api/scores - Score saved successfully');
         res.status(201).json({ message: 'Score saved successfully' });
     } catch (err) {
         console.error('Error saving score:', err);
@@ -74,8 +76,8 @@ app.get('*', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Something broke!' });
+    console.error('Server error:', err.stack);
+    res.status(500).json({ error: 'Something broke!', details: err.message });
 });
 
 app.listen(port, () => {
