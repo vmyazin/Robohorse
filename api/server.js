@@ -1,4 +1,4 @@
-// server.js
+// api/server.js
 import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
