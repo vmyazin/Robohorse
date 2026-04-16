@@ -150,7 +150,7 @@ app.use((err, req, res, next) => {
 // which owns the HTTP server in production.
 if (!isProduction && !process.env.PASSENGER_WRAPPED) {
     app.listen(port, () => {
-        console.log(`Server running on port ${port}`);
+        console.log(`Server running at http://localhost:${port}`);
     });
 }
 
