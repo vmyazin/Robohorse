@@ -20,7 +20,7 @@ This is the API server for the Robohorse game, designed to work with PostgreSQL 
 
 2. Install dependencies:
    ```
-   npm install
+   pnpm install
    ```
 
 3. The API is configured to work with Phusion Passenger using the following files:

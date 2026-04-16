@@ -74,12 +74,12 @@ The latest update improves vehicle destruction mechanics:
 
 1. Install dependencies:
 ```bash
-npm install
+pnpm install
 ```
 
 2. Start the development server:
 ```bash
-npm run dev
+pnpm dev
 ```
 
 3. Open http://localhost:4269 in your web browser to play.
@@ -95,7 +95,7 @@ To build and deploy the game for production:
 
 1. Build frontend assets:
 ```bash
-npm run build
+pnpm build
 ```
 
 This runs webpack to bundle JavaScript modules including Alpine.js, with optimization for production.

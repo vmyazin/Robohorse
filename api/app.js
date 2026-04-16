@@ -131,8 +131,12 @@ app.post([`${basePath}/api/scores`, '/api/scores'], async (req, res) => {
     }
 });
 
-// Catch-all route to serve index.html for any non-API routes
-app.get('*', (req, res) => {
+// SPA fallback (Express 5 — wildcard strings are no longer supported here).
+// Unknown /api/* paths return 404 instead of falling through to index.html.
+app.use((req, res) => {
+    if (req.path.startsWith('/api') || req.path.startsWith(`${basePath}/api`)) {
+        return res.status(404).json({ error: 'Not found' });
+    }
     res.sendFile(path.join(__dirname, '../index.html'));
 });
 

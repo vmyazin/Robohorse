@@ -37,7 +37,7 @@ echo "$(date): Set permissions" >> $LOG_FILE
 # Install dependencies
 echo "Installing dependencies..."
 cd $API_DIR
-npm install --production
+pnpm install --prod
 echo "$(date): Installed dependencies" >> $LOG_FILE
 
 # Restart Passenger
