@@ -1,4 +1,6 @@
-// api/server.js
+// api/app.js
+// This file is used by Passenger to start the application
+
 import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
@@ -18,10 +20,14 @@ const { Pool } = pg;
 const app = express();
 const port = process.env.PORT || 4270;
 
-// Database connection
+// Determine if we're in production and set the base path accordingly
+const isProduction = process.env.NODE_ENV === 'production';
+const basePath = isProduction ? '/robohorse' : '';
+
+// Database connection — Neon requires SSL in all environments.
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false } // Always use SSL with Neon database
+    ssl: { rejectUnauthorized: false }
 });
 
 // Test database connection
@@ -38,10 +44,11 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files from the frontend directory
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(path.join(__dirname, '../')));
 
 // API Routes
-app.get('/api/scores', async (req, res) => {
+// Define both /api/scores and /robohorse/api/scores for flexibility
+app.get([`${basePath}/api/scores`, '/api/scores'], async (req, res) => {
     try {
         console.log('GET /api/scores - Fetching scores from database');
         const result = await pool.query(
@@ -57,7 +64,7 @@ app.get('/api/scores', async (req, res) => {
 });
 
 // Route to get scores for a specific game (used by test pages)
-app.get('/api/scores/:gameId', async (req, res) => {
+app.get([`${basePath}/api/scores/:gameId`, '/api/scores/:gameId'], async (req, res) => {
     const { gameId } = req.params;
     
     try {
@@ -74,7 +81,7 @@ app.get('/api/scores/:gameId', async (req, res) => {
     }
 });
 
-app.post('/api/scores', async (req, res) => {
+app.post([`${basePath}/api/scores`, '/api/scores'], async (req, res) => {
     // Check if this is a test page request with gameId and playerId
     if (req.body.gameId && req.body.playerId) {
         const { gameId, playerId, score } = req.body;
@@ -126,7 +133,7 @@ app.post('/api/scores', async (req, res) => {
 
 // Catch-all route to serve index.html for any non-API routes
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+    res.sendFile(path.join(__dirname, '../index.html'));
 });
 
 // Error handling middleware
@@ -135,10 +142,13 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Something broke!', details: err.message });
 });
 
-if (process.env.NODE_ENV !== 'production') {
+// For local development — skip when loaded by the Passenger wrapper,
+// which owns the HTTP server in production.
+if (!isProduction && !process.env.PASSENGER_WRAPPED) {
     app.listen(port, () => {
         console.log(`Server running on port ${port}`);
     });
 }
 
-export default app;
+// Export the app for Passenger
+export default app; 
