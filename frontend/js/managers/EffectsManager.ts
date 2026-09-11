@@ -1,8 +1,20 @@
 // js/managers/EffectsManager.js
 // Responsible for managing visual effects in the game
 
+interface EffectsHost {
+    canvas: HTMLCanvasElement;
+    soundManager: { playSound(key: string, volume?: number): void };
+}
+
 class EffectsManager {
-    constructor(game) {
+    game: EffectsHost;
+    elonToasty: {
+        active: boolean; x: number; y: number; width: number; height: number;
+        image: HTMLImageElement; timer: number; duration: number;
+        slideInDuration: number; slideOutDuration: number; slideInComplete: boolean;
+    };
+    damageFlash: { active: boolean; duration: number; timer: number; color: string };
+    constructor(game: EffectsHost) {
         this.game = game;
         
         // Elon Toasty easter egg
@@ -49,7 +61,7 @@ class EffectsManager {
      * Draw the Elon Toasty easter egg
      * @param {CanvasRenderingContext2D} ctx - The canvas rendering context
      */
-    drawElonToasty(ctx) {
+    updateElonToasty() {
         if (!this.elonToasty.active) return;
         
         const canvas = this.game.canvas;
@@ -70,6 +82,15 @@ class EffectsManager {
             this.elonToasty.x = canvas.width - this.elonToasty.width + (this.elonToasty.width * progress);
         }
         
+        // Reset when animation is complete
+        if (this.elonToasty.timer >= this.elonToasty.duration) {
+            this.elonToasty.active = false;
+        }
+    }
+    
+    drawElonToasty(ctx: CanvasRenderingContext2D) {
+        if (!this.elonToasty.active || !this.elonToasty.image.complete || !this.elonToasty.image.naturalWidth) return;
+        const canvas = this.game.canvas;
         // Draw Elon image
         ctx.drawImage(
             this.elonToasty.image,
@@ -79,12 +100,8 @@ class EffectsManager {
             this.elonToasty.height
         );
         
-        // Reset when animation is complete
-        if (this.elonToasty.timer >= this.elonToasty.duration) {
-            this.elonToasty.active = false;
-        }
     }
-    
+
     /**
      * Trigger a damage flash effect
      */
@@ -110,7 +127,7 @@ class EffectsManager {
      * Draw the damage flash effect
      * @param {CanvasRenderingContext2D} ctx - The canvas rendering context
      */
-    drawDamageFlash(ctx) {
+    drawDamageFlash(ctx: CanvasRenderingContext2D) {
         if (!this.damageFlash.active) return;
         
         // Calculate opacity based on remaining time
@@ -127,13 +144,14 @@ class EffectsManager {
      */
     update() {
         this.updateDamageFlash();
+        this.updateElonToasty();
     }
     
     /**
      * Draw all effects
      * @param {CanvasRenderingContext2D} ctx - The canvas rendering context
      */
-    draw(ctx) {
+    draw(ctx: CanvasRenderingContext2D) {
         this.drawDamageFlash(ctx);
         this.drawElonToasty(ctx);
     }

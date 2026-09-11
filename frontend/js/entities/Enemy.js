@@ -1,4 +1,4 @@
-import { lightenColor, roundRect } from '../utils/helpers.js';
+import { lightenColor, roundRect } from '../utils/helpers.ts';
 
 class Enemy {
     constructor(x, y, type, canvas) {

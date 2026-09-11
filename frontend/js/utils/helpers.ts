@@ -1,7 +1,9 @@
+export interface Bounds { x: number; y: number; width: number; height: number }
+
 /**
  * Helper function for drawing rounded rectangles
  */
-function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number, fill?: boolean, stroke?: boolean) {
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
     ctx.lineTo(x + width - radius, y);
@@ -26,7 +28,7 @@ function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
 /**
  * Helper function to lighten or darken colors
  */
-function lightenColor(color, percent) {
+function lightenColor(color: string, percent: number) {
     const num = parseInt(color.replace('#', ''), 16);
     const amt = Math.round(2.55 * percent);
     const R = (num >> 16) + amt;
@@ -44,7 +46,7 @@ function lightenColor(color, percent) {
 /**
  * Collision detection between two objects
  */
-function isColliding(a, b) {
+function isColliding(a: Bounds, b: Bounds) {
     return a.x < b.x + b.width &&
            a.x + a.width > b.x &&
            a.y < b.y + b.height &&

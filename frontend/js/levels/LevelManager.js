@@ -1,6 +1,6 @@
 import Obstacle from '../entities/Obstacle.js';
 import Enemy from '../entities/Enemy.js';
-import { isColliding } from '../utils/helpers.js';
+import { isColliding } from '../utils/helpers.ts';
 
 class LevelManager {
     constructor(game) {

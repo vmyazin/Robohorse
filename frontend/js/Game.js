@@ -6,8 +6,8 @@ import Background from './components/Background.js';
 import LevelManager from './levels/LevelManager.js';
 import SoundManager from './managers/SoundManager.js';
 import InputManager from './managers/InputManager.js';
-import EffectsManager from './managers/EffectsManager.js';
-import { isColliding } from './utils/helpers.js';
+import EffectsManager from './managers/EffectsManager.ts';
+import { isColliding } from './utils/helpers.ts';
 
 class Game {
     constructor(canvas) {
