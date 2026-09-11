@@ -1,9 +1,11 @@
+import AudioVoicePool from './AudioVoicePool.ts';
 // js/managers/SoundManager.js
 // Responsible for managing all sound-related functionality in the game
 
 class SoundManager {
     constructor(game) {
         this.game = game;
+        this.voicePool = new AudioVoicePool();
         this.sounds = {};
         this.backgroundMusic = null;
         this.policeRadioSound1 = null;
@@ -67,6 +69,7 @@ class SoundManager {
                 this.soundToggleElement.classList.add('muted');
                 // Pause background music
                 this.backgroundMusic.pause();
+                this.voicePool.stop();
             }
         }
         
@@ -76,15 +79,9 @@ class SoundManager {
     playSound(soundKey, volume = 0.5) {
         if (!this.soundEnabled || !this.sounds[soundKey]) return;
         
-        try {
-            const sound = this.sounds[soundKey].cloneNode();
-            sound.volume = volume;
-            sound.play();
-        } catch (e) {
-            console.warn(`Could not play ${soundKey} sound:`, e);
-        }
+        this.voicePool.play(soundKey, this.sounds[soundKey], volume);
     }
-    
+
     playBackgroundMusic() {
         if (!this.soundEnabled || !this.backgroundMusic) return;
         
@@ -110,11 +107,11 @@ class SoundManager {
             // Alternate between the two radio sounds
             if (this.currentPoliceRadioIndex === 0) {
                 this.policeRadioSound1.currentTime = 0;
-                this.policeRadioSound1.play();
+                this.policeRadioSound1.play().catch(() => {});
                 this.currentPoliceRadioIndex = 1;
             } else {
                 this.policeRadioSound2.currentTime = 0;
-                this.policeRadioSound2.play();
+                this.policeRadioSound2.play().catch(() => {});
                 this.currentPoliceRadioIndex = 0;
             }
             
@@ -138,7 +135,7 @@ class SoundManager {
             
             // Reset playback position and play the sound
             whisperSound.currentTime = 0;
-            whisperSound.play();
+            whisperSound.play().catch(() => {});
         } catch (e) {
             console.warn('Could not play alien whisper sound:', e);
         }

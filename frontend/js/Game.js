@@ -117,7 +117,7 @@ class Game {
             blasterNeural: 'audio/blaster_shot_snap.mp3',
             blasterTentacle: 'audio/blaster_shots_pee.mp3',
             blasterRobo: 'audio/blaster_shots.mp3',
-            blasterLeg: 'audio/blaster_shot_leg.mp3',
+            blasterLeg: 'audio/blaster_shots.mp3',
             // Other sounds
             powerUp: 'audio/power_up.mp3',
             victory: 'audio/power_up.mp3', // Use power_up sound for victory until we have a dedicated one
