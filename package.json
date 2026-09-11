@@ -11,9 +11,10 @@
     "deploy": "pnpm build",
     "deploy:prod": "pnpm deploy && node scripts/deploy-frontend.js && pnpm post-deploy",
     "post-deploy": "echo '\n\u26a0\ufe0f  REMINDER: Make sure to check/update the .env file on the server if needed.\n   ssh apprunner@games.smoxu.com\n   cd /var/www/games.smoxu.com/robohorse\n   nano .env\n'",
-    "test": "node --test",
+    "test": "node --test test/*.test.js",
     "dev:api": "node --watch api/server.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test"
   },
   "repository": {
     "type": "git",
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.20.2",
     "nodemon": "^3.1.14",
     "typescript": "^7.0.2",

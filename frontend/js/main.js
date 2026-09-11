@@ -3,6 +3,7 @@ import Game from './Game.js';
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('gameCanvas');
     const game = new Game(canvas);
+    if (import.meta.env.MODE === 'test') window.__game = game;
     
     // Initialize the game
     game.resetGame();
