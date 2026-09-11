@@ -1,3 +1,4 @@
+import Hud from './components/Hud.ts';
 import ScoreService from './services/ScoreService.ts';
 import FixedStepClock from './managers/FixedStepClock.ts';
 import Player from './entities/Player.js';
@@ -43,6 +44,8 @@ class Game {
         this.mushroomPowerDuration = 600; // 10 seconds at 60fps
         this.mushroomPowerTimer = 0;
         
+        this.hud = new Hud();
+
         // DOM elements
         this.healthBar = document.getElementById('health-bar');
         this.healthValue = document.getElementById('health-value');
@@ -1596,23 +1599,9 @@ class Game {
         // Cap health at maxHealth
         this.player.health = Math.min(this.player.health, this.player.maxHealth);
         
-        // Calculate health percentage
-        const healthPercent = (this.player.health / this.player.maxHealth) * 100;
-        
-        // Update the health bar width based on player health percentage
-        this.healthBar.style.width = `${healthPercent}%`;
-        this.healthValue.textContent = Math.round(this.player.health);
-        
-        // Change color based on health level
-        if (healthPercent > 60) {
-            this.healthBar.style.background = 'linear-gradient(to right, #0f0, #0f0)';
-        } else if (healthPercent > 30) {
-            this.healthBar.style.background = 'linear-gradient(to right, #ff0, #ff0)';
-        } else {
-            this.healthBar.style.background = 'linear-gradient(to right, #f00, #f00)';
-        }
+        this.hud.render(this.hudState());
     }
-    
+
     // Add a new method to spawn mushroom power-ups
     spawnMushroomPowerUp(x, y) {
         // Ensure mushroom doesn't spawn below floor level
@@ -1817,19 +1806,19 @@ class Game {
     }
     
     // Draw UI elements on the canvas
+    hudState() {
+        return {
+            score: this.score,
+            health: this.player.health,
+            maxHealth: this.player.maxHealth,
+            weapon: this.player.currentWeapon.name,
+            tokens: this.player.specialAbilityTokens,
+            playing: this.gameStarted,
+        };
+    }
+
     drawUI() {
-        // Only draw UI if game is started
-        if (!this.gameStarted) return;
-        
-        const ctx = this.ctx;
-        
-        // Set text properties
-        ctx.font = '16px Arial';
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'left';
-        
-        // Draw score
-        ctx.fillText(`Score: ${this.score}`, 20, 30);
+        this.hud.render(this.hudState(), this.ctx);
     }
 
     showMissionComplete() {
