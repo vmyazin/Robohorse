@@ -2,6 +2,7 @@
 // Shared Express application; launchers own the HTTP listener.
 
 import express from 'express';
+import { existsSync } from 'node:fs';
 import { createScoreRouter } from './routes/scores.js';
 import pg from 'pg';
 import path from 'path';
@@ -18,7 +19,8 @@ const __dirname = dirname(__filename);
 
 const { Pool } = pg;
 const app = express();
-const frontendRoot = process.env.PASSENGER_WRAPPED ? path.join(__dirname, '..') : path.join(__dirname, '../frontend');
+const buildRoot = path.join(__dirname, '../deploy/robohorse');
+const frontendRoot = process.env.FRONTEND_ROOT || (process.env.PASSENGER_WRAPPED ? path.join(__dirname, '..') : (existsSync(path.join(buildRoot, 'index.html')) ? buildRoot : path.join(__dirname, '../frontend')));
 
 // Determine if we're in production and set the base path accordingly
 const isProduction = process.env.NODE_ENV === 'production';
@@ -36,7 +38,7 @@ app.use(express.json({ limit: '4kb' }));
 // Serve static files from the frontend directory
 // Restrict flat Passenger deployments to public assets, never API source or config.
 for (const prefix of ['', '/robohorse']) {
-    for (const directory of ['dist', 'css', 'images', 'audio']) {
+    for (const directory of ['assets', 'js', 'css', 'images', 'audio']) {
         app.use(`${prefix}/${directory}`, express.static(path.join(frontendRoot, directory), { index: false }));
     }
     for (const page of ['index.html', 'playtest.html', 'scoreboard.html', 'scoreboard-test.html']) {

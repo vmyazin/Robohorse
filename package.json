@@ -5,13 +5,14 @@
   "main": "api/server.js",
   "scripts": {
     "start": "node api/server.js",
-    "dev": "nodemon api/server.js",
+    "dev": "vite",
     "setup-db": "node api/db/setup.js",
-    "build": "webpack",
-    "deploy": "pnpm build && mkdir -p deploy/robohorse && cp frontend/*.html deploy/robohorse/ && mkdir -p deploy/robohorse/dist && cp frontend/dist/*.bundle.js deploy/robohorse/dist/ && cp -r frontend/css deploy/robohorse/ && cp -r frontend/images deploy/robohorse/ && cp -r frontend/audio deploy/robohorse/ && cp README.md deploy/robohorse/ && ([ -f frontend/favicon.png ] && cp frontend/favicon.png deploy/robohorse/ || cp frontend/images/elon.png deploy/robohorse/favicon.png || echo 'No favicon found')",
+    "build": "vite build",
+    "deploy": "pnpm build",
     "deploy:prod": "pnpm deploy && node scripts/deploy-frontend.js && pnpm post-deploy",
-    "post-deploy": "echo '\n⚠️  REMINDER: Make sure to check/update the .env file on the server if needed.\n   ssh apprunner@games.smoxu.com\n   cd /var/www/games.smoxu.com/robohorse\n   nano .env\n'",
-    "test": "node --test"
+    "post-deploy": "echo '\n\u26a0\ufe0f  REMINDER: Make sure to check/update the .env file on the server if needed.\n   ssh apprunner@games.smoxu.com\n   cd /var/www/games.smoxu.com/robohorse\n   nano .env\n'",
+    "test": "node --test",
+    "dev:api": "node --watch api/server.js"
   },
   "repository": {
     "type": "git",
@@ -34,12 +35,14 @@
     "pg": "^8.20.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.29.0",
-    "@babel/preset-env": "^7.29.2",
     "@electric-sql/pglite": "^0.5.8",
-    "babel-loader": "^10.1.1",
+    "@types/node": "^22.20.2",
     "nodemon": "^3.1.14",
-    "webpack": "^5.106.2",
-    "webpack-cli": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
+  },
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=24 <25"
   }
 }

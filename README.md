@@ -79,10 +79,11 @@ pnpm install
 
 2. Start the development server:
 ```bash
-pnpm dev
+pnpm dev:api # API, in one terminal
+pnpm dev     # Vite, in another terminal
 ```
 
-3. Open http://localhost:4270 in your web browser to play.
+3. Open http://localhost:5173/robohorse/ in your web browser to play. For the production build, run `pnpm build && pnpm start` and open http://localhost:4270/robohorse/.
 
 Routes available:
 - `/` - Main game
@@ -98,10 +99,10 @@ To build and deploy the game for production:
 pnpm build
 ```
 
-This runs webpack to bundle JavaScript modules including Alpine.js, with optimization for production.
+Vite bundles the game and Alpine.js into hashed production assets in `deploy/robohorse/`. Audio and images are copied into that artifact.
 
 2. Deployment options:
-   - Static hosting: Deploy the `frontend` directory to any static hosting service
+   - Static hosting: Deploy the `deploy/robohorse` directory to any static hosting service
    - Node.js hosting: Deploy the entire project to a Node.js-compatible service (Heroku, Render, etc.)
 
 3. Environment configuration:
@@ -151,8 +152,8 @@ The game is built with vanilla JavaScript using a modular approach, served via N
 
 ### Alpine.js Integration
 - Used for interactive UI components in a modular approach
-- Webpack bundling instead of CDN for better performance and offline functionality
-- Integration path: `alpine-init.js` → Webpack → `alpine.bundle.js`
+- Vite bundles Alpine.js with the game
+- Integration path: `alpine-init.js` → Vite → hashed production assets
 - ES module-based configuration for better tree-shaking
 
 ### Module System

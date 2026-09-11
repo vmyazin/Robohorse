@@ -6,7 +6,7 @@
 - [ ] Strict score API, abuse limits, generic errors, secure database TLS; API integration tests.
 - [x] Versioned migrations verified against fresh and legacy PostgreSQL using PGlite.
 - [ ] Incremental TypeScript across simulation, entities, API contracts and game state.
-- [ ] Vite 8 with hashed assets and `/robohorse/` base path.
+- [x] Vite 8 with hashed assets and `/robohorse/` base path.
 - [ ] Pin Node/pnpm and consolidate dependency ownership.
 - [ ] CI checks and atomic deployment with migrations.
 - [ ] Browser tests for lifecycle, score failure and restart; gameplay inspection.
