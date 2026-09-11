@@ -7,7 +7,7 @@
 - [x] Versioned migrations verified against fresh and legacy PostgreSQL using PGlite.
 - [ ] Incremental TypeScript across simulation, entities, API contracts and game state.
 - [x] Vite 8 with hashed assets and `/robohorse/` base path.
-- [ ] Pin Node/pnpm and consolidate dependency ownership.
+- [x] Pin Node/pnpm and consolidate dependency ownership in a pnpm workspace.
 - [ ] CI checks and atomic deployment with migrations.
 - [ ] Browser tests for lifecycle, score failure and restart; gameplay inspection.
 - [ ] Split Game into simulation, collision/combat, scene/UI and score-service responsibilities.

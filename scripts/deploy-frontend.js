@@ -5,6 +5,7 @@ export function deployFrontend(source, destination) {
     const result = spawnSync('rsync', [
         '-avz', '--delete',
         // Excluded paths are protected from receiver-side deletion as well.
+        '--exclude=/package.json', '--exclude=/pnpm-lock.yaml', '--exclude=/pnpm-workspace.yaml', '--exclude=/.node-version',
         '--exclude=/api/', '--exclude=/.env', '--exclude=/node_modules/', '--exclude=/tmp/',
         source, destination,
     ], { stdio: 'inherit' });

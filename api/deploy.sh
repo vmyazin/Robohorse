@@ -1,60 +1,15 @@
 #!/bin/bash
-# api/deploy.sh
-# Deployment script for Robohorse API
+set -euo pipefail
 
-echo "Deploying Robohorse API..."
-
-# Check if running as root or with sudo
-if [ "$EUID" -ne 0 ]; then
-  echo "Please run as root or with sudo"
-  exit 1
-fi
-
-# Set variables
-API_DIR="/var/www/games.smoxu.com/robohorse/api"
-LOG_FILE="/var/log/robohorse_deploy.log"
-
-# Create log file if it doesn't exist
-touch $LOG_FILE
-echo "$(date): Starting deployment" >> $LOG_FILE
-
-# Create directory structure if it doesn't exist
-echo "Creating directory structure..."
-mkdir -p $API_DIR
-echo "$(date): Created directory structure" >> $LOG_FILE
-
-# Copy files to the deployment directory
-echo "Copying files to deployment directory..."
-cp -r ./* $API_DIR/
-echo "$(date): Copied files to deployment directory" >> $LOG_FILE
-
-# Set proper permissions
-echo "Setting permissions..."
-chown -R www-data:www-data $API_DIR
-chmod -R 755 $API_DIR
-echo "$(date): Set permissions" >> $LOG_FILE
-
-# Install dependencies
-echo "Installing dependencies..."
-cd $API_DIR
-pnpm install --prod
-echo "$(date): Installed dependencies" >> $LOG_FILE
-
-# Restart Passenger
-echo "Restarting Passenger..."
-passenger-config restart-app $API_DIR
-echo "$(date): Restarted Passenger" >> $LOG_FILE
-
-# Check if Passenger is running
-echo "Checking if Passenger is running..."
-passenger-status | grep $API_DIR
-if [ $? -eq 0 ]; then
-  echo "Passenger is running successfully!"
-  echo "$(date): Passenger is running successfully" >> $LOG_FILE
-else
-  echo "Passenger failed to start. Check logs at /var/log/nginx/error.log"
-  echo "$(date): Passenger failed to start" >> $LOG_FILE
-fi
-
-echo "Deployment completed!"
-echo "$(date): Deployment completed" >> $LOG_FILE 
+# Run on the server from a full checkout. Both packages share the root lockfile.
+SOURCE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DEPLOY_ROOT="${ROBOHORSE_DEPLOY_ROOT:-/var/www/games.smoxu.com/robohorse}"
+mkdir -p "$DEPLOY_ROOT/api"
+rsync -a --exclude=node_modules --exclude=.env "$SOURCE_ROOT/api/" "$DEPLOY_ROOT/api/"
+for manifest in package.json pnpm-lock.yaml pnpm-workspace.yaml .node-version; do
+    cp "$SOURCE_ROOT/$manifest" "$DEPLOY_ROOT/$manifest"
+done
+cd "$DEPLOY_ROOT"
+pnpm install --prod --frozen-lockfile
+node api/db/setup.js
+passenger-config restart-app "$DEPLOY_ROOT/api"

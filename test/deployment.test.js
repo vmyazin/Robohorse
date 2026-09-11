@@ -17,11 +17,11 @@ test('frontend sync preserves backend and configuration while deleting stale ass
             await mkdir(path.join(destination, dir));
             await writeFile(path.join(destination, dir, 'keep'), 'protected');
         }
-        await writeFile(path.join(destination, '.env'), 'protected');
+        for (const file of ['.env', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', '.node-version']) await writeFile(path.join(destination, file), 'protected');
         await writeFile(path.join(destination, 'stale.js'), 'obsolete');
         await writeFile(path.join(source, 'index.html'), 'new build');
         deployFrontend(`${source}/`, `${destination}/`);
-        for (const file of ['api/keep', 'node_modules/keep', 'tmp/keep', '.env']) {
+        for (const file of ['api/keep', 'node_modules/keep', 'tmp/keep', '.env', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', '.node-version']) {
             assert.equal(await readFile(path.join(destination, file), 'utf8'), 'protected');
         }
         assert.equal(await readFile(path.join(destination, 'index.html'), 'utf8'), 'new build');

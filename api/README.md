@@ -55,3 +55,7 @@ Run `pnpm setup-db` from the repository root with `DATABASE_URL` set. Migrations
 Use `sslmode=verify-full` in hosted PostgreSQL connection URLs. Local PostgreSQL can omit TLS options. Runtime and setup no longer disable certificate verification. Tests use temporary PGlite PostgreSQL databases and never connect to production.
 
 Score submission accepts only `{name, score}` for `robohorse-v1`; the old arbitrary-game test payload is intentionally rejected. The in-process limit is 10 submissions per IP per minute. With multiple workers, add a shared edge limit. Keep Express proxy trust disabled unless the exact trusted proxy topology is configured; otherwise forwarded IP headers can be spoofed. This limit and validation do not establish score authenticity.
+
+### Workspace dependencies
+
+Install from the repository root using `pnpm install --frozen-lockfile`. The root `pnpm-lock.yaml` owns both packages; the API declares its runtime dependencies in `api/package.json`. API deployment must include the root package manifest, workspace manifest and lockfile alongside the API directory. The server-side `api/deploy.sh` performs that installation and migrations before restarting Passenger, and stops on any failed command. Frontend sync protects these manifests.
