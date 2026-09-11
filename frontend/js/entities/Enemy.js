@@ -1,6 +1,9 @@
 import { lightenColor, roundRect } from '../utils/helpers.ts';
 
+/** @typedef {{width:number,height:number,speed:number,health:number,maxHealth?:number,points:number,color:string,tentacles?:number}} EnemyType */
+/** @typedef {(x:number,y:number,amount:number,color:string)=>void} Particles */
 class Enemy {
+    /** @param {number} x @param {number} y @param {EnemyType} type @param {HTMLCanvasElement} canvas */
     constructor(x, y, type, canvas) {
         this.canvas = canvas;
         this.x = x;
@@ -11,12 +14,14 @@ class Enemy {
         this.velY = 0;
         this.speed = type.speed;
         this.health = type.health;
-        this.maxHealth = type.maxHealth;
+        this.maxHealth = type.maxHealth ?? type.health;
+        this.directionChangeTimer = 0;
+        this.maxDirectionChangeTime = 10; // One movement-decision interval at 60 Hz
         this.points = type.points;
         this.color = type.color;
         
         // Initialize tentacles as an array of objects
-        this.tentacles = Array(type.tentacles || 8).fill().map((_, i) => ({
+        this.tentacles = Array(type.tentacles || 8).fill(null).map((_, i) => ({
             angle: (i / (type.tentacles || 8)) * Math.PI * 2,
             speed: 0.02 + Math.random() * 0.01,
             phase: Math.random() * Math.PI * 2
@@ -53,6 +58,7 @@ class Enemy {
         console.log("Enhanced enemy created at", x, y, "with health", this.health, "and aggression", this.aggressionFactor);
     }
     
+    /** @param {import('../utils/helpers.ts').Bounds} player @param {number} frameCount @param {Particles} createParticles @param {number} timeScale */
     update(player, frameCount, createParticles, timeScale = 1) {
         // Handle spawn timer
         if (this.spawnTimer > 0) {
@@ -251,6 +257,7 @@ class Enemy {
         return null;
     }
     
+    /** @param {number} damage */
     takeDamage(damage) {
         this.health -= damage;
         
@@ -260,6 +267,7 @@ class Enemy {
         return this.health <= 0;
     }
     
+    /** @param {CanvasRenderingContext2D} ctx @param {number} frameCount @param {import('../utils/helpers.ts').Bounds} player */
     draw(ctx, frameCount, player) {
         // Apply damage visual effect if active
         const originalColor = this.color;

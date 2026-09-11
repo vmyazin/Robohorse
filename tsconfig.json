@@ -6,8 +6,17 @@
     "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "types": ["vite/client", "node"],
-    "skipLibCheck": true
+    "types": [
+      "vite/client",
+      "node"
+    ],
+    "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": true
   },
-  "include": ["frontend/js/**/*.ts", "api/**/*.ts"]
+  "include": [
+    "frontend/js/**/*.ts",
+    "api/**/*.ts",
+    "frontend/js/entities/Enemy.js"
+  ]
 }

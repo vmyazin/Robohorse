@@ -12,4 +12,4 @@
 - `ScoreService.ts`: typed HTTP score contract and response validation.
 - `AudioVoicePool.ts`: bounded simultaneous sound instances.
 
-Legacy entities and world modules remain JavaScript during incremental migration. Their shared mutable game host is still a coupling point; the extracted typed interfaces narrow that boundary for combat, HUD, effects and networking. Type checking currently covers TypeScript modules, not all legacy JavaScript.
+Legacy entities and world modules remain JavaScript during incremental migration. Their shared mutable game host is still a coupling point; the extracted typed interfaces narrow that boundary for combat, HUD, effects and networking. Type checking covers TypeScript modules and the JSDoc-typed Enemy entity. Other legacy JavaScript remains outside the incremental checking boundary.
