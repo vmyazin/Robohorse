@@ -29,12 +29,12 @@ server {
     add_header Strict-Transport-Security "max-age=63072000" always;
     
     # Root directory
-    root /var/www/robohorse/frontend;
+    root /var/www/robohorse/current/deploy;
     index index.html;
 
     # Proxy API requests to Express server
-    location /api/ {
-        proxy_pass http://localhost:3000;
+    location /robohorse/api/ {
+        proxy_pass http://localhost:4270;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -45,11 +45,16 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Serve static files
-    location / {
-        try_files $uri $uri/ /index.html;
-        expires 30d;
-        add_header Cache-Control "public, no-transform";
+    location = / { return 302 /robohorse/; }
+    location = /robohorse { return 301 /robohorse/; }
+    location /robohorse/assets/ {
+        try_files $uri =404;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    location /robohorse/ {
+        try_files $uri $uri/ =404;
+        add_header Cache-Control "no-cache";
     }
 
     # Security headers

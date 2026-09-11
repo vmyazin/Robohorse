@@ -856,7 +856,7 @@ class Game {
     }
 
     drawUI() {
-        this.hud.render(this.hudState(), this.ctx);
+        this.hud.render(this.hudState());
     }
 
     showMissionComplete() {

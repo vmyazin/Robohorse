@@ -9,6 +9,7 @@ test('built game starts, advances, ends and restarts without runtime errors', as
     await page.keyboard.press('Space');
     await expect(page.locator('#start-screen')).toBeHidden();
     await expect.poll(() => page.evaluate(() => window.__game.frameCount)).toBeGreaterThan(10);
+    await page.screenshot({ path: 'test-results/gameplay.png' });
     await page.evaluate(() => window.__game.endGame());
     await expect(page.locator('#game-over')).toBeVisible();
     await page.evaluate(() => { window.__game.resetGame(); window.__game.startGame(); });

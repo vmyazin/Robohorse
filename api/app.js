@@ -22,11 +22,7 @@ const app = express();
 const buildRoot = path.join(__dirname, '../deploy/robohorse');
 const frontendRoot = process.env.FRONTEND_ROOT || (existsSync(path.join(buildRoot, 'index.html')) ? buildRoot : (process.env.PASSENGER_WRAPPED ? path.join(__dirname, '..') : path.join(__dirname, '../frontend')));
 
-// Determine if we're in production and set the base path accordingly
-const isProduction = process.env.NODE_ENV === 'production';
-const basePath = isProduction ? '/robohorse' : '';
-
-// Database connection — Neon requires SSL in all environments.
+// TLS settings come from DATABASE_URL; hosted deployments should use sslmode=verify-full.
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     connectionTimeoutMillis: 5000
@@ -39,7 +35,7 @@ app.use(express.json({ limit: '4kb' }));
 // Restrict flat Passenger deployments to public assets, never API source or config.
 for (const prefix of ['', '/robohorse']) {
     for (const directory of ['assets', 'js', 'css', 'images', 'audio']) {
-        app.use(`${prefix}/${directory}`, express.static(path.join(frontendRoot, directory), { index: false }));
+        app.use(`${prefix}/${directory}`, express.static(path.join(frontendRoot, directory), { index: false, maxAge: directory === 'assets' ? '1y' : 0, immutable: directory === 'assets' }));
     }
     for (const page of ['index.html', 'playtest.html', 'scoreboard.html', 'scoreboard-test.html']) {
         app.get(`${prefix}/${page}`, (req, res) => res.sendFile(path.join(frontendRoot, page)));

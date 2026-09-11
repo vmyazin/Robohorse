@@ -25,7 +25,7 @@ export default class Hud {
         this.previous.set(id, value);
     }
 
-    render(state: HudState, ctx?: CanvasRenderingContext2D) {
+    render(state: HudState) {
         this.text('score', String(state.score));
         this.text('weapon', state.weapon);
         this.text('special-tokens', String(state.tokens));
@@ -40,13 +40,6 @@ export default class Hud {
             bar.style.background = `linear-gradient(to right, ${color}, ${color})`;
             this.previous.set('health-bar', width);
         }
-        if (state.playing && ctx) {
-            ctx.save();
-            ctx.font = '16px Arial';
-            ctx.fillStyle = '#fff';
-            ctx.textAlign = 'left';
-            ctx.fillText(`Score: ${state.score}`, 20, 30);
-            ctx.restore();
-        }
+
     }
 }

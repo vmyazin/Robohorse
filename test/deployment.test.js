@@ -52,6 +52,13 @@ for (const entry of ['api/server.js', 'api/passenger_wrapper.cjs']) {
             for (const url of ['/api/app.js', '/package.json', '/.env', '/robohorse/api/app.js']) {
                 assert.equal((await fetch(base + url)).status, 404, url);
             }
+            const failure = await fetch(`${base}/api/scores`);
+            assert.equal(failure.status, 500);
+            assert.deepEqual(await failure.json(), { error: 'Internal server error' });
+            const invalid = await fetch(`${base}/api/scores`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{' });
+            assert.equal(invalid.status, 400);
+            const oversized = await fetch(`${base}/api/scores`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'A'.repeat(5000) }) });
+            assert.equal(oversized.status, 413);
             if (entry.endsWith('server.js')) assert.equal((await fetch(base)).status, 200);
         } finally { child.kill(); }
     });
