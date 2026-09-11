@@ -1,3 +1,4 @@
+import CombatSystem from './managers/CombatSystem.ts';
 import Hud from './components/Hud.ts';
 import ScoreService from './services/ScoreService.ts';
 import FixedStepClock from './managers/FixedStepClock.ts';
@@ -35,6 +36,7 @@ class Game {
         this.soundManager = new SoundManager(this);
         this.inputManager = new InputManager(this);
         this.effectsManager = new EffectsManager(this);
+        this.combat = new CombatSystem(this);
         
         // Frame rate control - simplified
         this.clock = new FixedStepClock();
@@ -525,7 +527,7 @@ class Game {
                 }
                 
                 // Handle player-obstacle collision
-                this.handlePlayerObstacleCollision(obstacle);
+                this.combat.collide(obstacle);
             }
             
             // Only process projectile collisions if the obstacle is not already exploding
@@ -1155,73 +1157,6 @@ class Game {
                 this.soundManager.playPoliceRadio();
                 this.lastPoliceRadioTime = performance.now();
             }
-        }
-    }
-    
-    handlePlayerObstacleCollision(obstacle) {
-        // If player is above the obstacle and falling, place them on top
-        if (this.player.y + this.player.height < obstacle.y + obstacle.height / 2 && this.player.velY > 0) {
-            const previousVelY = this.player.velY;
-            this.player.y = obstacle.y - this.player.height;
-            this.player.velY = 0;
-            this.player.isJumping = false;
-            this.player.standingOnObstacle = obstacle;
-            
-            // Check if player is landing on a box and should smash it
-            if (obstacle.type === 'box') {
-                const isBoxDestroyed = this.player.checkBoxSmash([obstacle], this.createParticles.bind(this));
-                if (isBoxDestroyed) {
-                    const index = this.obstacles.indexOf(obstacle);
-                    if (index !== -1) {
-                        if (obstacle.containsMushroom) {
-                            this.spawnMushroomPowerUp(obstacle.x, obstacle.y - 20);
-                        }
-                        this.obstacles.splice(index, 1);
-                        this.score += obstacle.points;
-                        this.scoreDisplay.textContent = this.score;
-                        this.createParticles(
-                            obstacle.x + obstacle.width/2,
-                            obstacle.y + obstacle.height/2,
-                            15,
-                            obstacle.color
-                        );
-                    }
-                }
-            }
-        } 
-        // Handle horizontal collisions
-        else if (this.player.x + this.player.width > obstacle.x && this.player.x < obstacle.x + obstacle.width) {
-            if (this.player.x < obstacle.x) {
-                this.player.x = obstacle.x - this.player.width;
-                if (this.player.x <= 0) {
-                    this.handlePlayerCrush();
-                }
-            } else {
-                this.player.x = obstacle.x + obstacle.width;
-            }
-        }
-    }
-    
-    handlePlayerCrush() {
-        // Subtract health but ensure it stays as a valid number
-        this.player.health = Math.max(0, this.player.health - 2);
-        this.updateHealthDisplay();
-        
-        this.createParticles(
-            this.player.x + this.player.width,
-            this.player.y + this.player.height/2,
-            3,
-            '#ff0000'
-        );
-        
-        this.effectsManager.triggerDamageFlash();
-        
-        if (this.player.mushroomPowerActive) {
-            this.player.deactivateMushroomPower(this.createParticles.bind(this));
-        }
-        
-        if (this.player.health <= 0) {
-            this.endGame();
         }
     }
     
