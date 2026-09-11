@@ -82,7 +82,7 @@ pnpm install
 pnpm dev
 ```
 
-3. Open http://localhost:4269 in your web browser to play.
+3. Open http://localhost:4270 in your web browser to play.
 
 Routes available:
 - `/` - Main game
@@ -103,7 +103,7 @@ This runs webpack to bundle JavaScript modules including Alpine.js, with optimiz
 2. Deployment options:
    - Static hosting: Deploy the `frontend` directory to any static hosting service
    - Node.js hosting: Deploy the entire project to a Node.js-compatible service (Heroku, Render, etc.)
-   
+
 3. Environment configuration:
    - Set `NODE_ENV=production` in your production environment
    - Configure your database connection through environment variables
@@ -121,26 +121,26 @@ This runs webpack to bundle JavaScript modules including Alpine.js, with optimiz
   ```javascript
   import { fileURLToPath } from 'url';
   import { dirname } from 'path';
-  
+
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
   ```
 
 ### Server Issues
 - `EADDRINUSE` error: Another process is using the port
-  - Kill the process: `lsof -i :4269` to find the PID, then `kill -9 [PID]`
+  - Kill the process: `lsof -i :4270` to find the PID, then `kill -9 [PID]`
   - Or change the port in `server.js`: `const port = process.env.PORT || [new_port];`
 
 ## Development
 
 The game is built with vanilla JavaScript using a modular approach, served via Node.js/Express:
 
-- `src/server.js`: Express server configuration
-- `src/public/js/Game.js`: Main game logic
-- `src/public/js/entities/`: Player, Enemy, and Obstacle classes
-- `src/public/js/components/`: UI components like Background
-- `src/public/js/levels/`: Level management
-- `src/public/js/utils/`: Helper functions
+- `api/server.js`: Express server configuration
+- `frontend/js/Game.js`: Main game logic
+- `frontend/js/entities/`: Player, Enemy, and Obstacle classes
+- `frontend/js/components/`: UI components like Background
+- `frontend/js/levels/`: Level management
+- `frontend/js/utils/`: Helper functions
 
 ### Tech Stack
 - Node.js
@@ -171,4 +171,9 @@ https://console.neon.tech/app/projects/silent-resonance-05246388/branches/br-bla
 
 Developed as a demonstration of HTML5 Canvas and JavaScript game development by Vasily Simon + Cursor + Claude Sonnet.
 
-Enjoy the game! 
+Enjoy the game!
+### Startup and deployment checks
+
+Run `pnpm test` for production startup and local rsync protection tests (rsync must be installed). `pnpm start` starts the shared Express app in either environment. Passenger uses `api/passenger_wrapper.cjs`; update its Nginx startup-file setting when deploying this change (see `api/README.md`).
+
+Frontend deployment protects `/api/`, `/.env`, `/node_modules/`, and `/tmp/` on the destination. It still deletes obsolete frontend files. The health endpoint `/api/health` reports HTTP availability, not database readiness.

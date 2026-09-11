@@ -1,8 +1,8 @@
 // api/app.js
-// This file is used by Passenger to start the application
+// Shared Express application; launchers own the HTTP listener.
 
 import express from 'express';
-import cors from 'cors';
+import { createScoreRouter } from './routes/scores.js';
 import pg from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -18,7 +18,7 @@ const __dirname = dirname(__filename);
 
 const { Pool } = pg;
 const app = express();
-const port = process.env.PORT || 4270;
+const frontendRoot = process.env.PASSENGER_WRAPPED ? path.join(__dirname, '..') : path.join(__dirname, '../frontend');
 
 // Determine if we're in production and set the base path accordingly
 const isProduction = process.env.NODE_ENV === 'production';
@@ -27,132 +27,36 @@ const basePath = isProduction ? '/robohorse' : '';
 // Database connection — Neon requires SSL in all environments.
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    connectionTimeoutMillis: 5000
 });
 
-// Test database connection
-pool.query('SELECT NOW()', (err, res) => {
-    if (err) {
-        console.error('Database connection error:', err.stack);
-    } else {
-        console.log('Database connected successfully:', res.rows[0]);
-    }
-});
-
-// Middleware
-app.use(cors());
-app.use(express.json());
+app.disable('x-powered-by');
+app.use(express.json({ limit: '4kb' }));
 
 // Serve static files from the frontend directory
-app.use(express.static(path.join(__dirname, '../')));
-
-// API Routes
-// Define both /api/scores and /robohorse/api/scores for flexibility
-app.get([`${basePath}/api/scores`, '/api/scores'], async (req, res) => {
-    try {
-        console.log('GET /api/scores - Fetching scores from database');
-        const result = await pool.query(
-            'SELECT player_id as name, score FROM scores WHERE game_id = $1 ORDER BY score DESC LIMIT 10',
-            ['robohorse-v1']
-        );
-        console.log('GET /api/scores - Fetched scores:', result.rows);
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Error fetching scores:', err);
-        res.status(500).json({ error: 'Failed to fetch scores', details: err.message });
+// Restrict flat Passenger deployments to public assets, never API source or config.
+for (const prefix of ['', '/robohorse']) {
+    for (const directory of ['dist', 'css', 'images', 'audio']) {
+        app.use(`${prefix}/${directory}`, express.static(path.join(frontendRoot, directory), { index: false }));
     }
-});
-
-// Route to get scores for a specific game (used by test pages)
-app.get([`${basePath}/api/scores/:gameId`, '/api/scores/:gameId'], async (req, res) => {
-    const { gameId } = req.params;
-    
-    try {
-        console.log(`GET /api/scores/${gameId} - Fetching scores for game: ${gameId}`);
-        const result = await pool.query(
-            'SELECT player_id as name, score FROM scores WHERE game_id = $1 ORDER BY score DESC LIMIT 10',
-            [gameId]
-        );
-        console.log(`GET /api/scores/${gameId} - Fetched scores:`, result.rows);
-        res.json(result.rows);
-    } catch (err) {
-        console.error(`Error fetching scores for game ${gameId}:`, err);
-        res.status(500).json({ error: 'Failed to fetch scores', details: err.message });
+    for (const page of ['index.html', 'playtest.html', 'scoreboard.html', 'scoreboard-test.html']) {
+        app.get(`${prefix}/${page}`, (req, res) => res.sendFile(path.join(frontendRoot, page)));
     }
-});
+    app.get(`${prefix}/`, (req, res) => res.sendFile(path.join(frontendRoot, 'index.html')));
+    app.get(`${prefix}/playtest`, (req, res) => res.sendFile(path.join(frontendRoot, 'playtest.html')));
+    app.get(`${prefix}/favicon.png`, (req, res) => res.sendFile(path.join(frontendRoot, 'images/elon.png')));
+}
+app.get(['/api/health', '/robohorse/api/health'], (req, res) => res.json({ status: 'ok' }));
 
-app.post([`${basePath}/api/scores`, '/api/scores'], async (req, res) => {
-    // Check if this is a test page request with gameId and playerId
-    if (req.body.gameId && req.body.playerId) {
-        const { gameId, playerId, score } = req.body;
-        
-        console.log('POST /api/scores - Received test data:', { gameId, playerId, score });
-        
-        // Basic validation for test page
-        if (!gameId || !playerId || !score) {
-            console.error('Invalid test score data:', { gameId, playerId, score });
-            return res.status(400).json({ error: 'Invalid score data' });
-        }
-        
-        try {
-            await pool.query(
-                'INSERT INTO scores (game_id, player_id, score) VALUES ($1, $2, $3)',
-                [gameId, playerId.trim(), parseInt(score, 10)]
-            );
-            console.log('POST /api/scores - Test score saved successfully');
-            res.status(201).json({ message: 'Score saved successfully' });
-        } catch (err) {
-            console.error('Error saving test score:', err);
-            res.status(500).json({ error: 'Failed to save score', details: err.message });
-        }
-    } else {
-        // This is a main game request
-        const { name, score } = req.body;
-        
-        console.log('POST /api/scores - Received game data:', { name, score });
-        
-        // Basic validation for main game
-        if (!name || !score || typeof score !== 'string') {
-            console.error('Invalid game score data:', { name, score, scoreType: typeof score });
-            return res.status(400).json({ error: 'Invalid score data' });
-        }
-        
-        try {
-            await pool.query(
-                'INSERT INTO scores (game_id, player_id, score) VALUES ($1, $2, $3)',
-                ['robohorse-v1', name.trim(), parseInt(score, 10)]
-            );
-            console.log('POST /api/scores - Game score saved successfully');
-            res.status(201).json({ message: 'Score saved successfully' });
-        } catch (err) {
-            console.error('Error saving game score:', err);
-            res.status(500).json({ error: 'Failed to save score', details: err.message });
-        }
-    }
-});
+app.use(['/api/scores', '/robohorse/api/scores'], createScoreRouter(pool));
 
-// SPA fallback (Express 5 — wildcard strings are no longer supported here).
-// Unknown /api/* paths return 404 instead of falling through to index.html.
-app.use((req, res) => {
-    if (req.path.startsWith('/api') || req.path.startsWith(`${basePath}/api`)) {
-        return res.status(404).json({ error: 'Not found' });
-    }
-    res.sendFile(path.join(__dirname, '../index.html'));
-});
+app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Server error:', err.stack);
-    res.status(500).json({ error: 'Something broke!', details: err.message });
+    const status = err.type === 'entity.too.large' ? 413 : err.type === 'entity.parse.failed' ? 400 : 500;
+    res.status(status).json({ error: status === 500 ? 'Internal server error' : 'Invalid request body' });
 });
 
-// For local development — skip when loaded by the Passenger wrapper,
-// which owns the HTTP server in production.
-if (!isProduction && !process.env.PASSENGER_WRAPPED) {
-    app.listen(port, () => {
-        console.log(`Server running at http://localhost:${port}`);
-    });
-}
-
-// Export the app for Passenger
-export default app; 
+export default app;

@@ -1,4 +1,4 @@
-// api/passenger_wrapper.js
+// api/passenger_wrapper.cjs
 // CommonJS entry for Phusion Passenger. Creates an HTTP server synchronously
 // so Passenger has something to hook `listen` on, then lazily imports the
 // ESM Express app and forwards requests to it.
@@ -52,7 +52,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const port = process.env.PORT || 4270;
 server.listen(port, () => {
-  console.log(`Passenger wrapper listening on ${port}`);
+  console.log(`Passenger wrapper listening on ${server.address().port}`);
 });
 
 module.exports = server;

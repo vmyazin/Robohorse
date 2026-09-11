@@ -5,7 +5,7 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "start": "node passenger_wrapper.js"
+    "start": "node passenger_wrapper.cjs"
   },
   "dependencies": {
     "cors": "^2.8.6",
