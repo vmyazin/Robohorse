@@ -27,6 +27,9 @@ class InputManager {
     }
     
     bindEventListeners() {
+        if (this.listenersBound) return;
+        this.listenersBound = true;
+        window.addEventListener('blur', () => { this.keys = {}; });
         // Keyboard event listeners
         window.addEventListener('keydown', this.handleKeyDown.bind(this));
         window.addEventListener('keyup', this.handleKeyUp.bind(this));

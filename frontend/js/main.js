@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     game.resetGame();
     
     // Start the animation loop to enable toggle functionality
-    requestAnimationFrame(game.animate);
+    game.startLoop();
     
     // The game will start when the space key is pressed
     // This is already handled in the Game class with event listeners

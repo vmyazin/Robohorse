@@ -103,8 +103,7 @@ class LevelManager {
             // Move obstacle with level scrolling
             obstacle.x -= this.scrollSpeed * this.game.gameSpeed;
             
-            // Update obstacle state
-            obstacle.update();
+            // Game owns obstacle state updates; this manager only scrolls the level.
         }
         
         // Prevent obstacle overlapping by adjusting positions

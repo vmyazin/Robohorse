@@ -1,3 +1,4 @@
+import FixedStepClock from './managers/FixedStepClock.js';
 import Player from './entities/Player.js';
 import Enemy from './entities/Enemy.js';
 import Background from './components/Background.js';
@@ -33,7 +34,7 @@ class Game {
         this.effectsManager = new EffectsManager(this);
         
         // Frame rate control - simplified
-        this.lastFrameTime = 0;
+        this.clock = new FixedStepClock();
         this.animationFrameId = null;
         
         // Mushroom power-up duration
@@ -213,7 +214,7 @@ class Game {
                 }
                 // Continue the animation loop if unpausing
                 if (!this.animationFrameId) {
-                    this.animate(performance.now());
+                    this.startLoop();
                 }
             }
         }
@@ -224,6 +225,8 @@ class Game {
     }
     
     bindEventListeners() {
+        if (this.listenersBound) return;
+        this.listenersBound = true;
         this.inputManager.bindEventListeners();
         
         // Add click event for the Enter key button (Mission Complete)
@@ -284,7 +287,7 @@ class Game {
         // Reset police radio timing when starting the game
         this.lastPoliceRadioTime = performance.now();
         
-        this.animate();
+        this.startLoop();
     }
     
     resetGame() {
@@ -365,7 +368,8 @@ class Game {
         this.generateTerrain();
         
         // Start animation loop
-        this.animate(0);
+        this.clock.reset();
+        this.startLoop();
     }
     
     endGame() {
@@ -1453,53 +1457,32 @@ class Game {
         this.effectsManager.draw(this.ctx);
     }
     
+    startLoop() {
+        if (this.animationFrameId !== null) return;
+        this.clock.reset();
+        this.animationFrameId = requestAnimationFrame(this.animate);
+    }
+
     animate(timestamp) {
-        // Calculate deltaTime and normalize it (target 60fps)
-        const deltaTime = timestamp - this.lastFrameTime;
-        this.lastFrameTime = timestamp || 0;
-        
-        // Limit deltaTime to prevent huge jumps after tab switch or lag
-        const cappedDeltaTime = Math.min(deltaTime, 100);
-        
-        // Calculate time scale factor (1.0 at 60fps)
-        const timeScale = cappedDeltaTime / 16.67;
-        
-        // Handle start screen toggle if game hasn't started
-        if (!this.gameStarted && !this.gameOver) {
-            // First time initialization of timer
-            if (this.startScreenToggleTimer === 0) {
-                console.log("Timer started: 5s");
+        this.animationFrameId = null;
+        const elapsed = this.clock.advance(timestamp, () => {
+            if (this.gameStarted && !this.gameOver && !this.isPaused && !document.hidden) {
+                this.update(1);
             }
-            
-            this.startScreenToggleTimer += cappedDeltaTime;
-            
-            // Toggle between start screen and scoreboard every 5 seconds (5000ms)
+        });
+        if (!this.gameStarted && !this.gameOver && !document.hidden) {
+            this.startScreenToggleTimer += elapsed;
             if (this.startScreenToggleTimer >= 5000) {
-                console.log("Timer completed");
                 this.startScreenToggleTimer = 0;
                 this.toggleStartScreenAndScoreboard();
             }
         }
-        
-        if (!this.gameOver && !this.isPaused) {
-            // Update game state with time scale
-            this.update(timeScale);
-            
-            // Draw the game
-            this.draw();
-            
-            // Request the next frame
-            this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
-        } else if (this.isPaused || (!this.gameStarted && !this.gameOver)) {
-            // When paused or on start screen/scoreboard, only redraw the game (no updates) and keep requesting frames
-            // This ensures the game remains visible behind the pause screen or start screen/scoreboard
-            this.draw();
-            this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
-        } else {
-            this.animationFrameId = null;
+        this.draw();
+        if (!this.gameOver || this.isPaused) {
+            this.animationFrameId = requestAnimationFrame(this.animate);
         }
     }
-    
+
     spawnEnemy() {
         // Different types of enemies with reduced speeds
         const enemyTypes = [
