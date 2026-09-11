@@ -1,3 +1,4 @@
+import SessionState from './managers/SessionState.ts';
 import CombatSystem from './managers/CombatSystem.ts';
 import Hud from './components/Hud.ts';
 import ScoreService from './services/ScoreService.ts';
@@ -12,10 +13,19 @@ import EffectsManager from './managers/EffectsManager.ts';
 import { isColliding } from './utils/helpers.ts';
 
 class Game {
+    get gameStarted() { return this.session.started; }
+    set gameStarted(value) { this.session.started = value; }
+    get gameOver() { return this.session.over; }
+    set gameOver(value) { this.session.over = value; }
+    get isPaused() { return this.session.paused; }
+    set isPaused(value) { this.session.paused = value; }
+
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         
+        this.session = new SessionState();
+
         // Game state
         this.gameStarted = false;
         this.gameOver = false;
@@ -292,6 +302,7 @@ class Game {
     }
     
     resetGame() {
+        this.session.reset();
         // Reset game state
         this.gameStarted = false;
         this.gameOver = false;
@@ -1400,11 +1411,11 @@ class Game {
     animate(timestamp) {
         this.animationFrameId = null;
         const elapsed = this.clock.advance(timestamp, () => {
-            if (this.gameStarted && !this.gameOver && !this.isPaused && !document.hidden) {
+            if (this.session.canSimulate && !document.hidden) {
                 this.update(1);
             }
         });
-        if (!this.gameStarted && !this.gameOver && !document.hidden) {
+        if (this.session.inLobby && !document.hidden) {
             this.startScreenToggleTimer += elapsed;
             if (this.startScreenToggleTimer >= 5000) {
                 this.startScreenToggleTimer = 0;
@@ -1757,6 +1768,7 @@ class Game {
     }
 
     showMissionComplete() {
+        this.session.finish();
         this.gameStarted = false;
         this.gameOver = false;  // This is a mission complete, not a game over
         
