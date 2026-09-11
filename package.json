@@ -10,12 +10,13 @@
     "build": "vite build",
     "deploy": "pnpm build",
     "deploy:prod": "pnpm deploy && node scripts/deploy-frontend.js && pnpm post-deploy",
-    "post-deploy": "echo '\n⚠️  REMINDER: Make sure to check/update the .env file on the server if needed.\n   ssh apprunner@games.smoxu.com\n   cd /var/www/games.smoxu.com/robohorse\n   nano .env\n'",
+    "post-deploy": "echo '\n\u26a0\ufe0f  REMINDER: Make sure to check/update the .env file on the server if needed.\n   ssh apprunner@games.smoxu.com\n   cd /var/www/games.smoxu.com/robohorse\n   nano .env\n'",
     "test": "node --test test/*.test.js",
     "dev:api": "node --watch api/server.js",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
-    "release": "node scripts/release.js"
+    "release": "node scripts/release.js",
+    "verify:release": "node scripts/verify-release.js"
   },
   "repository": {
     "type": "git",
