@@ -14,7 +14,8 @@
     "test": "node --test test/*.test.js",
     "dev:api": "node --watch api/server.js",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "release": "node scripts/release.js"
   },
   "repository": {
     "type": "git",

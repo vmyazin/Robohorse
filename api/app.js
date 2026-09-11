@@ -20,7 +20,7 @@ const __dirname = dirname(__filename);
 const { Pool } = pg;
 const app = express();
 const buildRoot = path.join(__dirname, '../deploy/robohorse');
-const frontendRoot = process.env.FRONTEND_ROOT || (process.env.PASSENGER_WRAPPED ? path.join(__dirname, '..') : (existsSync(path.join(buildRoot, 'index.html')) ? buildRoot : path.join(__dirname, '../frontend')));
+const frontendRoot = process.env.FRONTEND_ROOT || (existsSync(path.join(buildRoot, 'index.html')) ? buildRoot : (process.env.PASSENGER_WRAPPED ? path.join(__dirname, '..') : path.join(__dirname, '../frontend')));
 
 // Determine if we're in production and set the base path accordingly
 const isProduction = process.env.NODE_ENV === 'production';

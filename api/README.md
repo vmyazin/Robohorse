@@ -59,3 +59,9 @@ Score submission accepts only `{name, score}` for `robohorse-v1`; the old arbitr
 ### Workspace dependencies
 
 Install from the repository root using `pnpm install --frozen-lockfile`. The root `pnpm-lock.yaml` owns both packages; the API declares its runtime dependencies in `api/package.json`. API deployment must include the root package manifest, workspace manifest and lockfile alongside the API directory. The server-side `api/deploy.sh` performs that installation and migrations before restarting Passenger, and stops on any failed command. Frontend sync protects these manifests.
+
+### Atomic releases
+
+Build a full checkout with `pnpm build`, then run `ROBOHORSE_RELEASE_ROOT=/absolute/release-root ROBOHORSE_HEALTH_URL=https://your-host/robohorse/api/health pnpm release` on the server. Provision `release-root/shared/.env` first. Configure Nginx's static location to `release-root/current/deploy/robohorse` and Passenger's application root to `release-root/current/api`, using `passenger_wrapper.cjs`. This is a separate layout from the legacy flat deployment; do not run the flat sync command against it.
+
+Each release stages code and assets, installs the frozen production workspace, and runs migrations before atomically replacing `current`. A directory lock rejects concurrent releases. A restart or health-check failure restores the previous symlink and restarts that application. Releases are retained for diagnosis and rollback. Database migrations must remain backward compatible: application rollback does not reverse schema changes. The health check proves availability, not the identity of a worker behind a caching proxy.
