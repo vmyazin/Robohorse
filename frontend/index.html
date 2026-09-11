@@ -45,27 +45,7 @@
             <div id="name-input-section" x-data="{ 
                 name: ['_', '_', '_', '_', '_', '_'],
                 currentIndex: 0,
-                isSubmitting: false,
-                async submitScore() {
-                    this.isSubmitting = true;
-                    try {
-                        const response = await fetch('./api/scores', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                name: this.name.join(''),
-                                score: document.getElementById('mission-complete-score').textContent
-                            })
-                        });
-                        if (!response.ok) throw new Error('Failed to submit score');
-                    } catch (error) {
-                        console.error('Error submitting score:', error);
-                    } finally {
-                        this.isSubmitting = false;
-                    }
-                }
+                isSubmitting: false
             }">
                 <p>Enter your name:</p>
                 <div class="name-input-container">
@@ -76,7 +56,6 @@
                     </template>
                     <div id="enter-key" 
                          class="enter-key-button"
-                         @click="submitScore()"
                          :class="{ 'disabled': isSubmitting }">
                         <span class="enter-arrow" x-show="!isSubmitting">↵</span>
                         <div class="loading-spinner" x-show="isSubmitting" x-cloak></div>
@@ -110,27 +89,7 @@
             <div id="game-over-name-input-section" x-data="{ 
                 name: ['_', '_', '_', '_', '_', '_'],
                 currentIndex: 0,
-                isSubmitting: false,
-                async submitScore() {
-                    this.isSubmitting = true;
-                    try {
-                        const response = await fetch('./api/scores', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                name: this.name.join(''),
-                                score: document.getElementById('final-score').textContent
-                            })
-                        });
-                        if (!response.ok) throw new Error('Failed to submit score');
-                    } catch (error) {
-                        console.error('Error submitting score:', error);
-                    } finally {
-                        this.isSubmitting = false;
-                    }
-                }
+                isSubmitting: false
             }">
                 <p>Enter your name:</p>
                 <div class="name-input-container">
@@ -143,7 +102,6 @@
                     <div class="game-over-name-char" :class="{ 'active': currentIndex === 5 }" x-text="name[5]"></div>
                     <div id="game-over-enter-key" 
                          class="enter-key-button"
-                         @click="submitScore()"
                          :class="{ 'disabled': isSubmitting }">
                         <span class="enter-arrow" x-show="!isSubmitting">↵</span>
                         <div class="loading-spinner" x-show="isSubmitting" x-cloak></div>

@@ -242,35 +242,14 @@ class Game {
         this.listenersBound = true;
         this.inputManager.bindEventListeners();
         
-        // Add click event for the Enter key button (Mission Complete)
-        if (this.enterKeyButton) {
-            this.enterKeyButton.addEventListener('click', () => {
-                // Only handle if we're on the mission complete screen
-                if (this.missionCompleteScreen.style.display === 'block') {
-                    // Check if at least one character has been entered
-                    const hasEnteredName = this.playerName.some(char => char !== '_');
-                    if (hasEnteredName) {
-                        this.saveScore();
-                    }
-                }
-            });
-        }
-        
-        // Add click event for the Game Over Enter key button
-        const gameOverEnterKey = document.getElementById('game-over-enter-key');
-        if (gameOverEnterKey) {
-            gameOverEnterKey.addEventListener('click', () => {
-                // Only handle if we're on the game over screen
-                if (this.gameOverScreen.style.display === 'block') {
-                    // Check if at least one character has been entered
-                    const hasEnteredName = this.gameOverPlayerName.some(char => char !== '_');
-                    if (hasEnteredName) {
-                        this.saveGameOverScore();
-                    }
-                }
-            });
-        }
-        
+        // Delegate score buttons so Alpine rendering cannot discard their listeners.
+        document.addEventListener('click', event => {
+            const button = event.target.closest('#enter-key, #game-over-enter-key');
+            if (!button) return;
+            if (button.id === 'enter-key' && this.missionCompleteScreen.style.display === 'block' && this.playerName.some(char => char !== '_')) this.saveScore();
+            if (button.id === 'game-over-enter-key' && this.gameOverScreen.style.display === 'block' && this.gameOverPlayerName.some(char => char !== '_')) this.saveGameOverScore();
+        });
+
         // Scoreboard event listeners
         this.viewScoreboard.addEventListener('click', () => {
             this.showScoreboard();
@@ -1043,7 +1022,7 @@ class Game {
             playerName = this.playerName.join('').replace(/_/g, ' ').trim();
         }
         
-        // If no name was entered, use "UNKNOWN"
+        // Use a valid short fallback when no name was entered
         const finalName = playerName || 'ANON';
         
         console.log(`Saving score for ${finalName}: ${this.score}`);
@@ -1101,7 +1080,7 @@ class Game {
             playerName = this.gameOverPlayerName.join('').replace(/_/g, ' ').trim();
         }
         
-        // If no name was entered, use "UNKNOWN"
+        // Use a valid short fallback when no name was entered
         const finalName = playerName || 'ANON';
         
         console.log(`Saving game over score for ${finalName}: ${this.score}`);

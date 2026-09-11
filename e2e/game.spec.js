@@ -45,3 +45,31 @@ test('pause stops simulation and mission completion never cycles to the lobby', 
     expect(await page.evaluate(() => window.__game.startScreenToggleTimer)).toBe(4999);
     await expect(page.locator('#start-screen')).toBeHidden();
 });
+
+for (const fails of [false, true]) {
+    test(`score submission sends one request and ${fails ? 'shows failure' : 'allows keyboard restart'}`, async ({ page }) => {
+        const submissions = [];
+        await page.route('**/api/scores', route => {
+            if (route.request().method() === 'POST') {
+                submissions.push(route.request().postDataJSON());
+                return route.fulfill({ status: fails ? 503 : 201, json: {} });
+            }
+            return route.fulfill({ json: [] });
+        });
+        await page.goto('/robohorse/');
+        await page.keyboard.press('Space');
+        await expect.poll(() => page.evaluate(() => window.__game.frameCount)).toBeGreaterThan(10);
+        await page.evaluate(() => { window.__game.score = 42; window.__game.endGame(); });
+        await page.keyboard.press('a');
+        await expect.poll(() => page.evaluate(() => window.__game.gameOverPlayerName.join(''))).toBe('A_____');
+        await page.locator('#game-over-enter-key').click();
+        await expect.poll(() => submissions.length).toBe(1);
+        expect(submissions[0]).toEqual({ name: 'A', score: 42 });
+        await expect(page.locator('#restart-instruction')).toBeVisible();
+        if (fails) await expect(page.locator('#restart-instruction')).toContainText('Error saving score');
+        await page.keyboard.press('Space');
+        await expect(page.locator('#game-over')).toBeHidden();
+        await expect.poll(() => page.evaluate(() => window.__game.frameCount)).toBeGreaterThan(10);
+        expect(submissions).toHaveLength(1);
+    });
+}

@@ -7,7 +7,7 @@ export default class ScoreService {
 
     constructor(endpoint: string, request: typeof fetch = fetch) {
         this.endpoint = endpoint;
-        this.request = request;
+        this.request = request.bind(globalThis);
     }
 
     async list(): Promise<ScoreEntry[]> {
