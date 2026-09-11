@@ -1,4 +1,5 @@
-import FixedStepClock from './managers/FixedStepClock.js';
+import ScoreService from './services/ScoreService.ts';
+import FixedStepClock from './managers/FixedStepClock.ts';
 import Player from './entities/Player.js';
 import Enemy from './entities/Enemy.js';
 import Background from './components/Background.js';
@@ -24,6 +25,7 @@ class Game {
         this.lastPoliceRadioTime = 0;
         
         // Scores data
+        this.scoreService = new ScoreService(`${import.meta.env.BASE_URL}api/scores`);
         this.scores = [];
         this.scoresLoaded = false;
         this.scoresError = null;
@@ -158,13 +160,7 @@ class Game {
     
     fetchScores() {
         console.log("Pre-fetching scores on app load");
-        fetch('./api/scores')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch scores');
-                }
-                return response.json();
-            })
+        this.scoreService.list()
             .then(data => {
                 this.scores = data;
                 this.scoresLoaded = true;
@@ -2020,7 +2016,7 @@ class Game {
         }
         
         // If no name was entered, use "UNKNOWN"
-        const finalName = playerName || 'UNKNOWN';
+        const finalName = playerName || 'ANON';
         
         console.log(`Saving score for ${finalName}: ${this.score}`);
         
@@ -2030,22 +2026,7 @@ class Game {
         }
         
         // Make API call to save the score
-        fetch('./api/scores', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                name: finalName,
-                score: String(this.score) // Convert to string as server expects
-            }),
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to save score');
-            }
-            return response.json();
-        })
+        this.scoreService.save({ name: finalName, score: this.score })
         .then(data => {
             console.log('Score saved successfully:', data);
             
@@ -2093,7 +2074,7 @@ class Game {
         }
         
         // If no name was entered, use "UNKNOWN"
-        const finalName = playerName || 'UNKNOWN';
+        const finalName = playerName || 'ANON';
         
         console.log(`Saving game over score for ${finalName}: ${this.score}`);
         
@@ -2103,22 +2084,7 @@ class Game {
         }
         
         // Make API call to save the score
-        fetch('./api/scores', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                name: finalName,
-                score: String(this.score) // Convert to string as server expects
-            }),
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to save score');
-            }
-            return response.json();
-        })
+        this.scoreService.save({ name: finalName, score: this.score })
         .then(data => {
             console.log('Game over score saved successfully:', data);
             
@@ -2226,13 +2192,7 @@ class Game {
             
             // If scores haven't been loaded yet, fetch them now
             if (!this.scoresLoaded) {
-                fetch('./api/scores')
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Failed to fetch scores');
-                        }
-                        return response.json();
-                    })
+                this.scoreService.list()
                     .then(data => {
                         this.scores = data;
                         this.scoresLoaded = true;

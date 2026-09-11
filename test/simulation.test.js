@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import FixedStepClock from '../frontend/js/managers/FixedStepClock.js';
+import FixedStepClock from '../frontend/js/managers/FixedStepClock.ts';
 import LevelManager from '../frontend/js/levels/LevelManager.js';
 
 test('30, 60, 120 and 144 Hz produce the same simulation ticks', () => {
