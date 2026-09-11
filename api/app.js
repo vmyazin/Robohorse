@@ -3,7 +3,7 @@
 
 import express from 'express';
 import { existsSync } from 'node:fs';
-import { createScoreRouter } from './routes/scores.js';
+import { createScoreRouter } from './routes/scores.ts';
 import pg from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';

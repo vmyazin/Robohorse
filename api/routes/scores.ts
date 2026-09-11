@@ -1,8 +1,12 @@
 import { Router } from 'express';
 
-export function createScoreRouter(pool, { limit = 10, windowMs = 60000, now = Date.now } = {}) {
+export interface ScoreDatabase {
+    query(sql: string, values: (string | number)[]): Promise<{ rows: { name: string; score: number }[] }>;
+}
+
+export function createScoreRouter(pool: ScoreDatabase, { limit = 10, windowMs = 60000, now = Date.now } = {}) {
     const router = Router();
-    const clients = new Map();
+    const clients = new Map<string, { count: number; until: number }>();
     router.get(['/', '/robohorse-v1'], async (req, res, next) => {
         try {
             const result = await pool.query('SELECT player_id as name, score FROM scores WHERE game_id = $1 ORDER BY score DESC LIMIT 10', ['robohorse-v1']);
@@ -12,7 +16,7 @@ export function createScoreRouter(pool, { limit = 10, windowMs = 60000, now = Da
     router.post('/', async (req, res, next) => {
         const time = now();
         for (const [key, value] of clients) if (value.until <= time) clients.delete(key);
-        const key = req.ip;
+        const key = req.ip || 'unknown';
         const state = clients.get(key) || { count: 0, until: time + windowMs };
         if (state.count >= limit || (!clients.has(key) && clients.size >= 10000)) {
             res.set('Retry-After', String(Math.max(1, Math.ceil((state.until - time) / 1000))));

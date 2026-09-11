@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
-import { createScoreRouter } from '../api/routes/scores.js';
+import { createScoreRouter } from '../api/routes/scores.ts';
 
 test('score API validates data and enforces submission limits', async () => {
     const queries = [];

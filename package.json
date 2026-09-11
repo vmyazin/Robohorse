@@ -10,7 +10,7 @@
     "build": "vite build",
     "deploy": "pnpm build",
     "deploy:prod": "pnpm deploy && node scripts/deploy-frontend.js && pnpm post-deploy",
-    "post-deploy": "echo '\n\u26a0\ufe0f  REMINDER: Make sure to check/update the .env file on the server if needed.\n   ssh apprunner@games.smoxu.com\n   cd /var/www/games.smoxu.com/robohorse\n   nano .env\n'",
+    "post-deploy": "echo '\n⚠️  REMINDER: Make sure to check/update the .env file on the server if needed.\n   ssh apprunner@games.smoxu.com\n   cd /var/www/games.smoxu.com/robohorse\n   nano .env\n'",
     "test": "node --test test/*.test.js",
     "dev:api": "node --watch api/server.js",
     "typecheck": "tsc --noEmit",
@@ -35,10 +35,11 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
     "@playwright/test": "^1.63.0",
+    "@types/express": "^5.0.6",
     "@types/node": "^22.20.2",
+    "express": "^5.2.1",
     "typescript": "^7.0.2",
-    "vite": "^8.3.0",
-    "express": "^5.2.1"
+    "vite": "^8.3.0"
   },
   "packageManager": "pnpm@10.32.1",
   "engines": {
