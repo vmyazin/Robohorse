@@ -1,0 +1,1321 @@
+<!-- Vehicle fleet exploration | Source: Obstacle.js and user request | 2026-09-12 -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Traffic with character.</title>
+        <style>
+
+    :root {
+      --brand-50: #e1eef4;
+      --brand-100: #d8d6e4;
+      --brand-300: #807ea0;
+      --brand-500: #176783;
+      --brand-700: #26263a;
+      --accent-50: #eef6f5;
+      --accent-500: #4f9d97;
+      --accent-700: #3a7771;
+      --ink: #122337;
+      --ink-soft: #4a4a5a;
+      --ink-mute: #7a7a8a;
+      --line: #e6e4dc;
+      --line-soft: #efeee7;
+      --paper: #ffffff;
+      --bg: #f3f6f8;
+      --shadow-sm: 0 1px 2px rgba(20, 16, 70, 0.04), 0 1px 1px rgba(20, 16, 70, 0.02);
+      --shadow-md: 0 4px 24px -8px rgba(20, 16, 70, 0.08), 0 2px 4px rgba(20, 16, 70, 0.03);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      line-height: 1.5;
+    }
+
+    .page {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 72px 48px 160px;
+    }
+
+
+    .doc-header {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 40px;
+      margin-bottom: 36px;
+    }
+    .doc-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--brand-500);
+      background: var(--brand-50);
+      padding: 6px 12px;
+      border-radius: 999px;
+      margin-bottom: 20px;
+    }
+    .doc-eyebrow::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--brand-500);
+    }
+    .doc-title {
+      font-family: 'Press Start 2P', ui-monospace, monospace;
+      font-size: 40px;
+      line-height: 1.05;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      margin: 0 0 16px;
+      color: var(--ink);
+    }
+    .doc-subtitle {
+      font-size: 19px;
+      color: var(--ink-soft);
+      max-width: 720px;
+      margin: 0 0 32px;
+      line-height: 1.45;
+    }
+    .doc-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      font-size: 13px;
+      color: var(--ink-mute);
+    }
+    .doc-meta > div { display: flex; gap: 6px; }
+    .doc-meta b {
+      color: var(--ink-soft);
+      font-weight: 600;
+    }
+
+
+    .variant {
+      margin-bottom: 96px;
+    }
+    .variant:last-child { margin-bottom: 0; }
+
+    .variant-head {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 20px;
+      align-items: start;
+      margin-bottom: 28px;
+    }
+    .variant-letter {
+      width: 48px;
+      height: 48px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: white;
+      font-family: 'Press Start 2P', ui-monospace, monospace;
+      font-weight: 500;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: -0.02em;
+    }
+    .variant-meta h2 {
+      margin: 4px 0 6px;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: var(--ink);
+    }
+    .variant-tradeoff {
+      font-size: 15px;
+      color: var(--ink-soft);
+      margin: 0;
+      max-width: 760px;
+    }
+    .variant-tradeoff b {
+      color: var(--brand-500);
+      font-weight: 600;
+    }
+
+
+    .preview-frame {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      margin-left: 84px;
+      position: relative;
+    }
+    .preview-frame::before {
+      content: '';
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #f0e9e0;
+      box-shadow: 18px 0 0 #f0e9e0, 36px 0 0 #f0e9e0;
+      z-index: 2;
+    }
+    .preview-frame-bar {
+      background: #faf9f5;
+      border-bottom: 1px solid var(--line-soft);
+      padding: 14px 16px 14px 76px;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-mute);
+      font-weight: 600;
+    }
+    .preview {
+      padding: 0;
+      min-height: 200px;
+    }
+
+
+    .variant-analysis {
+      margin: 24px 0 0 84px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 24px;
+    }
+    .analysis-block {
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--paper);
+    }
+    .analysis-block h4 {
+      margin: 0 0 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--brand-500);
+    }
+    .analysis-block.is-risk h4 { color: #b8341f; }
+    .analysis-block.is-pick h4 { color: var(--accent-700); }
+    .analysis-block p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--ink-soft);
+    }
+
+
+    .decision {
+      margin-top: 120px;
+      padding: 40px 48px;
+      background: var(--ink);
+      color: white;
+      border-radius: 20px;
+    }
+    .decision h3 {
+      font-family: 'Press Start 2P', ui-monospace, monospace;
+      font-size: 28px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      margin: 0 0 8px;
+    }
+    .decision-sub {
+      color: rgba(255, 255, 255, 0.65);
+      font-size: 14px;
+      margin: 0 0 28px;
+    }
+    .decision-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .decision-cell b {
+      display: block;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--brand-100);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .decision-cell span {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.85);
+      line-height: 1.45;
+    }
+
+
+    @media (max-width: 900px) {
+      .page { padding: 40px 20px 80px; }
+      .doc-title { font-size: 36px; }
+      .variant-head { grid-template-columns: 48px 1fr; gap: 12px; }
+      .preview-frame { margin-left: 0; }
+      .variant-analysis { margin-left: 0; grid-template-columns: 1fr; }
+    }
+
+
+  .comparison { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; }
+.variant { margin-bottom:0; min-width:0; }
+.variant-head { grid-template-columns:40px 1fr; gap:12px; min-height:144px; }
+.variant-letter { width:36px;height:36px;font-size:18px;border-radius:6px;background:var(--brand-500); }
+.variant-meta h2 { font-size:23px; }
+.preview-frame,.variant-analysis { margin-left:0; }
+.variant-analysis { grid-template-columns:1fr;gap:8px; }
+.preview-frame { border-radius:8px; }
+.doc-title { letter-spacing:-.05em; }
+.decision { margin-top:36px; }
+@media(max-width:1000px) { .comparison {grid-template-columns:1fr;} .variant {margin-bottom:28px;} .variant-head {min-height:0;} }
+.car-controls{display:flex;gap:18px;align-items:center;flex-wrap:wrap;background:white;border:1px solid var(--line);padding:20px;border-radius:8px;margin-bottom:30px;font-size:13px}.car-controls div{flex:1;min-width:220px}.car-controls p{margin:5px 0;color:var(--ink-soft)}button,select{font:inherit;border:1px solid #a3b5bf;background:white;color:var(--ink);border-radius:5px;padding:9px 12px}select{display:block;margin-top:5px}button{cursor:pointer}.car-lineup{margin-bottom:38px}.car-lineup h2{margin-bottom:5px;font-size:22px}.car-lineup p,.car-notes{color:var(--ink-soft);font-size:14px}.car-lineup canvas{width:100%;height:auto;display:block;border-radius:8px}.car-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:36px 24px}.car-grid .variant-head{min-height:155px}.car-grid canvas{display:block;width:100%;height:auto}.car-inspect{font-size:12px;margin-top:12px}.car-grid .variant-analysis{display:block}.car-notes{margin-top:30px;max-width:880px}dialog{background:var(--bg);color:var(--ink);border:1px solid #8da3b0;border-radius:8px;padding:16px;max-width:calc(100vw - 20px)}dialog::backdrop{background:#102032bb}.car-dialog-head{display:flex;justify-content:space-between;align-items:center;gap:15px}.car-dialog-head h2{font-size:18px}dialog canvas{width:1000px;max-width:100%;height:auto;display:block}dialog p{font-size:13px}@media(max-width:1050px){.car-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:650px){.car-grid{grid-template-columns:1fr}.car-grid .variant-head{min-height:0}.car-controls div{flex-basis:100%}.car-grid .variant{margin-bottom:10px}}
+</style>
+</head>
+<body>
+  <main class="page">
+
+    <header class="doc-header">
+      <div class="doc-eyebrow">Design exploration</div>
+      <h1 class="doc-title">Traffic with character.</h1>
+      <p class="doc-subtitle">Seven silhouettes for Tokyo after dark. A shared material style, with enough variety to make every block feel different.</p>
+      <div class="doc-meta">
+        <div><b>Spec</b> Car variety · current Obstacle model</div>
+        <div><b>Generated</b> 2026-09-12</div>
+        <div><b>Variants</b> 7</div>
+      </div>
+    </header>
+
+<section class="car-controls"><div><b>One visual language. A varied fleet.</b><p>Shaded metal, dark outlines, readable wheels, and steady lights. Explore the whole lineup rather than choosing only one car.</p></div><label>Condition<select id="damage"><option value="0">Clean</option><option value="1">Damaged</option><option value="2">Near destruction</option></select></label><label>Paint<select id="paint"><option value="">Signature colors</option><option value="#587785">Shared slate blue</option><option value="#8c565d">Shared muted red</option><option value="#a59982">Shared warm silver</option></select></label><button id="flip">Facing right</button><label><input id="bounds" type="checkbox"> Show gameplay bounds</label></section><section class="car-lineup"><h2>On the street</h2><p>Current horse, current night background, actual vehicle dimensions. Preview scales to fit this page.</p><canvas id="lineup" width="1000" height="600" aria-label="Taxi, kei hatchback and armored pickup beside Robohorse"></canvas></section><div class="car-grid"><section class="variant va-car" data-model="0"><div class="variant-head"><div class="variant-letter">A</div><div class="variant-meta"><h2>Tokyo taxi</h2><p class="variant-tradeoff"><b>Local street identity</b> · Roof sign adds small detail.</p></div></div><div class="preview-frame"><div class="preview-frame-bar">A · enlarged inspection</div><canvas width="600" height="330" aria-label="Tokyo taxi design"></canvas></div><button class="car-inspect" data-inspect="0">Inspect at gameplay size ↗</button><div class="variant-analysis"><div class="analysis-block"><h4>Design read</h4><p>A tall sedan, champagne stripe, and roof lamp make a recognizable everyday vehicle.</p></div></div></section><section class="variant vb-car" data-model="1"><div class="variant-head"><div class="variant-letter">B</div><div class="variant-meta"><h2>Kei hatchback</h2><p class="variant-tradeoff"><b>Compact, friendly shape</b> · Shorter-looking body within the shared bounds.</p></div></div><div class="preview-frame"><div class="preview-frame-bar">B · enlarged inspection</div><canvas width="600" height="330" aria-label="Kei hatchback design"></canvas></div><button class="car-inspect" data-inspect="1">Inspect at gameplay size ↗</button><div class="variant-analysis"><div class="analysis-block"><h4>Design read</h4><p>An upright cabin and cream two-tone body give the lineup a softer, more ordinary car.</p></div></div></section><section class="variant vc-car" data-model="2"><div class="variant-head"><div class="variant-letter">C</div><div class="variant-meta"><h2>Street coupe</h2><p class="variant-tradeoff"><b>Low, fast profile</b> · Low roof understates the current collision height.</p></div></div><div class="preview-frame"><div class="preview-frame-bar">C · enlarged inspection</div><canvas width="600" height="330" aria-label="Street coupe design"></canvas></div><button class="car-inspect" data-inspect="2">Inspect at gameplay size ↗</button><div class="variant-analysis"><div class="analysis-block"><h4>Design read</h4><p>A wedge nose, long hood, spoiler, and dark red paint create a distinct low silhouette.</p></div></div></section><section class="variant vd-car" data-model="3"><div class="variant-head"><div class="variant-letter">D</div><div class="variant-meta"><h2>Delivery van</h2><p class="variant-tradeoff"><b>Useful silhouette variety</b> · Broad side panel is visually heavier.</p></div></div><div class="preview-frame"><div class="preview-frame-bar">D · enlarged inspection</div><canvas width="600" height="330" aria-label="Delivery van design"></canvas></div><button class="car-inspect" data-inspect="3">Inspect at gameplay size ↗</button><div class="variant-analysis"><div class="analysis-block"><h4>Design read</h4><p>A boxy cargo body and restrained delivery marking break up a street full of sedans.</p></div></div></section><section class="variant ve-car" data-model="4"><div class="variant-head"><div class="variant-letter">E</div><div class="variant-meta"><h2>Patrol sedan</h2><p class="variant-tradeoff"><b>Immediate recognition</b> · Shares the taxi’s sedan proportions.</p></div></div><div class="preview-frame"><div class="preview-frame-bar">E · enlarged inspection</div><canvas width="600" height="330" aria-label="Patrol sedan design"></canvas></div><button class="car-inspect" data-inspect="4">Inspect at gameplay size ↗</button><div class="variant-analysis"><div class="analysis-block"><h4>Design read</h4><p>Two-tone bodywork and steady roof lights establish a clear patrol identity without flashing.</p></div></div></section><section class="variant vf-car" data-model="5"><div class="variant-head"><div class="variant-letter">F</div><div class="variant-meta"><h2>Armored pickup</h2><p class="variant-tradeoff"><b>Heavy-vehicle presence</b> · Larger obstacle; strongest military tone.</p></div></div><div class="preview-frame"><div class="preview-frame-bar">F · enlarged inspection</div><canvas width="600" height="330" aria-label="Armored pickup design"></canvas></div><button class="car-inspect" data-inspect="5">Inspect at gameplay size ↗</button><div class="variant-analysis"><div class="analysis-block"><h4>Design read</h4><p>Faceted panels, an exposed bed, and reinforced wheel arches fit the existing heavy-vehicle slot.</p></div></div></section><section class="variant vg-car" data-model="6"><div class="variant-head"><div class="variant-letter">G</div><div class="variant-meta"><h2>Tesla Cybertruck</h2><p class="variant-tradeoff"><b>Recognizable stainless-steel wedge</b> · More futuristic than the everyday fleet.</p></div></div><div class="preview-frame"><div class="preview-frame-bar">G · enlarged inspection</div><canvas width="600" height="330" aria-label="Tesla Cybertruck design"></canvas></div><button class="car-inspect" data-inspect="6">Inspect at gameplay size ↗</button><div class="variant-analysis"><div class="analysis-block"><h4>Design read</h4><p>A continuous triangular roofline, faceted steel panels, dark wheel covers, and a steady front light bar retain the Cybertruck identity.</p></div></div></section></div><section class="decision"><h3>Build a fleet, not seven unrelated styles.</h3><p class="decision-sub">My recommendation: taxi + kei + delivery van as the everyday mix, coupe and patrol as occasional variants, Cybertruck as the heavy vehicle, with the armored pickup as an optional extra.</p><div class="decision-grid"><div class="decision-cell"><b>Everyday texture</b><span>A + B + D bring the strongest neighborhood variety.</span></div><div class="decision-cell"><b>Occasional contrast</b><span>C + E add sport and patrol silhouettes.</span></div><div class="decision-cell"><b>Heavy obstacle</b><span>G preserves the Cybertruck; F is an optional alternative.</span></div></div></section><section class="car-notes"><h2>What would carry into the game</h2><p>Keep the shared construction: large body planes, cool glass, visible tires, thin trim, and warm headlights. Use fixed cracks and dents as damage increases, then add smoke near destruction. Patrol lamps stay steady.</p><p>The existing game has four car models and a separate Cybertruck. This exploration proposes five standard-car identities, an optional armored pickup, and a refined Tesla Cybertruck. Selection would require a deliberate model mapping; the armored pickup is not a silent replacement of the Cybertruck. Health, hit thresholds, scores, spawn rates, explosions, and special triggers are unchanged here.</p><p>Damage graphics, roof signs, and delivery lettering are proposed artwork. The condition selector previews visual stages, not exact hit counts. No external records or image assets are required. The coupe’s low silhouette needs collision-envelope review before implementation.</p></section><dialog aria-labelledby="detail-title"><div class="car-dialog-head"><h2 id="detail-title"></h2><button id="close">Close</button></div><canvas id="detail" width="1000" height="600"></canvas><p>The yellow outline is the current obstacle envelope. On a wide display, one game unit equals one CSS pixel.</p></dialog>
+  </main>
+<script>// Approved Tokyo night artwork. Deterministic geometry: the same time renders the same windows.
+const nightPalette = {
+  sky: ["#101c2d", "#29374e", "#5c576d"],
+  far: "#2c3b52",
+  mid: "#253145",
+  front: "#192333",
+  warm: "#ebcda6",
+  road: "#192331",
+};
+const themes = [
+  "Neighborhood after dark",
+  "Riverside at night",
+  "Railway street",
+  "Quiet Shinjuku",
+].map((name) => ({ ...nightPalette, name }));
+const hash = (n) => {
+  let x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+};
+function paintTokyoDistrict(ctx, kind, time = 0) {
+  const t = themes[kind],
+    W = 1000,
+    H = 600;
+  ctx.clearRect(0, 0, W, H);
+  const rect = (x, y, w, h, c) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(x, y, w, h);
+  };
+  function path(points, c, stroke, width = 1) {
+    ctx.beginPath();
+    points.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    if (c) {
+      ctx.closePath();
+      ctx.fillStyle = c;
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width;
+      ctx.stroke();
+    }
+  }
+  function ellipse(x, y, rx, ry, c) {
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fillStyle = c;
+    ctx.fill();
+  }
+  function text(s, x, y, size, c) {
+    ctx.fillStyle = c;
+    ctx.font = `${size}px 'Hiragino Kaku Gothic ProN', 'Yu Gothic', system-ui, sans-serif`;
+    ctx.fillText(s, x, y);
+  }
+  function windowGrid(x, y, w, h, seed, color = t.warm, opacity = 0.5) {
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    for (let a = 10; a < w - 8; a += 16)
+      for (let b = 14; b < h - 12; b += 24) {
+        if (hash(seed + a * 3 + b) > 0.5) rect(x + a, y + b, 6, 10, color);
+      }
+    ctx.restore();
+  }
+  function tree(x, y, scale = 1) {
+    rect(x - 3, y - 38 * scale, 6, 42 * scale, "#414b49");
+    ellipse(x, y - 62 * scale, 30 * scale, 35 * scale, "#30484e");
+    ellipse(x - 22 * scale, y - 48 * scale, 24 * scale, 22 * scale, "#3d5455");
+  }
+  function shop(x, y, w, h, seed) {
+    rect(x, y, w, h, t.front);
+    rect(x + 4, y + 5, w - 8, h - 8, "#2b3547");
+    rect(x + 9, y + h - 59, w - 18, 49, "#1d292d");
+    rect(x + 13, y + h - 53, w - 26, 35, t.warm);
+    for (let i = 0; i < 3; i++)
+      rect(x + 15 + (i * (w - 30)) / 3, y + h - 55, 3, 48, "#4b4c46");
+    rect(x + 3, y + h - 72, w - 6, 15, seed % 2 ? "#806675" : "#526f76");
+    rect(x + 6, y + h - 96, w - 12, 20, "#a99688");
+    text(seed % 2 ? "喫茶" : "書店", x + 16, y + h - 80, 13, "#4b504d");
+    windowGrid(x, y + 3, w, h - 105, seed, t.warm, 0.42);
+    path(
+      [
+        [x - 5, y],
+        [x + w / 2, y - 20],
+        [x + w + 5, y],
+      ],
+      "#1b2638",
+    );
+    rect(x - 7, y - 1, w + 14, 5, "#172436");
+  }
+  const sky = ctx.createLinearGradient(0, 0, 0, 550);
+  t.sky.forEach((c, i) => sky.addColorStop(i / 2, c));
+  rect(0, 0, W, H, sky);
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  ellipse(270, 133, 220, 9, "#ede0cf");
+  ellipse(720, 180, 190, 7, "#ede0cf");
+  ellipse(500, 230, 270, 5, "#ede0cf");
+  ctx.restore();
+  ellipse(802, 95, 13, 13, "#d9d5c9");
+  const farShift = (time * 3) % 1400;
+  for (let i = -1; i < 14; i++) {
+    let x = i * 94 - farShift,
+      y = 320 - hash(i + 40) * 110;
+    if (x < -100) x += 1400;
+    let h = 510 - y;
+    rect(x, y, 76, h, t.far);
+    rect(x + 10, y - 8, 35, 8, t.far);
+    windowGrid(x, y, 76, h, i + 9, t.warm, 0.2);
+  }
+  if (kind === 1) {
+    rect(0, 385, 1000, 139, "#203246");
+    for (let i = 0; i < 42; i++) {
+      let x = hash(i + 80) * 1000,
+        y = 397 + hash(i + 100) * 117;
+      rect(
+        x + ((time * 2) % 20),
+        y,
+        12 + hash(i) * 35,
+        1,
+        i % 3 ? "#3d5265" : "#817d7e",
+      );
+    }
+    path(
+      [
+        [560, 390],
+        [660, 258],
+        [762, 390],
+      ],
+      null,
+      "#6e7c86",
+      4,
+    );
+    path(
+      [
+        [660, 258],
+        [660, 390],
+      ],
+      null,
+      "#6e7c86",
+      7,
+    );
+    for (let i = 0; i < 8; i++) {
+      let x = 574 + i * 25;
+      path(
+        [
+          [660, 265],
+          [x, 390],
+        ],
+        null,
+        "#77848b",
+        1,
+      );
+    }
+    rect(0, 388, 1000, 9, "#727d83");
+    rect(0, 397, 1000, 8, "#354e60");
+    for (let x = 10; x < 1000; x += 155) {
+      rect(x, 404, 13, 61, "#3c5565");
+    }
+    const x = 875;
+    path(
+      [
+        [x - 9, 332],
+        [x, 158],
+        [x + 9, 332],
+      ],
+      "#617487",
+    );
+    rect(x - 12, 235, 24, 4, "#8c959b");
+    rect(x - 7, 181, 14, 4, "#8c959b");
+    path(
+      [
+        [x, 159],
+        [x, 126],
+      ],
+      null,
+      "#91a0a8",
+      2,
+    );
+    rect(0, 506, 1000, 24, "#3c4b51");
+    for (let x = 0; x < 1000; x += 42) rect(x, 470, 3, 45, "#7d8784");
+    rect(0, 473, 1000, 3, "#8d9791");
+    rect(0, 497, 1000, 2, "#717f7c");
+    tree(690, 530, 1.1);
+    tree(930, 530, 0.9);
+  } else if (kind === 2) {
+    for (let i = -1; i < 9; i++) {
+      let x = i * 145 - ((time * 8) % 1450);
+      if (x < -145) x += 1450;
+      shop(x, 345 - hash(i) * 25, 110, 185 + hash(i) * 25, i + 30);
+    }
+    rect(0, 273, 1000, 17, "#595c56");
+    rect(0, 290, 1000, 9, "#343f42");
+    for (let x = 30; x < 1000; x += 220) {
+      rect(x, 299, 16, 231, "#575b55");
+      rect(x - 13, 300, 42, 15, "#68685e");
+    }
+    const trainX = 1100 - ((time * 75 + 440) % 1800);
+    rect(trainX, 224, 540, 45, "#89979f");
+    rect(trainX, 257, 540, 5, "#759388");
+    for (let i = 0; i < 16; i++) {
+      rect(trainX + 12 + i * 33, 234, 24, 16, "#52666b");
+      rect(trainX + 15 + i * 33, 237, 18, 9, "#c4b89c");
+    }
+    rect(trainX, 268, 540, 5, "#333f43");
+    for (let i = 0; i < 6; i++) {
+      ellipse(trainX + 22 + i * 90, 271, 5, 3, "#192b39");
+      ellipse(trainX + 68 + i * 90, 271, 5, 3, "#192b39");
+    }
+    rect(trainX + 535, 245, 4, 3, "#d9c9a3");
+    for (let x = 0; x < 1000; x += 140) {
+      rect(x, 169, 3, 105, "#59666b");
+      path(
+        [
+          [x, 177],
+          [x + 100, 196],
+          [x + 140, 177],
+        ],
+        null,
+        "#617078",
+        1,
+      );
+    }
+    rect(826, 338, 9, 192, "#555c58");
+    rect(808, 357, 47, 62, "#d4c8a9");
+    text("駅", 816, 384, 24, "#495e59");
+    text("STATION", 810, 405, 8, "#495e59");
+    tree(961, 530, 0.85);
+  } else if (kind === 3) {
+    for (let i = -1; i < 12; i++) {
+      let x = i * 112 - ((time * 6) % 1456);
+      if (x < -112) x += 1456;
+      let h = 180 + hash(i + 5) * 160,
+        y = 525 - h;
+      rect(x, y, 94, h, t.mid);
+      rect(x + 4, y + 5, 84, h - 8, i % 2 ? "#2b3547" : "#333b4f");
+      windowGrid(x, y, 94, h, i + 50, t.warm, 0.45);
+      for (let j = 0; j < 5; j++) rect(x + 5 + j * 18, y, 1, h, "#50566a");
+      if (i % 3 === 0) {
+        rect(x + 70, y + 40, 19, 74, "#a99688");
+        text("ホテル", x + 72, y + 55, 10, "#313d4d");
+        text("HOTEL", x + 72, y + 89, 5, "#313d4d");
+      }
+    }
+    rect(620, 172, 90, 246, "#2c3c52");
+    rect(735, 165, 90, 253, "#2c3c52");
+    path(
+      [
+        [620, 172],
+        [665, 140],
+        [710, 172],
+      ],
+      "#2c3c52",
+    );
+    path(
+      [
+        [735, 165],
+        [780, 134],
+        [825, 165],
+      ],
+      "#2c3c52",
+    );
+    windowGrid(620, 178, 90, 240, 333, t.warm, 0.25);
+    windowGrid(735, 172, 90, 245, 335, t.warm, 0.25);
+    for (let i = 0; i < 7; i++) {
+      let x = i * 193 - ((time * 11) % 1351);
+      if (x < -193) x += 1351;
+      rect(x, 446, 153, 78, "#3a424c");
+      rect(x + 11, 469, 130, 42, "#253540");
+      rect(x + 15, 473, 122, 22, "#ae9e87");
+      rect(x + 4, 443, 145, 19, i % 2 ? "#817884" : "#526f76");
+      text(i % 2 ? "喫茶  COFFEE" : "書店  BOOKS", x + 16, 456, 10, "#dfd2bc");
+    }
+    tree(850, 530, 0.8);
+  } else {
+    for (let i = -1; i < 9; i++) {
+      let x = i * 145 - ((time * 9) % 1450);
+      if (x < -145) x += 1450;
+      shop(x, 346 - hash(i + 30) * 28, 114, 184 + hash(i + 30) * 28, i);
+      if (i % 3 === 0) {
+        rect(x + 100, 409, 20, 45, "#a99688");
+        text("茶", x + 103, 430, 13, "#595347");
+      }
+    }
+    for (let x = 70; x < 1100; x += 330) {
+      rect(x, 296, 5, 234, "#515b5c");
+      path(
+        [
+          [x, 305],
+          [x + 160, 328],
+          [x + 330, 305],
+        ],
+        null,
+        "#616567",
+        1,
+      );
+      path(
+        [
+          [x, 313],
+          [x + 160, 341],
+          [x + 330, 313],
+        ],
+        null,
+        "#616567",
+        1,
+      );
+      rect(x - 12, 316, 31, 3, "#515b5c");
+    }
+    tree(795, 531, 1);
+    tree(990, 530, 0.9);
+  }
+  rect(0, 529, 1000, 8, "#89908a");
+  rect(0, 537, 1000, 63, t.road);
+  rect(0, 537, 1000, 2, "#adb09e");
+  for (let x = 0; x < 1100; x += 100) {
+    let xx = x - ((time * 22) % 100);
+    rect(xx, 554, 24, 2, "#576263");
+    rect(xx + 25, 582, 43, 1, "#465456");
+  }
+  if (kind !== 1) {
+    for (let x = 425; x < 1100; x += 340) {
+      rect(x, 392, 4, 140, "#4d5a5c");
+      path(
+        [
+          [x, 395],
+          [x + 17, 385],
+          [x + 39, 385],
+        ],
+        null,
+        "#4d5a5c",
+        3,
+      );
+      rect(x + 26, 383, 23, 5, "#d6c8a7");
+    }
+  }
+}
+
+// Geometry is authored in the selected A concept's 300 × 260 coordinate space.
+// Drawing is pure: only simulation ticks advance animation state.
+const CANNON_Y_OFFSET = 7; // Game pixels, independent of power-up scale.
+
+const PLAYER_SIZE = Object.freeze({ width: 120, height: 80 });
+
+const HORSE_ART = Object.freeze({
+  width: 300,
+  height: 260,
+  floor: 252,
+  muzzleX: 277,
+  muzzleY: 123,
+});
+
+function createAppearance(health = 100) {
+  return {
+    phase: 0,
+    stride: 0,
+    landing: 0,
+    recoil: 0,
+    hurt: 0,
+    previousHealth: health,
+    wasAirborne: false,
+  };
+}
+
+function advanceAppearance(player, timeScale = 1, scrollSpeed = 0) {
+  const a = player.appearance;
+  const dt = Math.max(0, Math.min(3, timeScale));
+  const airborne = player.isJumping || Math.abs(player.velY) > 0.6;
+  a.phase += dt * (player.isMoving ? 0.24 : scrollSpeed > 0 ? 0.15 : 0.035);
+  const target = airborne ? 0 : player.isMoving || scrollSpeed > 0 ? 1 : 0;
+  a.stride += (target - a.stride) * Math.min(1, 0.2 * dt);
+  a.landing = Math.max(0, a.landing - 0.13 * dt);
+  if (a.wasAirborne && !airborne) a.landing = 1;
+  a.wasAirborne = airborne;
+  a.recoil = Math.max(0, a.recoil - 0.18 * dt);
+  a.hurt = Math.max(0, a.hurt - 0.12 * dt);
+  if (player.health < a.previousHealth) a.hurt = 1;
+  a.previousHealth = player.health;
+}
+
+function getHorsePose(player) {
+  const a = player.appearance;
+  const airborne = player.isJumping || Math.abs(player.velY) > 0.6;
+  return {
+    phase: a.phase,
+    stride: a.stride,
+    airborne,
+    bob: airborne ? 0 : Math.sin(a.phase * 2) * 2.4 * a.stride + a.landing * 7,
+    headTilt:
+      Math.sin(a.phase - 0.5) * 0.025 * a.stride +
+      (airborne
+        ? Math.max(-0.08, Math.min(0.08, player.velY * 0.008))
+        : a.landing * 0.06),
+    tailSway: Math.sin(a.phase * 0.7) * 5,
+    recoil: a.recoil,
+    flash: Math.max(0, (a.recoil - 0.4) / 0.6),
+    weaponColor: player.currentWeapon?.color || "#68edff",
+  };
+}
+
+// Two-segment inverse kinematics: planted feet remain on the floor while the torso moves.
+function getLegPose(index, far, pose) {
+  const hips = [
+    [86, 145],
+    [144, 152],
+    [195, 140],
+  ];
+  const hip = [hips[index][0] + (far ? 9 : 0), hips[index][1] - (far ? 3 : 0)];
+  const phase = pose.phase + (index * Math.PI * 2) / 3 + (far ? Math.PI : 0);
+  const footX =
+    [57, 139, 222][index] + (far ? 10 : 0) + Math.cos(phase) * 17 * pose.stride;
+  const lift = pose.airborne
+    ? 23 + index * 4
+    : Math.max(0, Math.sin(phase)) * 23 * pose.stride;
+  const ankle = [footX, 240 - pose.bob - lift];
+  const upper = [54, 51, 55][index],
+    lower = [54, 51, 55][index];
+  const dx = ankle[0] - hip[0],
+    dy = ankle[1] - hip[1];
+  const distance = Math.max(
+    0.001,
+    Math.min(Math.hypot(dx, dy), upper + lower - 0.01),
+  );
+  const angle =
+    Math.atan2(dy, dx) +
+    (index === 2 ? -1 : 1) *
+      Math.acos(
+        Math.max(
+          -1,
+          Math.min(
+            1,
+            (upper * upper + distance * distance - lower * lower) /
+              (2 * upper * distance),
+          ),
+        ),
+      );
+  return {
+    hip,
+    knee: [hip[0] + Math.cos(angle) * upper, hip[1] + Math.sin(angle) * upper],
+    ankle,
+  };
+}
+
+function getArtBounds(player) {
+  // Uniform art scaling preserves the selected silhouette during the taller growth hitbox.
+  const scale = player.isShrinking
+    ? player.shrinkScale
+    : Math.min(player.width / PLAYER_SIZE.width, player.height / PLAYER_SIZE.height);
+  const width = PLAYER_SIZE.width * scale,
+    height = PLAYER_SIZE.height * scale;
+  return {
+    x: player.x + (player.width - width) / 2,
+    y: player.y + player.height - (height * HORSE_ART.floor) / HORSE_ART.height,
+    width,
+    height,
+  };
+}
+
+function getMuzzlePosition(player) {
+  const b = getArtBounds(player),
+    pose = getHorsePose(player);
+  const u = (HORSE_ART.muzzleX - pose.recoil * 7) / HORSE_ART.width;
+  return {
+    x: b.x + b.width * (player.direction < 0 ? 1 - u : u),
+    y: b.y + (b.height * (HORSE_ART.muzzleY + pose.bob)) / HORSE_ART.height + CANNON_Y_OFFSET,
+  };
+}
+
+function drawPlayer(ctx, player) {
+  const b = getArtBounds(player),
+    pose = getHorsePose(player);
+  ctx.save();
+  if (!pose.airborne) {
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.beginPath();
+    ctx.ellipse(
+      player.x + player.width / 2,
+      player.y + player.height,
+      b.width * 0.46,
+      Math.max(2, b.height * 0.07),
+      0,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
+  if (player.specialAbilityActive) {
+    ctx.save();
+    ctx.globalAlpha = 0.2;
+    ctx.fillStyle = pose.weaponColor;
+    ctx.beginPath();
+    ctx.ellipse(
+      b.x + b.width / 2,
+      b.y + b.height / 2,
+      b.width * 0.6,
+      b.height * 0.65,
+      0,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+    ctx.restore();
+  }
+  drawPlatedHorse(ctx, b.x, b.y, b.width, b.height, player.direction < 0, pose);
+  if (player.appearance.hurt > 0) {
+    ctx.save();
+    ctx.globalAlpha = player.appearance.hurt * 0.7;
+    ctx.strokeStyle = "#ff9baf";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(
+      b.x + b.width * 0.46,
+      b.y + b.height * 0.52,
+      b.width * 0.25,
+      b.height * 0.24,
+      0,
+      0,
+      Math.PI * 2,
+    );
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawPlatedHorse(ctx, x, y, w, h, flip = false, pose = null) {
+  const p = {
+    dark: "#20364f",
+    mid: "#547b9f",
+    light: "#b9d2e3",
+    edge: "#08131f",
+  };
+  ctx.save();
+  ctx.translate(x + (flip ? w : 0), y);
+  ctx.scale(((flip ? -1 : 1) * w) / 300, h / 260);
+  if (pose) ctx.translate(0, pose.bob);
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  function poly(points, fill, stroke = p.edge, lw = 3) {
+    ctx.beginPath();
+    points.forEach(([a, b], i) => (i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)));
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = lw;
+      ctx.stroke();
+    }
+  }
+  function line(points, color, width = 3) {
+    ctx.beginPath();
+    points.forEach(([a, b], i) => (i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)));
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.stroke();
+  }
+  function circle(x, y, r, color, stroke = p.edge, lw = 3) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = lw;
+      ctx.stroke();
+    }
+  }
+  function plate(points) {
+    let g = ctx.createLinearGradient(60, 50, 160, 210);
+    g.addColorStop(0, p.light);
+    g.addColorStop(0.42, p.mid);
+    g.addColorStop(1, p.dark);
+    poly(points, g);
+    line(points.slice(0, 3), p.light, 1.7);
+  }
+  function joint(x, y, r, far) {
+    circle(x, y, r, far ? p.dark : p.mid);
+    circle(x, y, r * 0.6, far ? "#35516b" : p.light, p.edge, 1.6);
+    circle(x, y, r * 0.35, far ? p.dark : p.mid, null);
+  }
+  function segment(a, b, width, far) {
+    let dx = b[0] - a[0],
+      dy = b[1] - a[1],
+      d = Math.hypot(dx, dy),
+      nx = (-dy / d) * width,
+      ny = (dx / d) * width;
+    let pts = [
+      [a[0] + nx, a[1] + ny],
+      [b[0] + nx * 0.62, b[1] + ny * 0.62],
+      [b[0] - nx * 0.62, b[1] - ny * 0.62],
+      [a[0] - nx, a[1] - ny],
+    ];
+    if (far) poly(pts, p.dark);
+    else {
+      plate(pts);
+      line(
+        [
+          [a[0] + nx * 0.4, a[1] + ny * 0.4],
+          [b[0] + nx * 0.3, b[1] + ny * 0.3],
+        ],
+        p.light,
+        2,
+      );
+    }
+  }
+  const hips = [
+    [86, 145],
+    [144, 152],
+    [195, 140],
+  ];
+  function leg(i, far) {
+    let a = hips[i],
+      offset = far ? 9 : 0;
+    a = [a[0] + offset, a[1] - (far ? 3 : 0)];
+    let b, c;
+    if (far) {
+      b = [
+        [74, 194],
+        [157, 190],
+        [225, 183],
+      ][i];
+      c = [
+        [94, 239],
+        [165, 239],
+        [218, 239],
+      ][i];
+    } else {
+      b = [
+        [57, 193],
+        [123, 199],
+        [233, 181],
+      ][i];
+      c = [
+        [47, 240],
+        [137, 240],
+        [222, 224],
+      ][i];
+    }
+    if (pose) {
+      const gait = getLegPose(i, far, pose);
+      a = gait.hip;
+      b = gait.knee;
+      c = gait.ankle;
+    }
+    const width = 10;
+    segment(a, b, width + 2, far);
+    segment(b, c, width, far);
+    joint(...a, 13, far);
+    joint(...b, 9, far);
+    joint(...c, 7, far);
+    poly(
+      [
+        [c[0] - 9, c[1] - 2],
+        [c[0] + 9, c[1] - 2],
+        [c[0] + 16, c[1] + 12],
+        [c[0] - 10, c[1] + 12],
+      ],
+      far ? p.dark : p.mid,
+    );
+    if (!far)
+      line(
+        [
+          [c[0] - 5, c[1]],
+          [c[0] + 5, c[1]],
+          [c[0] + 11, c[1] + 9],
+        ],
+        p.light,
+        3,
+      );
+  }
+  for (let i = 0; i < 3; i++) leg(i, true);
+  ctx.save();
+  ctx.shadowColor = "#36e4ff";
+  ctx.shadowBlur = 5;
+  ctx.beginPath();
+  ctx.moveTo(70, 126);
+  const sway = pose ? pose.tailSway : 0;
+  ctx.bezierCurveTo(18, 105 + sway, 45 + sway, 201, 9 + sway, 214);
+  ctx.bezierCurveTo(51 + sway, 207, 23, 146 + sway, 71, 137);
+  ctx.strokeStyle = "#1b82ab";
+  ctx.lineWidth = 10;
+  ctx.stroke();
+  ctx.strokeStyle = "#66eaff";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.restore();
+  line(
+    [
+      [16 + (pose ? pose.tailSway : 0), 208],
+      [9 + (pose ? pose.tailSway : 0), 216],
+    ],
+    "#b3faff",
+    2,
+  );
+  circle(5 + (pose ? pose.tailSway : 0), 221, 1.5, "#b3faff", null);
+
+  plate([
+    [62, 107],
+    [85, 77],
+    [129, 69],
+    [167, 79],
+    [195, 110],
+    [207, 159],
+    [184, 189],
+    [128, 200],
+    [81, 179],
+    [62, 142],
+  ]);
+  poly(
+    [
+      [65, 141],
+      [83, 176],
+      [128, 195],
+      [181, 185],
+      [199, 161],
+      [153, 176],
+      [101, 165],
+    ],
+    p.dark,
+  );
+  line(
+    [
+      [85, 78],
+      [94, 111],
+      [70, 130],
+    ],
+    p.edge,
+    3,
+  );
+  line(
+    [
+      [130, 72],
+      [128, 197],
+    ],
+    p.edge,
+    3,
+  );
+  line(
+    [
+      [165, 81],
+      [159, 114],
+      [195, 111],
+    ],
+    p.edge,
+    3,
+  );
+  line(
+    [
+      [65, 140],
+      [201, 144],
+    ],
+    p.edge,
+    3,
+  );
+  plate([
+    [162, 98],
+    [192, 47],
+    [220, 34],
+    [238, 56],
+    [215, 107],
+    [198, 124],
+  ]);
+  poly(
+    [
+      [181, 90],
+      [204, 57],
+      [223, 59],
+      [210, 94],
+      [199, 110],
+    ],
+    p.dark,
+  );
+  line(
+    [
+      [180, 92],
+      [191, 78],
+      [200, 85],
+      [213, 68],
+    ],
+    "#55e5fc",
+    4,
+  );
+  {
+    line(
+      [
+        [140, 99],
+        [153, 99],
+        [166, 116],
+        [180, 116],
+      ],
+      "#68edff",
+      3,
+    );
+    line(
+      [
+        [142, 113],
+        [151, 113],
+        [157, 131],
+        [178, 131],
+      ],
+      "#68edff",
+      3,
+    );
+    circle(139, 99, 3, "#b3faff", null);
+    circle(142, 113, 3, "#b3faff", null);
+  }
+  let core = [126, 151];
+  circle(...core, 20, p.mid);
+  circle(...core, 14, p.light);
+  circle(...core, 9, p.dark);
+  circle(...core, 4, "#5be8f3", null);
+  for (let i = 0; i < 3; i++) leg(i, false);
+  ctx.save();
+  if (pose) {
+    ctx.translate(213, 65);
+    ctx.rotate(pose.headTilt);
+    ctx.translate(-213, -65);
+  }
+  plate([
+    [212, 30],
+    [239, 35],
+    [261, 49],
+    [272, 77],
+    [267, 100],
+    [249, 102],
+    [236, 77],
+    [211, 69],
+    [201, 48],
+  ]);
+  poly(
+    [
+      [236, 77],
+      [252, 70],
+      [272, 77],
+      [267, 100],
+      [249, 102],
+    ],
+    p.mid,
+  );
+  line(
+    [
+      [213, 32],
+      [222, 49],
+      [248, 45],
+    ],
+    p.edge,
+    3,
+  );
+  line(
+    [
+      [222, 49],
+      [218, 70],
+    ],
+    p.edge,
+    3,
+  );
+  plate([
+    [210, 37],
+    [205, 11],
+    [215, 17],
+    [224, 34],
+  ]);
+  plate([
+    [233, 35],
+    [235, 18],
+    [242, 23],
+    [242, 38],
+  ]);
+  joint(213, 65, 10, false);
+  poly(
+    [
+      [239, 52],
+      [262, 54],
+      [267, 64],
+      [241, 65],
+      [233, 60],
+    ],
+    "#19172b",
+  );
+  ctx.save();
+  ctx.shadowColor = "#ff456e";
+  ctx.shadowBlur = 4;
+  line(
+    [
+      [243, 58],
+      [261, 59],
+    ],
+    "#ff5473",
+    4,
+  );
+  ctx.restore();
+  line(
+    [
+      [243, 57],
+      [259, 58],
+    ],
+    "#ffb4c4",
+    1,
+  );
+  ctx.restore();
+  ctx.save();
+  if (pose) ctx.translate(-pose.recoil * 7, CANNON_Y_OFFSET * HORSE_ART.height / h);
+  plate([
+    [178, 111],
+    [206, 109],
+    [218, 121],
+    [213, 133],
+    [178, 135],
+  ]);
+  plate([
+    [203, 114],
+    [268, 116],
+    [275, 122],
+    [267, 132],
+    [203, 132],
+  ]);
+  poly(
+    [
+      [262, 115],
+      [273, 117],
+      [277, 128],
+      [266, 132],
+    ],
+    p.dark,
+  );
+  line(
+    [
+      [211, 119],
+      [260, 120],
+    ],
+    p.light,
+    2,
+  );
+  joint(183, 123, 15, false);
+  if (pose) {
+    line(
+      [
+        [250, 123],
+        [270, 123],
+      ],
+      pose.weaponColor,
+      2,
+    );
+    if (pose.flash > 0) {
+      ctx.save();
+      ctx.globalAlpha = pose.flash;
+      ctx.shadowColor = pose.weaponColor;
+      ctx.shadowBlur = 5;
+      poly(
+        [
+          [277, 118],
+          [290, 115],
+          [285, 123],
+          [293, 129],
+          [277, 129],
+        ],
+        pose.weaponColor,
+        null,
+      );
+      ctx.restore();
+    }
+  }
+
+  ctx.restore();
+  {
+    for (let [a, b] of [
+      [79, 108],
+      [116, 82],
+      [175, 151],
+      [105, 180],
+      [245, 44],
+    ])
+      circle(a, b, 2, p.dark, null);
+  }
+  ctx.restore();
+}
+
+const models=[
+{name:'Tokyo taxi',paint:'#34575d',light:'#7caaa8',w:180,h:80},
+{name:'Kei hatchback',paint:'#b5a893',light:'#eadbc0',w:180,h:80},
+{name:'Street coupe',paint:'#884755',light:'#d78a8c',w:180,h:80},
+{name:'Delivery van',paint:'#66798a',light:'#b9c9d3',w:180,h:80},
+{name:'Patrol sedan',paint:'#c1cbd1',light:'#f0ede1',w:180,h:80},
+{name:'Armored pickup',paint:'#687785',light:'#b1c3d0',w:200,h:100},
+{name:'Tesla Cybertruck',paint:'#8796a3',light:'#d5e0e5',w:200,h:100}];
+function drawCar(ctx,kind,x,y,w,h,damage=0,color=null,flip=false){
+const m=models[kind],paint=color||m.paint,edge='#0d1b29';ctx.save();ctx.translate(x+(flip?w:0),y);ctx.scale((flip?-1:1)*w/300,h/140);ctx.lineJoin='round';ctx.lineCap='round';
+const poly=(pts,fill,stroke=edge,lw=2.5)=>{ctx.beginPath();pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();}};
+const line=(pts,c,width=2)=>{ctx.beginPath();pts.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.strokeStyle=c;ctx.lineWidth=width;ctx.stroke();};
+const rect=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(x,y,w,h);};
+const circle=(x,y,r,c)=>{ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();};
+let shell,glass;
+if(kind===0||kind===4){shell=[[13,89],[26,72],[66,66],[97,30],[186,30],[221,66],[271,73],[289,88],[285,115],[15,115]];glass=[[[77,65],[102,38],[137,38],[137,65]],[[146,38],[181,38],[208,65],[146,65]]];}
+if(kind===1){shell=[[24,111],[23,45],[37,21],[180,21],[219,64],[269,75],[280,96],[275,114]];glass=[[[40,32],[99,32],[99,63],[36,63]],[[108,32],[175,32],[200,63],[108,63]]];}
+if(kind===2){shell=[[13,107],[23,80],[75,72],[122,46],[186,44],[225,73],[275,83],[291,98],[281,114],[19,114]];glass=[[[91,72],[126,52],[147,52],[147,72]],[[155,52],[182,51],[211,73],[155,73]]];}
+if(kind===3){shell=[[20,114],[19,32],[30,18],[198,18],[233,66],[273,74],[284,96],[278,115]];glass=[[[148,29],[192,29],[215,62],[148,62]]];}
+if(kind===5){shell=[[14,113],[15,61],[79,61],[112,24],[184,24],[227,61],[272,69],[290,90],[281,115]];glass=[[[92,60],[118,33],[143,33],[143,60]],[[151,33],[180,33],[213,61],[151,61]]];}
+if(kind===6){shell=[[12,111],[12,61],[145,20],[286,73],[289,104],[273,117],[23,117]];glass=[[[87,48],[144,28],[166,36],[157,65],[87,65]],[[174,39],[240,65],[166,65]]];}
+ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(151,132,139,6,0,0,Math.PI*2);ctx.fill();
+const grad=ctx.createLinearGradient(0,20,0,117);grad.addColorStop(0,color?color:m.light);grad.addColorStop(.37,paint);grad.addColorStop(.75,paint);grad.addColorStop(1,'#263848');poly(shell,grad);
+poly([[17,99],[284,99],[280,118],[17,118]],'#23313e');line(shell.slice(1,5),color?'#e2e0cd':m.light,2);
+for(const pts of glass){const g=ctx.createLinearGradient(0,30,0,74);g.addColorStop(0,'#42637a');g.addColorStop(1,'#172c3e');poly(pts,g);line([pts[0],pts[1]],'#90afbf',1.5);}
+if(kind===0){rect(28,80,239,8,'#c5b581');rect(120,21,37,9,'#e4d5aa');rect(126,18,25,5,'#efe4c8');ctx.font='7px system-ui';ctx.fillStyle='#283747';ctx.fillText('TAXI',129,28);circle(160,91,8,'#bdb084');circle(160,91,5,paint);}
+if(kind===1){line([[32,76],[244,76]],'#e8d8b7',3);rect(30,85,243,10,'#766f67');line([[106,66],[106,107]],edge,1.5);}
+if(kind===2){rect(14,69,56,5,paint);rect(22,73,5,9,edge);poly([[76,92],[215,85],[196,95],[83,98]],'#4b2e3d',null);line([[149,76],[141,101]],edge,1.5);}
+if(kind===3){poly([[30,28],[134,28],[134,93],[30,93]],paint,edge,1.5);line([[41,35],[121,35]],'#b4c5cb',2);rect(30,70,100,20,'#b2c6c5');ctx.font='10px system-ui';ctx.fillStyle='#2b454d';ctx.fillText('夜便',59,84);line([[142,65],[142,110]],edge,2);rect(126,62,3,13,'#cbd4d5');}
+if(kind===4){rect(27,77,244,23,'#223141');ctx.font='11px system-ui';ctx.fillStyle='#d5e0de';ctx.fillText('POLICE',133,93);rect(119,22,43,7,'#182735');rect(123,18,15,7,'#b75c6b');rect(142,18,15,7,'#6995b6');}
+if(kind===5){poly([[20,64],[75,64],[75,98],[20,98]],'#344453');line([[25,72],[68,72]],'#96a9b5',2);line([[25,81],[68,81]],'#96a9b5',2);poly([[88,76],[169,76],[159,100],[82,100]],paint);line([[174,66],[165,110]],edge,2);for(let a of [96,159,221])circle(a,84,2,'#afc0c8');}
+if(kind===6){poly([[17,69],[159,69],[280,76],[277,95],[166,102],[20,98]],paint);poly([[20,99],[165,104],[276,97],[273,112],[23,113]],'#455565');line([[18,62],[145,21],[284,73]],'#e0e8e7',2);line([[163,72],[166,100]],edge,1.5);line([[82,72],[76,99]],edge,1.5);line([[23,61],[78,44]],'#465767',4);rect(107,76,15,2,'#d5dfe3');rect(186,77,14,2,'#d5dfe3');line([[264,76],[287,81]],'#e9f4ef',4);line([[15,70],[23,70]],'#dd7478',3);}
+if(kind===0||kind===4){line([[141,69],[141,107]],edge,1.5);line([[83,69],[75,105]],edge,1.5);line([[213,71],[216,105]],edge,1.5);}
+rect(kind===3?151:154,74,13,3,'#b5c6ca');if(kind!==2&&kind!==5)rect(91,74,12,3,'#b5c6ca');
+poly([[216,62],[229,63],[233,70],[218,70]],paint);rect(272,84,12,8,'#f0d9ad');rect(19,85,9,9,'#bb6670');line([[24,103],[43,103]],'#8296a4',3);line([[258,103],[280,103]],'#b4c3ca',3);rect(255,108,17,5,'#c8c9b2');
+for(const wx of [65,235]){circle(wx,115,22,edge);circle(wx,115,17,'#202d39');circle(wx,115,12,'#8ca3b4');circle(wx,115,9,'#354d60');for(let i=0;i<5;i++){const a=i*Math.PI*2/5;line([[wx,115],[wx+Math.cos(a)*8,115+Math.sin(a)*8]],'#b0c4ce',2);}circle(wx,115,3,'#b1c3ce');if(kind===6){poly([[wx-10,108],[wx,103],[wx+10,108],[wx+10,120],[wx,126],[wx-10,120]],'#354859','#899ca9',1.5);circle(wx,115,3,'#bacad1');}line([[wx-21,107],[wx-15,96],[wx+12,94],[wx+23,107]],'#182936',4);}
+if(damage>0){line([[182,43],[170,54],[183,61],[167,67]],'#adc9d4',1);line([[173,53],[160,49]],'#adc9d4',1);line([[195,89],[184,91],[177,86],[162,91]],'#142333',3);line([[112,96],[96,98]],'#c5c2b1',1.5);}
+if(damage>1){poly([[248,80],[264,85],[253,91],[265,99],[232,97]],'#192b3a',null);for(let i=0;i<4;i++){ctx.globalAlpha=.25-i*.04;circle(254-i*7,64-i*15,7+i*3,'#98a2a7');}ctx.globalAlpha=1;rect(258,81,5,3,'#c58957');}
+ctx.restore();
+}
+let damage=0,paint=null,flipped=false,bounds=false;
+const street=document.createElement('canvas');street.width=1000;street.height=600;paintTokyoDistrict(street.getContext('2d'),0,5);
+function render(){
+for(const card of document.querySelectorAll('.variant[data-model]')){const i=Number(card.dataset.model),m=models[i];const c=card.querySelector('canvas'),ctx=c.getContext('2d');ctx.fillStyle='#102033';ctx.fillRect(0,0,600,330);drawCar(ctx,i,60,36,480,210,damage,paint,flipped);ctx.fillStyle='#b1c3d0';ctx.font='13px system-ui';ctx.fillText(`${m.w} × ${m.h} game units · ${i>=5?'heavy vehicle':'standard car'}`,20,307);}
+const c=document.querySelector('#lineup'),ctx=c.getContext('2d');ctx.drawImage(street,0,0);const p={x:55,y:457,width:120,height:80,direction:1,velY:0,isJumping:false,currentWeapon:{color:'#fff'},appearance:createAppearance(),specialAbilityActive:false,isShrinking:false};drawPlayer(ctx,p);
+for(const [i,x] of [[0,240],[1,490],[5,745]]){const m=models[i];drawCar(ctx,i,x,537-m.h,m.w,m.h,damage,paint,flipped);if(bounds){ctx.strokeStyle='#e3c782';ctx.setLineDash([4,4]);ctx.strokeRect(x,537-m.h,m.w,m.h);ctx.setLineDash([]);}}
+const detail=document.querySelector('#detail');if(dialog.open){const i=Number(detail.dataset.model);const d=detail.getContext('2d');d.drawImage(street,0,0);drawPlayer(d,p);const m=models[i];drawCar(d,i,400,537-m.h,m.w,m.h,damage,paint,flipped);if(bounds){d.strokeStyle='#e3c782';d.strokeRect(400,537-m.h,m.w,m.h);}}
+}
+const dialog=document.querySelector('dialog');document.querySelector('#damage').addEventListener('change',e=>{damage=Number(e.target.value);render();});document.querySelector('#paint').addEventListener('change',e=>{paint=e.target.value||null;render();});document.querySelector('#flip').addEventListener('click',e=>{flipped=!flipped;e.target.textContent=flipped?'Facing left':'Facing right';render();});document.querySelector('#bounds').addEventListener('change',e=>{bounds=e.target.checked;render();});document.querySelectorAll('[data-inspect]').forEach(b=>b.addEventListener('click',()=>{document.querySelector('#detail').dataset.model=b.dataset.inspect;document.querySelector('#detail-title').textContent=models[Number(b.dataset.inspect)].name+' · actual gameplay size';dialog.showModal();render();}));document.querySelector('#close').addEventListener('click',()=>dialog.close());render();
+</script></body>
+</html>

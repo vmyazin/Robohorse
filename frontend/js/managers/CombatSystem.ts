@@ -3,6 +3,7 @@ import type { Bounds } from '../utils/helpers.ts';
 type Particles = (x: number, y: number, amount: number, color: string) => void;
 export interface CombatObstacle extends Bounds {
     type: string;
+    getSurfaceY?(left: number, right: number): number | null;
     containsMushroom?: boolean;
     points: number;
     color: string;
@@ -35,10 +36,38 @@ export default class CombatSystem {
     private host: CombatHost;
     constructor(host: CombatHost) { this.host = host; }
 
-    collide(obstacle: CombatObstacle) {
+    collide(obstacle: CombatObstacle, previousPlayer?: Bounds, previousSupport?: CombatObstacle | null) {
         const host = this.host;
         const player = host.player;
         const particles = host.createParticles.bind(host);
+        if ((obstacle.type === 'car' || obstacle.type === 'cybertruck') && obstacle.getSurfaceY) {
+            // Use the hoof span, excluding the nose/tail overhang of the horse sprite.
+            const inset = player.width * 0.2;
+            const surface = obstacle.getSurfaceY(player.x + inset, player.x + player.width - inset);
+            if (surface === null) return;
+            const bottom = player.y + player.height;
+            const previousBottom = previousPlayer ? previousPlayer.y + previousPlayer.height : bottom - player.velY;
+            const previousSurface = previousPlayer
+                ? obstacle.getSurfaceY(previousPlayer.x + inset, previousPlayer.x + previousPlayer.width - inset)
+                : surface;
+            const supported = previousSupport === obstacle && player.velY >= 0;
+            const landing = player.velY >= 0 && bottom >= surface && previousBottom <= (previousSurface ?? surface) + 1;
+            if (supported || landing) {
+                player.y = surface - player.height;
+                player.velY = 0;
+                player.isJumping = false;
+                player.standingOnObstacle = obstacle;
+            } else if (bottom > surface && player.y < obstacle.y + obstacle.height) {
+                if (player.x + player.width / 2 < obstacle.x + obstacle.width / 2) {
+                    player.x = obstacle.x - player.width;
+                    if (player.x <= 0) this.crush();
+                } else {
+                    player.x = obstacle.x + obstacle.width;
+                }
+            }
+            return;
+        }
+
         if (player.y + player.height < obstacle.y + obstacle.height / 2 && player.velY > 0) {
             player.y = obstacle.y - player.height;
             player.velY = 0;

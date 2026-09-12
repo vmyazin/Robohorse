@@ -18,6 +18,9 @@ export function updateWorld(game, timeScale = 1) {
             }
         }, timeScale);
         
+        const previousSupport = game.player.standingOnObstacle;
+        game.player.standingOnObstacle = null;
+
         // Update obstacles with optimized collision detection
         for (let i = game.obstacles.length - 1; i >= 0; i--) {
             const obstacle = game.obstacles[i];
@@ -48,14 +51,14 @@ export function updateWorld(game, timeScale = 1) {
             }
             
             // Check if player is colliding with obstacle
-            if (isColliding(game.player, obstacle)) {
+            if (!obstacle.isExploding && (isColliding(game.player, obstacle) || obstacle.type === 'car' || obstacle.type === 'cybertruck')) {
                 // Skip collision for explosion-only objects
                 if (obstacle.type === 'car_explosion' || obstacle.type === 'cybertruck_explosion') {
                     continue;
                 }
                 
                 // Handle player-obstacle collision
-                game.combat.collide(obstacle);
+                game.combat.collide(obstacle, previousPlayer, previousSupport);
             }
             
             // Only process projectile collisions if the obstacle is not already exploding
