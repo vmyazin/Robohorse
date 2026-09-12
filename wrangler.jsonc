@@ -3,6 +3,10 @@
   "name": "robohorse",
   "account_id": "7f64edc36bdefec27b66e6ff9b2dcc3d",
   "main": "cloudflare/worker.ts",
+  "routes": [
+    { "pattern": "games.smoxu.com/robohorse/*", "zone_name": "smoxu.com" },
+    { "pattern": "games.smoxu.com/robohorse", "zone_name": "smoxu.com" }
+  ],
   "compatibility_date": "2026-09-11",
   "assets": {
     "directory": "./.cloudflare/assets",
@@ -25,6 +29,7 @@
   "env": {
     "preview": {
       "name": "robohorse-preview",
+      "routes": [],
       "d1_databases": [{
         "binding": "DB",
         "database_name": "robohorse-scores-preview",

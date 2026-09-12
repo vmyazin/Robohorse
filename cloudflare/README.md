@@ -21,7 +21,7 @@ The target is one Cloudflare Worker with Static Assets and a D1 leaderboard. The
 
 ## Preserve existing scores and cut over
 
-Choose the final domain/route before switching traffic. Existing `/robohorse/*` links work; the root of a dedicated hostname redirects to `/robohorse/`. For a shared hostname, route only the game prefix so other applications are unaffected. No custom domain, DNS record, or Worker route is configured automatically.
+The selected production URL is `https://games.smoxu.com/robohorse/`. The default Wrangler environment declares only `games.smoxu.com/robohorse/*` and its bare-path redirect; the preview environment explicitly has no routes. These routes take effect only when the production Worker is deployed after data migration. Existing `/robohorse/*` links work; the root of a dedicated hostname redirects to `/robohorse/`. For a shared hostname, route only the game prefix so other applications are unaffected. No custom domain, DNS record, or Worker route is configured automatically.
 
 1. Keep the PostgreSQL service and old deployment available. Pause score writes on the old service during the final export/import to prevent scores arriving after the snapshot. Also keep the destination free of writes until verification completes.
 2. Create a new ignored parent directory with `mkdir -p score-export`. With `DATABASE_URL` supplied securely in the environment, run `node api/db/export-d1.js score-export/final`. The exporter uses a read-only repeatable-read transaction and writes `scores.sql` and `verification.json`. It supports both the legacy `name` and migrated `player_id` column. Invalid/unrepresentable historical data stops the export for an explicit audit; it is never silently discarded.
