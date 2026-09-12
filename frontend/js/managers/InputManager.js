@@ -47,11 +47,30 @@ class InputManager {
             return; // Let the browser handle this shortcut
         }
         
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            if (e.repeat) return;
+            if (!document.getElementById('controls-screen').hidden) this.game.closeControls();
+            else if (this.game.scoreboardOverlay.style.display === 'flex') this.game.hideScoreboard();
+            else this.game.togglePause();
+            return;
+        }
+        if (!document.getElementById('controls-screen').hidden || this.game.scoreboardOverlay.style.display === 'flex') return;
+        // Preserve native keyboard activation for menu buttons.
+        if (e.target.closest('button') && (e.key === 'Enter' || e.code === 'Space')) return;
+        if (this.game.isPaused && e.code !== 'Space') return;
+
         // Set the key state
         this.keys[e.key] = true;
         
         // Handle name input on mission complete or game over screen
         if (this.game.missionCompleteScreen.style.display === 'block' || this.game.gameOverScreen.style.display === 'block') {
+            // Retry takes priority over character-entry debounce.
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (!e.repeat) { this.game.resetGame(); this.game.startGame(); }
+                return;
+            }
             // Prevent default behavior for letter, number, space, and backspace keys
             if (/^[a-zA-Z0-9 ]$/.test(e.key) || e.key === 'Backspace' || e.key === 'Enter') {
                 e.preventDefault();
@@ -87,11 +106,6 @@ class InputManager {
                 return;
             }
             
-            // Only allow space to restart if on the appropriate screen
-            if (e.code === 'Space') {
-                this.game.resetGame();
-                this.game.startGame();
-            }
             return;
         }
         

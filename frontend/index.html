@@ -62,10 +62,10 @@
                     </div>
                 </div>
             </div>
-            <p id="mission-complete-instruction" class="clickable">Press <span class="control-key">SPACE</span> to restart</p>
+            <button id="mission-complete-instruction" class="menu-button primary" type="button">Play again <small>SPACE</small></button><p id="mission-complete-instruction-status" role="status"></p>
         </div>
         <div id="sound-toggle">🔊</div>
-        <div id="help-toggle">❓</div>
+        <button id="help-toggle" type="button" aria-label="Pause game" disabled>Ⅱ Pause</button>
         <div id="hud">
             <div class="health-container">
                 <div class="health-label">HEALTH:</div>
@@ -74,14 +74,10 @@
                 </div>
                 <div id="health-value">100</div>
             </div>
-            <div class="hud-separator">|</div>
-            SCORE: <span id="score">0</span> 
-            <div class="hud-separator">|</div>
-            WEAPON: <span id="weapon">NEURAL BEAM</span> 
-            <div class="hud-separator">|</div>
-            SPECIAL: <span id="special-tokens">0</span> 
-            <div class="hud-separator">|</div>
-            LEVEL: <span id="level">Training Grounds</span>
+            <div class="hud-stat score-stat"><span class="hud-label">Score</span><span id="score">0</span></div>
+            <div class="hud-stat"><span class="hud-label">Weapon · ENTER</span><span id="weapon">NEURAL BEAM</span></div>
+            <div class="hud-stat"><span class="hud-label">Special · C</span><span><span id="special-tokens">0</span> ★ <span id="special-ready"></span></span></div>
+            <div class="hud-stat level-stat"><span class="hud-label">Sector</span><span id="level">Training Grounds</span></div>
         </div>
         <div id="game-over">
             <h1>GAME OVER</h1>
@@ -108,22 +104,40 @@
                     </div>
                 </div>
             </div>
-            <p id="restart-instruction" class="clickable">Press <span class="control-key">SPACE</span> to restart</p>
+            <button id="restart-instruction" class="menu-button primary" type="button">Play again <small>SPACE</small></button><p id="restart-instruction-status" role="status"></p>
             <p id="view-scoreboard" class="clickable">View scoreboard</p>
         </div>
         <div id="start-screen">
             <h1>ROBOHORSE GALLOP</h1>
-            <p>CONTROLS:</p>
-            <p>
-                <span class="control-key">←→</span> or <span class="control-key">A D</span> Move<br>
-                <span class="control-key">↑</span> or <span class="control-key">W</span> or <span class="control-key">Z</span> Jump<br>
-                <span class="control-key">SPACE</span> Shoot<br>
-                <span class="control-key">ENTER</span> Swap Weapon<br>
-                <span class="control-key">C</span> Power Weapon
-            </p>
-            <p>Collect tokens (★) for special abilities</p>
-            <p id="start-instruction" class="clickable">Press <span class="control-key">SPACE</span> to start</p>
+            <p class="menu-subtitle">Battle the Cephalopod Armada</p>
+            <div class="menu-actions">
+                <button id="start-instruction" class="menu-button primary" type="button">Play <small>SPACE</small></button>
+                <button class="menu-button" data-controls type="button">Controls</button>
+                <button id="menu-leaderboard" class="menu-button" type="button">Leaderboard</button>
+            </div>
         </div>
+        <div id="pause-screen" class="menu-panel" hidden>
+            <h1>PAUSED</h1>
+            <p class="menu-subtitle">Take a breather. Your run is on hold.</p>
+            <div class="menu-actions">
+                <button id="resume-game" class="menu-button primary" type="button">Resume <small>ESC</small></button>
+                <button id="pause-restart" class="menu-button" type="button">Restart</button>
+                <button class="menu-button" data-controls type="button">Controls</button>
+            </div>
+        </div>
+        <div id="controls-screen" class="menu-panel" hidden>
+            <h1>CONTROLS</h1>
+            <dl class="controls-list">
+                <dt>← → / A D</dt><dd>Move</dd>
+                <dt>↑ / W / Z</dt><dd>Jump</dd>
+                <dt>SPACE</dt><dd>Shoot</dd>
+                <dt>ENTER</dt><dd>Swap weapon</dd>
+                <dt>C</dt><dd>Power weapon · collect ★ tokens</dd>
+                <dt>ESC</dt><dd>Pause / resume</dd>
+            </dl>
+            <button id="close-controls" class="menu-button primary" type="button">Back</button>
+        </div>
+
         
         <div id="scoreboard-overlay" x-data="{ 
             scores: [],
@@ -164,7 +178,7 @@
                         </template>
                     </div>
                 </div>
-                <p id="close-scoreboard" class="clickable">Close</p>
+                <button id="close-scoreboard" class="menu-button" type="button">Back</button>
             </div>
         </div>
     </div>

@@ -164,9 +164,6 @@ class Game {
         this.keyDebounceTime = 100; // 100ms debounce time
         
         // Start screen toggle timer
-        this.startScreenToggleTimer = 0;
-        this.showingScoreboard = false;
-        this.startInstructionElement = null;
         
         // Bind the animate method to this instance
         this.animate = this.animate.bind(this);
@@ -195,44 +192,22 @@ class Game {
     }
     
     togglePause() {
-        console.log('togglePause called, gameStarted:', this.gameStarted, 'gameOver:', this.gameOver);
-        
-        // If help is clicked before game starts, show instructions anyway
-        if (!this.gameStarted && !this.gameOver) {
-            console.log('Game not started - showing help/instructions');
-            this.startScreen.style.display = 'block';
-            if (this.helpToggle) this.helpToggle.classList.add('active');
-            return;
-        }
-        
-        if (this.gameStarted && !this.gameOver) {
-            this.isPaused = !this.isPaused;
-            console.log('Game paused:', this.isPaused);
-            
-            // Show/hide start screen when paused/unpaused
-            if (this.isPaused) {
-                this.startScreen.style.display = 'block';
-                if (this.helpToggle) {
-                    this.helpToggle.classList.add('active');
-                } else {
-                    console.warn('Help toggle element not found');
-                }
-                if (document.getElementById('start-instruction')) {
-                    document.getElementById('start-instruction').textContent = 'Press SPACE to resume';
-                }
-            } else {
-                this.startScreen.style.display = 'none';
-                if (this.helpToggle) {
-                    this.helpToggle.classList.remove('active');
-                }
-                // Continue the animation loop if unpausing
-                if (!this.animationFrameId) {
-                    this.startLoop();
-                }
-            }
+        if (!this.gameStarted || this.gameOver) return;
+        this.isPaused = !this.isPaused;
+        this.inputManager.keys = {};
+        document.getElementById('pause-screen').hidden = !this.isPaused;
+        document.getElementById('controls-screen').hidden = true;
+        this.helpToggle.setAttribute('aria-label', this.isPaused ? 'Resume game' : 'Pause game');
+        this.helpToggle.textContent = this.isPaused ? '▶ Resume' : 'Ⅱ Pause';
+        if (this.isPaused) document.getElementById('resume-game').focus();
+        else {
+            document.activeElement?.blur();
+            this.clock.reset();
+            this.startLoop();
         }
     }
     
+
     playSound(soundKey, volume = 0.5) {
         this.soundManager.playSound(soundKey, volume);
     }
@@ -250,6 +225,16 @@ class Game {
             if (button.id === 'game-over-enter-key' && this.gameOverScreen.style.display === 'block' && this.gameOverPlayerName.some(char => char !== '_')) this.saveGameOverScore();
         });
 
+        document.getElementById('menu-leaderboard').addEventListener('click', () => this.showScoreboard());
+        document.getElementById('resume-game').addEventListener('click', () => this.togglePause());
+        document.getElementById('pause-restart').addEventListener('click', () => { this.resetGame(); this.startGame(); });
+        document.querySelectorAll('[data-controls]').forEach(button => button.addEventListener('click', () => {
+            this.controlsOpener = button;
+            document.getElementById('controls-screen').hidden = false;
+            document.getElementById('close-controls').focus();
+        }));
+        document.getElementById('close-controls').addEventListener('click', () => this.closeControls());
+
         // Scoreboard event listeners
         this.viewScoreboard.addEventListener('click', () => {
             this.showScoreboard();
@@ -261,13 +246,19 @@ class Game {
     }
     
     startGame() {
+        this.isPaused = false;
+        document.getElementById('pause-screen').hidden = true;
+        document.getElementById('controls-screen').hidden = true;
+        document.activeElement?.blur();
+        this.helpToggle.disabled = false;
+        this.helpToggle.textContent = 'Ⅱ Pause';
+        this.helpToggle.setAttribute('aria-label', 'Pause game');
         this.gameStarted = true;
         this.gameOver = false;
         this.startScreen.style.display = 'none';
         
         // Always hide scoreboard when starting the game
         this.hideScoreboard();
-        this.showingScoreboard = false;
         
         // Play background music if sound is enabled
         this.soundManager.playBackgroundMusic();
@@ -284,6 +275,8 @@ class Game {
     
     resetGame() {
         this.session.reset();
+        this.runId = (this.runId || 0) + 1;
+        for (const id of ['restart-instruction-status', 'mission-complete-instruction-status']) document.getElementById(id).textContent = '';
         // Reset game state
         this.gameStarted = false;
         this.gameOver = false;
@@ -293,18 +286,11 @@ class Game {
         this.gameSpeed = 1;
         this.mushroomPowerTimer = 0;
         
-        // Reset start screen toggle timer
-        this.startScreenToggleTimer = 0;
-        this.showingScoreboard = false;
         
         // Make sure start screen is visible initially
         this.startScreen.style.display = 'block';
         this.hideScoreboard();
         
-        // Save reference to start instruction element if not already saved
-        if (!this.startInstructionElement) {
-            this.startInstructionElement = document.getElementById('start-instruction');
-        }
         
         // Reset player using the reset method
         this.player.reset();
@@ -366,6 +352,7 @@ class Game {
     }
     
     endGame() {
+        this.helpToggle.disabled = true;
         this.gameOver = true;
         this.gameStarted = false;
         
@@ -392,7 +379,7 @@ class Game {
             const restartInstruction = document.getElementById('restart-instruction');
             if (restartInstruction) {
                 restartInstruction.style.display = 'block';
-                restartInstruction.innerHTML = 'Press <span class="control-key">SPACE</span> to restart';
+                restartInstruction.innerHTML = 'Play again <small>SPACE</small>';
             }
 
             const viewScoreboard = document.getElementById('view-scoreboard');
@@ -437,16 +424,16 @@ class Game {
                 gameOverEnterKey.style.display = 'flex';
             }
             
-            // Hide restart instruction and view scoreboard initially
+            // Keep retry and leaderboard available independently of saving.
             const restartInstruction = document.getElementById('restart-instruction');
             if (restartInstruction) {
-                restartInstruction.style.display = 'none';
-                restartInstruction.innerHTML = 'Press <span class="control-key">SPACE</span> to restart';
+                restartInstruction.style.display = 'block';
+                restartInstruction.innerHTML = 'Play again <small>SPACE</small>';
             }
             
             const viewScoreboard = document.getElementById('view-scoreboard');
             if (viewScoreboard) {
-                viewScoreboard.style.display = 'none';
+                viewScoreboard.style.display = 'block';
             }
             
             // Force a refresh of the Alpine.js component if it exists
@@ -481,18 +468,11 @@ class Game {
 
     animate(timestamp) {
         this.animationFrameId = null;
-        const elapsed = this.clock.advance(timestamp, () => {
+        this.clock.advance(timestamp, () => {
             if (this.session.canSimulate && !document.hidden) {
                 this.update(1);
             }
         });
-        if (this.session.inLobby && !document.hidden) {
-            this.startScreenToggleTimer += elapsed;
-            if (this.startScreenToggleTimer >= 5000) {
-                this.startScreenToggleTimer = 0;
-                this.toggleStartScreenAndScoreboard();
-            }
-        }
         this.draw();
         if (!this.gameOver || this.isPaused) {
             this.animationFrameId = requestAnimationFrame(this.animate);
@@ -839,6 +819,7 @@ class Game {
     }
 
     showMissionComplete() {
+        this.helpToggle.disabled = true;
         this.session.finish();
         this.gameStarted = false;
         this.gameOver = false;  // This is a mission complete, not a game over
@@ -868,11 +849,11 @@ class Game {
             this.enterKeyButton.style.display = 'flex';
         }
         
-        // Hide restart instruction initially
+        // Retrying never requires score submission.
         const missionCompleteInstruction = document.getElementById('mission-complete-instruction');
         if (missionCompleteInstruction) {
-            missionCompleteInstruction.style.display = 'none';
-            missionCompleteInstruction.innerHTML = 'Press <span class="control-key">SPACE</span> to restart';
+            missionCompleteInstruction.style.display = 'block';
+            missionCompleteInstruction.innerHTML = 'Play again <small>SPACE</small>';
         }
         
         // Stop background music and play victory sound
@@ -1008,6 +989,8 @@ class Game {
 
     // New method to save score to the database
     saveScore() {
+        const runId = this.runId;
+        document.getElementById('mission-complete-instruction-status').textContent = 'Saving score…';
         // Try to get the name from Alpine.js first, then fall back to our internal state
         let playerName;
         try {
@@ -1035,6 +1018,8 @@ class Game {
         // Make API call to save the score
         this.scoreService.save({ name: finalName, score: this.score })
         .then(data => {
+            if (this.runId !== runId) return;
+            document.getElementById('mission-complete-instruction-status').textContent = 'Score saved.';
             console.log('Score saved successfully:', data);
             
             // Refresh scores after saving
@@ -1047,12 +1032,13 @@ class Game {
             }
         })
         .catch(error => {
+            if (this.runId !== runId) return;
             console.error('Error saving score:', error);
             
             // Show error message
             const missionCompleteInstruction = document.getElementById('mission-complete-instruction');
             if (missionCompleteInstruction) {
-                missionCompleteInstruction.innerHTML = 'Error saving score. Press <span class="control-key">SPACE</span> to restart';
+                document.getElementById('mission-complete-instruction-status').textContent = 'Error saving score. Try saving again.';
                 missionCompleteInstruction.style.display = 'block';
             }
             
@@ -1064,6 +1050,8 @@ class Game {
     }
 
     saveGameOverScore() {
+        const runId = this.runId;
+        document.getElementById('restart-instruction-status').textContent = 'Saving score…';
         // Try to get the name from Alpine.js first, then fall back to our internal state
         let playerName;
         try {
@@ -1093,6 +1081,8 @@ class Game {
         // Make API call to save the score
         this.scoreService.save({ name: finalName, score: this.score })
         .then(data => {
+            if (this.runId !== runId) return;
+            document.getElementById('restart-instruction-status').textContent = 'Score saved.';
             console.log('Game over score saved successfully:', data);
             
             // Refresh scores after saving
@@ -1111,12 +1101,13 @@ class Game {
             }
         })
         .catch(error => {
+            if (this.runId !== runId) return;
             console.error('Error saving game over score:', error);
             
             // Show error message
             const restartInstruction = document.getElementById('restart-instruction');
             if (restartInstruction) {
-                restartInstruction.innerHTML = 'Error saving score. Press <span class="control-key">SPACE</span> to restart';
+                document.getElementById('restart-instruction-status').textContent = 'Error saving score. Try saving again.';
                 restartInstruction.style.display = 'block';
             }
             
@@ -1137,53 +1128,14 @@ class Game {
         // Show the scoreboard overlay
         this.scoreboardOverlay.style.display = 'flex';
         
-        // If toggling between start screen and scoreboard, ensure "Press SPACE to start" is visible
-        // and hide the close button
-        if (!this.gameStarted && !this.gameOver) {
-            // Hide the close button when auto-toggling
-            const closeButton = document.getElementById('close-scoreboard');
-            if (closeButton) {
-                closeButton.style.display = 'none';
-            }
-            
-            // Make sure we have a reference to the start instruction element
-            if (!this.startInstructionElement) {
-                this.startInstructionElement = document.getElementById('start-instruction');
-            }
-            
-            // Create or update the start instruction in the scoreboard if it doesn't exist
-            let scoreboardStartInstruction = document.querySelector('#scoreboard-start-instruction');
-            
-            if (!scoreboardStartInstruction) {
-                scoreboardStartInstruction = document.createElement('p');
-                scoreboardStartInstruction.id = 'scoreboard-start-instruction';
-                scoreboardStartInstruction.className = 'clickable';
-                
-                if (this.startInstructionElement) {
-                    scoreboardStartInstruction.innerHTML = this.startInstructionElement.innerHTML;
-                } else {
-                    scoreboardStartInstruction.innerHTML = 'Press <span class="control-key">SPACE</span> to start';
-                }
-                
-                // Add to scoreboard content
-                const scoreboardContent = document.querySelector('.scoreboard-content');
-                if (scoreboardContent) {
-                    scoreboardContent.appendChild(scoreboardStartInstruction);
-                }
-            }
-        } else {
-            // Show the close button when manually viewing scoreboard
-            const closeButton = document.getElementById('close-scoreboard');
-            if (closeButton) {
-                closeButton.style.display = 'block';
-            }
-        }
-        
+        this.closeScoreboard.style.display = 'block';
+        this.closeScoreboard.focus();
+
         // Get the scoreboard body element
         const scoreboardBody = document.querySelector('.scoreboard-body');
         
         // If scores are already loaded, display them
-        if (this.scoresLoaded && this.scores.length > 0) {
+        if (this.scoresLoaded) {
             this.displayScores(this.scores, scoreboardBody);
         } 
         // If there was an error loading scores, show error message
@@ -1267,23 +1219,17 @@ class Game {
         }
     }
     
-    hideScoreboard() {
-        this.scoreboardOverlay.style.display = 'none';
+    closeControls() {
+        document.getElementById('controls-screen').hidden = true;
+        this.controlsOpener?.focus();
     }
 
-    toggleStartScreenAndScoreboard() {
-        if (this.showingScoreboard) {
-            // Switch back to start screen
-            this.startScreen.style.display = 'block';
-            this.hideScoreboard();
-            this.showingScoreboard = false;
-        } else {
-            // Switch to scoreboard
-            this.startScreen.style.display = 'none';
-            this.showScoreboard();
-            this.showingScoreboard = true;
-        }
+    hideScoreboard() {
+        const wasOpen = this.scoreboardOverlay.style.display === 'flex';
+        this.scoreboardOverlay.style.display = 'none';
+        if (wasOpen && !this.gameStarted) document.getElementById(this.gameOver ? 'view-scoreboard' : 'menu-leaderboard').focus();
     }
+
 }
 
-export default Game; 
+export default Game;

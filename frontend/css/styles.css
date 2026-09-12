@@ -545,4 +545,79 @@ button:hover {
 /* Hide elements with x-cloak directive */
 [x-cloak] { 
     display: none !important; 
-} 
+}
+
+/* Menus share a clear action hierarchy while preserving the arcade styling. */
+[hidden] { display: none !important; }
+#start-screen, .menu-panel {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%);
+    box-sizing: border-box;
+    width: 620px;
+    max-width: calc(100% - 48px);
+    padding: 32px;
+    background: #080c24;
+    border: 2px solid #526dff;
+    border-radius: 12px;
+    box-shadow: 0 12px 60px #000b;
+    text-align: center;
+    z-index: 120;
+}
+.menu-panel h1, #start-screen h1 { font-size: 24px; line-height: 1.5; text-shadow: none; }
+.menu-subtitle { color: #b5bfdc; font: 10px/1.9 'Press Start 2P', monospace; }
+.menu-actions { display: grid; gap: 12px; margin-top: 28px; }
+.menu-button {
+    margin: 0;
+    box-shadow: none;
+    text-shadow: none;
+    font: 12px/1.6 'Press Start 2P', monospace;
+    color: #e9efff;
+    background: #19223d;
+    border: 1px solid #647297;
+    border-radius: 6px;
+    padding: 14px 20px;
+    cursor: pointer;
+}
+.menu-button.primary { background: #89f5e0; color: #071723; border-color: #89f5e0; }
+.menu-button small { font: 8px/1.6 'Press Start 2P', monospace; margin-left: 14px; opacity: .8; }
+.menu-button:hover { filter: brightness(1.15); transform: none; box-shadow: none; }
+button:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
+#controls-screen { z-index: 150; }
+.controls-list { display: grid; grid-template-columns: 160px 1fr; gap: 18px; text-align: left; margin: 28px 0; }
+.controls-list dt { font-size: 11px; color: #89f5e0; line-height: 1.8; }
+.controls-list dd { margin: 0; font: 10px/1.9 'Press Start 2P', monospace; }
+#help-toggle { width: auto; height: auto; font: 10px/1.5 'Press Start 2P', monospace; padding: 8px 12px; background: #080c24; }
+#help-toggle:disabled { visibility: hidden; }
+#hud {
+    box-sizing: border-box;
+    left: 16px;
+    right: 16px;
+    top: 16px;
+    display: grid;
+    grid-template-columns: 1.25fr .65fr 1.35fr .8fr 1.15fr;
+    gap: 20px;
+    padding: 12px 16px;
+    background: #070d20ed;
+    border: 1px solid #38516b;
+    color: #edf6ff;
+    text-shadow: none;
+    font-size: 11px;
+    line-height: 1.6;
+    pointer-events: none;
+}
+.hud-stat { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.hud-label, .health-label { font: 8px/1.6 'Press Start 2P', monospace; color: #9bafc7; text-transform: uppercase; letter-spacing: 0; }
+.health-container { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; }
+.health-label { grid-column: 1 / -1; }
+.health-bar-container { width: 100%; min-width: 70px; height: 9px; border: 0; }
+#health-value { margin: 0; }
+.score-stat #score { font-size: 17px; color: #89f5e0; }
+#weapon, #level { font-size: 9px; line-height: 1.6; }
+#level-announcement { font-size: 18px; padding: 14px 24px; text-shadow: none; box-shadow: none; pointer-events: none; z-index: 90; white-space: nowrap; }
+#level-announcement.active { top: 96px; }
+#level-announcement.fade-out { top: 96px; }
+#restart-instruction, #mission-complete-instruction { margin: 20px auto 0; }
+[role="status"] { font: 10px/1.8 'Press Start 2P', monospace; color: #e4c7a8; }
+
+#special-ready { display: block; color: #89f5e0; font: 7px/1.6 'Press Start 2P', monospace; }

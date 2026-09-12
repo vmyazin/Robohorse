@@ -12,7 +12,7 @@ export default class Hud {
     private previous = new Map<string, string>();
 
     constructor(root: Document = document) {
-        for (const id of ['score', 'health-bar', 'health-value', 'weapon', 'special-tokens']) {
+        for (const id of ['score', 'health-bar', 'health-value', 'weapon', 'special-tokens', 'special-ready']) {
             const element = root.getElementById(id);
             if (element) this.elements.set(id, element);
         }
@@ -29,6 +29,7 @@ export default class Hud {
         this.text('score', String(state.score));
         this.text('weapon', state.weapon);
         this.text('special-tokens', String(state.tokens));
+        this.text('special-ready', state.tokens > 0 ? 'Ready' : 'Collect ★');
         const health = Number.isFinite(state.health) ? Math.max(0, Math.min(state.health, state.maxHealth)) : state.maxHealth;
         this.text('health-value', String(Math.round(health)));
         const percent = state.maxHealth > 0 ? health / state.maxHealth * 100 : 0;
