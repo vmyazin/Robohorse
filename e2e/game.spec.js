@@ -18,6 +18,44 @@ test('built game starts, advances, ends and restarts without runtime errors', as
     expect(errors).toEqual([]);
 });
 
+test('Elon easter egg loads and slides into gameplay', async ({ page }) => {
+    await page.route('**/api/scores', route => route.fulfill({ json: [] }));
+    await page.goto('/robohorse/');
+    await page.keyboard.press('Space');
+    await page.evaluate(() => {
+        const game = window.__game;
+        game.levelManager.loadLevel(2);
+        const cybertruck = game.obstacles.find(obstacle => obstacle.type === 'cybertruck');
+        cybertruck.x = game.canvas.width / 2;
+        cybertruck.y = 100;
+        cybertruck.health = 1;
+        game.projectiles.push({
+            x: cybertruck.x,
+            y: cybertruck.y,
+            width: 10,
+            height: 10,
+            damage: 1,
+            color: '#fff',
+            isPlayerProjectile: true,
+            update() {}
+        });
+    });
+
+    await expect.poll(() => page.evaluate(() => {
+        const effect = window.__game.effectsManager.elonToasty;
+        return effect.image.complete && effect.image.naturalWidth > 0;
+    })).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.__game.effectsManager.elonToasty.x))
+        .toBeLessThan(1000);
+    expect(await page.evaluate(() => window.__game.effectsManager.elonToasty.active)).toBe(true);
+    await expect(page.locator('#elon-toasty')).toBeVisible();
+    expect(await page.evaluate(() => {
+        const toasty = document.querySelector('#elon-toasty');
+        const pause = document.querySelector('#help-toggle');
+        return Number(getComputedStyle(toasty).zIndex) > Number(getComputedStyle(pause).zIndex);
+    })).toBe(true);
+});
+
 test('failed score loading displays a recoverable error', async ({ page }) => {
     await page.route('**/api/scores', route => route.fulfill({ status: 503, json: { error: 'Unavailable' } }));
     await page.goto('/robohorse/');

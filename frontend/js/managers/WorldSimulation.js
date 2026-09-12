@@ -134,8 +134,8 @@ export function updateWorld(game, timeScale = 1) {
                                     isInExplosionRadius: obstacle.isInExplosionRadius
                                 });
                                 
-                                // Trigger Elon Toasty easter egg for Cybertruck explosions (10% chance)
-                                if (obstacle.type === 'cybertruck' && Math.random() < 0.1) {
+                                // Reward every Cybertruck takedown with the Elon Toasty easter egg.
+                                if (obstacle.type === 'cybertruck') {
                                     game.triggerElonToasty();
                                 }
                             }

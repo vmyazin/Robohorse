@@ -10,7 +10,8 @@ class EffectsManager {
     game: EffectsHost;
     elonToasty: {
         active: boolean; x: number; y: number; width: number; height: number;
-        image: HTMLImageElement; timer: number; duration: number;
+        image: HTMLImageElement; element: HTMLImageElement | null;
+        timer: number; duration: number;
         slideInDuration: number; slideOutDuration: number; slideInComplete: boolean;
     };
     damageFlash: { active: boolean; duration: number; timer: number; color: string };
@@ -18,21 +19,26 @@ class EffectsManager {
         this.game = game;
         
         // Elon Toasty easter egg
+        const element = typeof document === 'undefined'
+            ? null
+            : document.querySelector<HTMLImageElement>('#elon-toasty');
+        const image = element || new Image();
+        if (!element) image.src = new URL('../../images/elon.png', import.meta.url).href;
         this.elonToasty = {
             active: false,
             x: 0,
             y: 0,
             width: 150,
             height: 150,
-            image: new Image(),
+            image,
+            element,
             timer: 0,
             duration: 120, // 2 seconds at 60fps
             slideInDuration: 15,
             slideOutDuration: 15,
             slideInComplete: false
         };
-        this.elonToasty.image.src = 'images/elon.png';
-        
+
         // Damage flash effect
         this.damageFlash = {
             active: false,
@@ -51,6 +57,7 @@ class EffectsManager {
             this.elonToasty.x = this.game.canvas.width;
             this.elonToasty.slideInComplete = false;
             this.elonToasty.timer = 0;
+            this.syncElonToastyElement();
             
             // Play the toasty sound
             this.game.soundManager.playSound('toasty', 0.7);
@@ -86,10 +93,19 @@ class EffectsManager {
         if (this.elonToasty.timer >= this.elonToasty.duration) {
             this.elonToasty.active = false;
         }
+        this.syncElonToastyElement();
+    }
+
+    syncElonToastyElement() {
+        const element = this.elonToasty.element;
+        if (!element) return;
+        element.hidden = !this.elonToasty.active;
+        const visibleX = this.game.canvas.width - this.elonToasty.width;
+        element.style.transform = `translateX(${this.elonToasty.x - visibleX}px)`;
     }
     
     drawElonToasty(ctx: CanvasRenderingContext2D) {
-        if (!this.elonToasty.active || !this.elonToasty.image.complete || !this.elonToasty.image.naturalWidth) return;
+        if (this.elonToasty.element || !this.elonToasty.active || !this.elonToasty.image.complete || !this.elonToasty.image.naturalWidth) return;
         const canvas = this.game.canvas;
         // Draw Elon image
         ctx.drawImage(
@@ -157,4 +173,4 @@ class EffectsManager {
     }
 }
 
-export default EffectsManager; 
+export default EffectsManager;

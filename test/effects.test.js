@@ -5,10 +5,16 @@ import { isColliding } from '../frontend/js/utils/helpers.ts';
 
 test('effect drawing is read-only and simulation owns animation time', () => {
     const original = globalThis.Image;
-    globalThis.Image = class { complete = true; naturalWidth = 150; };
+    globalThis.Image = class { complete = true; naturalWidth = 150; src = ''; };
     try {
-        const effects = new EffectsManager({ canvas: { width: 1000, height: 600 }, soundManager: { playSound() {} } });
+        const sounds = [];
+        const effects = new EffectsManager({
+            canvas: { width: 1000, height: 600 },
+            soundManager: { playSound(...args) { sounds.push(args); } }
+        });
+        assert.match(effects.elonToasty.image.src, /\/images\/elon\.png$/);
         effects.triggerElonToasty();
+        assert.deepEqual(sounds, [['toasty', 0.7]]);
         const ctx = { drawImage() {}, fillRect() {} };
         for (let i = 0; i < 144; i++) effects.draw(ctx);
         assert.equal(effects.elonToasty.timer, 0);
