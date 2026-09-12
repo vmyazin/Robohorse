@@ -76,3 +76,10 @@ At the user's request, doubled the default character from 60 × 40 to 120 × 80 
 ### Final tuning before commit
 
 Default size is 120 × 80. Powered size is reduced to 1.5× default (180 × 120), including collision bounds, with uniform growth and feet anchoring. The cannon and shared projectile origin are lowered by 7 game pixels in both modes, independent of scale. Targeted player tests pass after these adjustments. Stage-two verification screenshots above document the original implementation before this subsequent size/aim tuning.
+
+
+## Stage 3 — Approved cityscape implemented locally
+
+Implemented the approved darker Tokyo night route: neighborhood, riverfront, railway, and Shinjuku, sharing one palette and steady window patterns. Each district holds for 12 seconds and dissolves over 4 seconds; the 64-second loop follows simulation time. The passing train moves independently. Pause freezes the route and reset returns to its beginning.
+
+The background matches the approved artwork exactly in six parity samples. Verification is recorded in `design-explorations/tokyo-night.manifest.md`. All 42 automated tests, typecheck and the production test build passed. Existing gameplay geometry, HUD and combat are retained. This completes the approved cityscape portion of stage 3; broader enemy, HUD and effects redesign remains outside this change. No deployment performed.

@@ -282,6 +282,7 @@ class Game {
         this.gameOver = false;
         this.score = 0;
         this.frameCount = 0;
+        this.background.reset();
         this.lastSpawnTime = 0;
         this.gameSpeed = 1;
         this.mushroomPowerTimer = 0;
