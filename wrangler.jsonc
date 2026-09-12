@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "robohorse",
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2026-09-11",
+  "assets": {
+    "directory": "./.cloudflare/assets",
+    "binding": "ASSETS",
+    "run_worker_first": ["/", "/robohorse", "/api/*", "/robohorse/api/*"]
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "robohorse-scores",
+    // Local-only placeholder. Replace with the ID returned by `wrangler d1 create` before deployment.
+    "database_id": "00000000-0000-0000-0000-000000000000",
+    "migrations_dir": "cloudflare/migrations"
+  }],
+  "ratelimits": [{
+    "name": "SCORE_LIMITER",
+    "namespace_id": "4270",
+    "simple": { "limit": 10, "period": 60 }
+  }],
+  "observability": { "enabled": true }
+}

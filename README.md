@@ -178,3 +178,7 @@ Enjoy the game!
 Run `pnpm test` for production startup and local rsync protection tests (rsync must be installed). `pnpm start` starts the shared Express app in either environment. Passenger uses `api/passenger_wrapper.cjs`; update its Nginx startup-file setting when deploying this change (see `api/README.md`).
 
 Frontend deployment protects `/api/`, `/.env`, `/node_modules/`, and `/tmp/` on the destination. It still deletes obsolete frontend files. The health endpoint `/api/health` reports HTTP availability, not database readiness.
+
+### Cloudflare target deployment
+
+Workers Static Assets and D1 support is prepared alongside the existing PostgreSQL deployment. See [the Cloudflare migration guide](cloudflare/README.md) for local testing, account setup, historical-score import, verification, and traffic cutover. Run `pnpm dev:cloudflare` locally or `pnpm test:cloudflare` for the isolated integration suite. Production has not been switched by this code change.
