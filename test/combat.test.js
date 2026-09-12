@@ -32,3 +32,51 @@ test('crushing clamps health and triggers game over', () => {
     assert.equal(host.player.health, 0);
     assert.equal(host.ended, true);
 });
+
+function stompFixture() {
+    const host = fixture();
+    host.player.y = 15;
+    host.player.velY = 10;
+    const enemy = { x: 10, y: 20, width: 20, height: 10, health: 50,
+        takeDamage(damage) { this.health -= damage; return this.health <= 0; } };
+    return { host, enemy, combat: new CombatSystem(host), previous: { ...host.player, y: 0 } };
+}
+
+test('stomping from above damages once and bounces without harming the player', () => {
+    const { host, enemy, combat, previous } = stompFixture();
+    assert.deepEqual(combat.stompEnemy(enemy, previous, enemy), { dead: false });
+    assert.equal(enemy.health, 20);
+    assert.equal(host.player.health, 10);
+    assert.equal(host.player.y + host.player.height, enemy.y);
+    assert.equal(host.player.velY, -8);
+    assert.equal(host.player.isJumping, true);
+    assert.equal(combat.stompEnemy(enemy, previous, enemy), null);
+    assert.equal(enemy.health, 20);
+});
+
+test('powered stomp doubles damage and fast falls cannot tunnel through an enemy', () => {
+    const { host, enemy, combat, previous } = stompFixture();
+    host.player.mushroomPowerActive = true;
+    host.player.y = 50;
+    assert.deepEqual(combat.stompEnemy(enemy, previous, enemy), { dead: true });
+    assert.equal(enemy.health, -10);
+    assert.equal(host.player.mushroomPowerActive, true);
+});
+
+test('side, underside and horizontally missed contacts are not stomps', () => {
+    for (const scenario of ['side', 'under', 'miss']) {
+        const { host, enemy, combat, previous } = stompFixture();
+        if (scenario === 'side') previous.y = 15;
+        if (scenario === 'under') host.player.velY = -5;
+        if (scenario === 'miss') previous.x = host.player.x = 80;
+        assert.equal(combat.stompEnemy(enemy, previous, enemy), null, scenario);
+        assert.equal(enemy.health, 50);
+    }
+});
+
+test('stomp checks horizontal overlap at impact rather than only at the end of a tick', () => {
+    const { host, enemy, combat, previous } = stompFixture();
+    previous.x = 0; host.player.x = 90; host.player.y = 40;
+    // Impact is one quarter through the fall, while the horse overlaps the enemy.
+    assert.deepEqual(combat.stompEnemy(enemy, previous, enemy), { dead: false });
+});

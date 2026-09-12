@@ -7,6 +7,10 @@ export interface CombatObstacle extends Bounds {
     points: number;
     color: string;
 }
+export interface StompEnemy extends Bounds {
+    takeDamage(damage: number): boolean;
+}
+
 export interface CombatPlayer extends Bounds {
     velY: number;
     isJumping: boolean;
@@ -58,6 +62,29 @@ export default class CombatSystem {
                 player.x = obstacle.x + obstacle.width;
             }
         }
+    }
+
+    stompEnemy(enemy: StompEnemy, previousPlayer: Bounds, previousEnemy: Bounds) {
+        const player = this.host.player;
+        if (player.velY <= 0) return null;
+        const before = previousPlayer.y + previousPlayer.height - previousEnemy.y;
+        const after = player.y + player.height - enemy.y;
+        // Cross the top from above, including fast falls that pass through a thin enemy.
+        if (before > 0 || after < 0 || after <= before) return null;
+        const crossing = -before / (after - before);
+        const playerX = previousPlayer.x + (player.x - previousPlayer.x) * crossing;
+        const enemyX = previousEnemy.x + (enemy.x - previousEnemy.x) * crossing;
+        const playerWidth = previousPlayer.width + (player.width - previousPlayer.width) * crossing;
+        const enemyWidth = previousEnemy.width + (enemy.width - previousEnemy.width) * crossing;
+        if (playerX + playerWidth <= enemyX || playerX >= enemyX + enemyWidth) return null;
+
+        const dead = enemy.takeDamage(player.mushroomPowerActive ? 60 : 30);
+        player.y = enemy.y - player.height;
+        player.velY = -8;
+        player.isJumping = true;
+        player.standingOnObstacle = null;
+        this.host.createParticles(player.x + player.width / 2, enemy.y, 12, '#68edff');
+        return { dead };
     }
 
     crush() {

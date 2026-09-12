@@ -6,6 +6,7 @@ export function updateWorld(game, timeScale = 1) {
         // Use a default timeScale of 1 if not provided (for backward compatibility)
         timeScale = timeScale || 1;
         
+        const previousPlayer = { x: game.player.x, y: game.player.y, width: game.player.width, height: game.player.height };
         game.frameCount++;
         
         // Update player with sound callback and timeScale
@@ -339,7 +340,8 @@ export function updateWorld(game, timeScale = 1) {
         // Update enemies
         for (let i = game.enemies.length - 1; i >= 0; i--) {
             const enemy = game.enemies[i];
-            
+            const previousEnemy = { x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height };
+
             enemy.update(game.player, game.frameCount, game.createParticles.bind(game), timeScale);
             
             // Remove enemies that are off-screen to the left or too far to the right
@@ -401,8 +403,21 @@ export function updateWorld(game, timeScale = 1) {
             }
             
             // Skip enemies that have been removed
-            if (i >= game.enemies.length) continue;
+            if (game.enemies[i] !== enemy) continue;
             
+            const stomp = game.combat.stompEnemy(enemy, previousPlayer, previousEnemy);
+            if (stomp?.dead) {
+                game.removeEnemyFromExplosionSets(enemy);
+                game.enemies.splice(i, 1);
+                game.score += enemy.points;
+                game.scoreDisplay.textContent = game.score;
+                game.createParticles(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 20, '#f00');
+                const rand = Math.random();
+                if (rand < 0.2) game.spawnPowerUp(enemy.x, enemy.y);
+                else if (rand < 0.5) game.spawnSpecialToken(enemy.x, enemy.y);
+                continue;
+            }
+
             // Check collisions with player projectiles
             for (let j = game.projectiles.length - 1; j >= 0; j--) {
                 const proj = game.projectiles[j];
@@ -438,7 +453,7 @@ export function updateWorld(game, timeScale = 1) {
             }
             
             // Check collision with player
-            if (i < game.enemies.length && isColliding(game.enemies[i], game.player)) {
+            if (!stomp && game.enemies[i] === enemy && isColliding(enemy, game.player)) {
                 // Subtract health but ensure it stays as a valid number
                 game.player.health = Math.max(0, game.player.health - 1);
                 game.updateHealthDisplay();

@@ -8,6 +8,7 @@ A side-scrolling action game where you control RoboHorse, a six-legged cyber-hor
 - Multiple weapons with different firing patterns
 - Special abilities that can be activated with tokens collected from defeated enemies
 - Obstacles to jump over or smash
+- Jump onto enemies to deal 30 damage (60 while powered up) and bounce safely; side contact still hurts
 - Multiple enemy types with different behaviors
 - Power-ups to enhance your abilities
 - Progressive difficulty with multiple levels
