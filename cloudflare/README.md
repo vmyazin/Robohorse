@@ -16,7 +16,7 @@ The target is one Cloudflare Worker with Static Assets and a D1 leaderboard. The
 1. Authenticate with `pnpm exec wrangler login`, then confirm the account with `pnpm exec wrangler whoami`.
 2. Create the destination: `pnpm exec wrangler d1 create robohorse-scores`. Put the returned `database_id` in `wrangler.jsonc`. If multiple accounts are available, set the intended `account_id` too. Verify that rate-limit namespace `4270` is unused by other Workers, or assign an unused positive integer.
 3. Apply the schema: `pnpm exec wrangler d1 migrations apply DB --remote`.
-4. Deploy a preview using `pnpm deploy:cloudflare` before adding a custom domain or route. It uses the Worker’s workers.dev hostname. Preview writes must use a separate D1 database if preview traffic will be accepted after final production data is imported; do not mix throwaway scores into the production import destination.
+4. The `preview` environment uses the separate `robohorse-scores-preview` database in the Rapid Systems account. Apply its schema with `pnpm exec wrangler d1 migrations apply DB --remote --env preview`, then deploy with `pnpm build:cloudflare && pnpm exec wrangler deploy --env preview`. This publishes `robohorse-preview` on workers.dev. The default production binding remains a placeholder until the final database is created; `pnpm deploy:cloudflare` targets that default environment. Keep preview scores separate from the production import destination.
 5. Verify gameplay, audio, menu/retry, and score submission. The health endpoint queries D1, so it detects a missing schema or unusable binding.
 
 ## Preserve existing scores and cut over
