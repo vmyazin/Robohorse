@@ -166,3 +166,40 @@ test('HUD keeps labels inside their cells and level announcement below it', asyn
     const announcement = await page.locator('#level-announcement').boundingBox();
     expect(announcement.y).toBeGreaterThan(hud.y + hud.height);
 });
+
+test('player name persists across retries, both ending screens, edits and reloads in this tab', async ({ page }) => {
+    await page.route('**/api/scores', route => route.fulfill({ json: [] }));
+    await page.goto('/robohorse/');
+    await page.locator('#start-instruction').click();
+    await page.evaluate(() => { window.__game.score = 42; window.__game.endGame(); });
+    await page.keyboard.type('nova', { delay: 120 });
+    await expect.poll(() => page.evaluate(() => sessionStorage.getItem('robohorse.playerName'))).toBe('NOVA__');
+    await page.locator('#restart-instruction').click();
+    await page.evaluate(() => window.__game.showMissionComplete());
+    await expect(page.locator('.name-char')).toHaveText(['N', 'O', 'V', 'A', '_', '_']);
+    await page.keyboard.type('luna', { delay: 120 });
+    await page.reload();
+    await page.locator('#start-instruction').click();
+    await page.evaluate(() => { window.__game.score = 42; window.__game.endGame(); });
+    await expect(page.locator('.game-over-name-char')).toHaveText(['L', 'U', 'N', 'A', '_', '_']);
+    await page.locator('#restart-instruction').click();
+    await page.evaluate(() => { window.__game.score = 10; window.__game.endGame(); });
+    await expect(page.locator('.game-over-name-char')).toHaveText(['L', 'U', 'N', 'A', '_', '_']);
+});
+
+test('blocked session storage does not break name entry or retry', async ({ page }) => {
+    await page.addInitScript(() => {
+        Object.defineProperty(window, 'sessionStorage', { value: {
+            getItem() { throw new Error('Storage blocked'); },
+            setItem() { throw new Error('Storage blocked'); },
+        } });
+    });
+    await page.route('**/api/scores', route => route.fulfill({ json: [] }));
+    await page.goto('/robohorse/');
+    await page.locator('#start-instruction').click();
+    await page.evaluate(() => { window.__game.score = 42; window.__game.endGame(); });
+    await page.keyboard.type('a');
+    await page.locator('#restart-instruction').click();
+    await page.evaluate(() => { window.__game.score = 42; window.__game.endGame(); });
+    await expect(page.locator('.game-over-name-char').first()).toHaveText('A');
+});

@@ -47,7 +47,7 @@
                 currentIndex: 0,
                 isSubmitting: false
             }">
-                <p>Enter your name:</p>
+                <p>Your name:</p>
                 <div class="name-input-container">
                     <template x-for="(char, index) in name" :key="index">
                         <div class="name-char" 
@@ -87,7 +87,7 @@
                 currentIndex: 0,
                 isSubmitting: false
             }">
-                <p>Enter your name:</p>
+                <p>Your name:</p>
                 <div class="name-input-container">
                     <!-- Manual rendering of character elements for reliability -->
                     <div class="game-over-name-char" :class="{ 'active': currentIndex === 0 }" x-text="name[0]"></div>

@@ -86,13 +86,13 @@ class Game {
         this.nameInputSection = document.getElementById('name-input-section');
         this.nameChars = Array.from(document.querySelectorAll('.name-char'));
         this.currentNameIndex = 0;
-        this.playerName = ['_', '_', '_', '_', '_', '_'];
+        this.playerName = this.restorePlayerName();
         
         // Game Over name input state
         this.gameOverNameInputSection = document.getElementById('game-over-name-input-section');
         this.gameOverNameChars = Array.from(document.querySelectorAll('.game-over-name-char'));
         this.gameOverCurrentNameIndex = 0;
-        this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
+        this.gameOverPlayerName = this.restorePlayerName();
         
         // Weapons
         this.weapons = [
@@ -333,12 +333,12 @@ class Game {
         // Reset name input for mission complete
         this.nameChars.forEach(char => char.classList.remove('active'));
         this.currentNameIndex = 0;
-        this.playerName = ['_', '_', '_', '_', '_', '_'];
+        this.playerName = this.restorePlayerName();
         
         // Reset name input for game over
         this.gameOverNameChars.forEach(char => char.classList.remove('active'));
         this.gameOverCurrentNameIndex = 0;
-        this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
+        this.gameOverPlayerName = this.restorePlayerName();
         
         // Bind event listeners
         this.bindEventListeners();
@@ -401,12 +401,12 @@ class Game {
                 setTimeout(() => {
                     this.gameOverNameChars = Array.from(document.querySelectorAll('.game-over-name-char'));
                     this.gameOverCurrentNameIndex = 0;
-                    this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
+                    this.gameOverPlayerName = this.restorePlayerName();
                     this.updateNameDisplay(false);
                 }, 100);
             } else {
                 this.gameOverCurrentNameIndex = 0;
-                this.gameOverPlayerName = ['_', '_', '_', '_', '_', '_'];
+                this.gameOverPlayerName = this.restorePlayerName();
                 
                 // Update the name display to show the cursor on the first character
                 this.updateNameDisplay(false);
@@ -837,7 +837,7 @@ class Game {
         // Initialize name input
         this.nameChars = Array.from(document.querySelectorAll('.name-char'));
         this.currentNameIndex = 0;
-        this.playerName = ['_', '_', '_', '_', '_', '_'];
+        this.playerName = this.restorePlayerName();
         this.updateNameDisplay(true);
         
         // Show name input section
@@ -859,6 +859,24 @@ class Game {
         // Stop background music and play victory sound
         this.soundManager.stopBackgroundMusic();
         this.soundManager.playSound('victory', 0.7);
+    }
+
+    restorePlayerName() {
+        try {
+            this.rememberedName = sessionStorage.getItem('robohorse.playerName') || '';
+        } catch {
+            // Storage may be unavailable; retain the name for this game instance.
+        }
+        return (this.rememberedName || '').toUpperCase().replace(/[^A-Z0-9 _]/g, '').slice(0, 6).padEnd(6, '_').split('');
+    }
+
+    rememberPlayerName(characters) {
+        this.rememberedName = characters.join('');
+        try {
+            sessionStorage.setItem('robohorse.playerName', this.rememberedName);
+        } catch {
+            // Remembering a name must never prevent play or score submission.
+        }
     }
 
     handleNameInput(key) {
@@ -922,6 +940,7 @@ class Game {
             }
         }
         
+        this.rememberPlayerName(playerName);
         // Update the display
         this.updateNameDisplay(onMissionComplete);
     }
