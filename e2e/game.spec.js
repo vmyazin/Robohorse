@@ -45,6 +45,8 @@ test('Elon easter egg loads and slides into gameplay', async ({ page }) => {
         const effect = window.__game.effectsManager.elonToasty;
         return effect.image.complete && effect.image.naturalWidth > 0;
     })).toBe(true);
+    // x starts at zero, so wait for activation before checking that it has slid in.
+    await expect.poll(() => page.evaluate(() => window.__game.effectsManager.elonToasty.active)).toBe(true);
     await expect.poll(() => page.evaluate(() => window.__game.effectsManager.elonToasty.x))
         .toBeLessThan(1000);
     expect(await page.evaluate(() => window.__game.effectsManager.elonToasty.active)).toBe(true);

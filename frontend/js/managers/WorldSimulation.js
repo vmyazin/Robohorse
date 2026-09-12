@@ -241,6 +241,9 @@ export function updateWorld(game, timeScale = 1) {
             }
         }
         
+        // Resolve animation after floor/platform collisions and before computing shot origins.
+        game.player.updateAppearance(timeScale, game.gameSpeed);
+
         // Shooting
         if (game.inputManager.keys[' ']) {
             game.player.shoot(game.frameCount, game.projectiles, game.createParticles.bind(game), (weaponName) => {
