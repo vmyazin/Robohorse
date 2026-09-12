@@ -181,4 +181,4 @@ Frontend deployment protects `/api/`, `/.env`, `/node_modules/`, and `/tmp/` on 
 
 ### Cloudflare target deployment
 
-Workers Static Assets and D1 support is prepared alongside the existing PostgreSQL deployment. See [the Cloudflare migration guide](cloudflare/README.md) for local testing, account setup, historical-score import, verification, and traffic cutover. Run `pnpm dev:cloudflare` locally or `pnpm test:cloudflare` for the isolated integration suite. The production Worker and fresh D1 leaderboard are deployed. Public traffic cutover still requires enabling Cloudflare proxying for the existing `games.smoxu.com` DNS record.
+Workers Static Assets and D1 support is deployed at `https://games.smoxu.com/robohorse/` with a fresh leaderboard. See [the Cloudflare migration guide](cloudflare/README.md) for local testing, deployment, and operations. Run `pnpm dev:cloudflare` locally or `pnpm test:cloudflare` for the isolated integration suite. Cloudflare proxies only the game routes to the Worker; the hostname root continues to serve the Vercel games portal.
