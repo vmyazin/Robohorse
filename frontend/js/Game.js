@@ -481,30 +481,21 @@ class Game {
     }
 
     spawnEnemy() {
-        // Different types of enemies with reduced speeds
         const enemyTypes = [
-            { color: '#f00', width: 30, height: 30, speed: 1.0, health: 30, maxHealth: 30, points: 100, tentacles: 6 },  // Scout Squid (was 1.5)
-            { color: '#a00', width: 40, height: 40, speed: 0.6, health: 60, maxHealth: 60, points: 200, tentacles: 8 },  // Heavy Squid (was 0.8)
-            { color: '#faa', width: 25, height: 25, speed: 1.3, health: 20, maxHealth: 20, points: 150, tentacles: 5 },  // Stealth Squid (was 2.0)
-            { color: '#f55', width: 50, height: 50, speed: 0.4, health: 100, maxHealth: 100, points: 300, tentacles: 10 } // Juggernaut Squid (was 0.5)
+            { pattern: 'drone', color: '#f55', width: 30, height: 30, speed: 1.3, health: 30, points: 100, tentacles: 6 },
+            { pattern: 'ground', color: '#e9a34b', width: 34, height: 32, speed: 0.8, health: 40, points: 150, tentacles: 4 },
+            { pattern: 'shield', color: '#598bb8', width: 44, height: 44, speed: 0.6, health: 60, points: 200, tentacles: 8 }
         ];
-        
-        // Select a random enemy type based on game progress
-        const typeIndex = Math.min(Math.floor(this.score / 1000), enemyTypes.length - 1);
-        const type = enemyTypes[Math.floor(Math.random() * (typeIndex + 1))];
-        
-        // Random position outside the screen
-        let x, y;
-        if (Math.random() < 0.5) {
-            x = Math.random() < 0.5 ? -type.width : this.canvas.width;
-            y = Math.random() * this.canvas.height;
-        } else {
-            x = Math.random() * this.canvas.width;
-            y = -type.height;
+        const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+        const y = type.pattern === 'drone'
+            ? 100 + Math.random() * Math.max(0, this.canvas.height - 320)
+            : this.canvas.height - 50 - type.height;
+        // Paired ground units share timing and velocity, preserving their spacing.
+        const count = type.pattern === 'ground' ? 2 : 1;
+        for (let i = 0; i < count; i++) {
+            this.enemies.push(new Enemy(this.canvas.width + 12 + i * 66, y, type, this.canvas));
         }
-        
-        this.enemies.push(new Enemy(x, y, type, this.canvas));
-        
+
         // Play alien whisper sound occasionally when enemies spawn
         if (Math.random() < 0.3) { // 30% chance to play the sound
             this.soundManager.playAlienWhisper();

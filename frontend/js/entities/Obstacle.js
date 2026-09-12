@@ -185,13 +185,13 @@ class Obstacle {
         }
     }
     
-    takeDamage(damage) {
+    takeDamage(damage, hitStrength = 1) {
         if (this.health !== Infinity) {
-            // For boxes, we ignore the damage amount and just reduce health by 1
-            // This ensures it always takes exactly 2 jumps
+            // Containers and vehicles use weighted hits; player hits and jumps count as one.
             if (this.type === 'box') {
-                this.health -= 1;
-                this.jumpCount += 1;
+                const previousHitCount = this.jumpCount;
+                this.health -= hitStrength;
+                this.jumpCount += hitStrength;
                 
                 // Activate smash effect for boxes
                 this.isBeingSmashed = true;
@@ -199,7 +199,7 @@ class Obstacle {
                 this.compressionAmount = 12; // Max compression - increased for better effect
                 
                 // Generate random cracks if first jump
-                if (this.jumpCount === 1) {
+                if (previousHitCount < 1 && this.jumpCount >= 1) {
                     const crackCount = 3 + Math.floor(Math.random() * 2); // 3-4 cracks
                     for (let i = 0; i < crackCount; i++) {
                         this.cracks.push({
@@ -215,7 +215,7 @@ class Obstacle {
                     this.woodGrainColor = this.containsMushroom ? '#8d5a3b' : '#7d5a3b';
                 } 
                 // Add more cracks on second jump
-                else if (this.jumpCount === 2) {
+                else if (previousHitCount < 2 && this.jumpCount >= 2) {
                     const crackCount = 4 + Math.floor(Math.random() * 3); // 4-6 more cracks
                     for (let i = 0; i < crackCount; i++) {
                         this.cracks.push({
@@ -232,13 +232,13 @@ class Obstacle {
                 }
             } else {
                 // For non-box obstacles, use normal damage calculation
-                this.health -= damage;
+                this.health -= damage * hitStrength;
             }
             
             return this.health <= 0;
         } else if ((this.type === 'car' || this.type === 'cybertruck') && this.canExplode) {
             // Cars and Cybertrucks can be damaged to trigger explosion
-            this.explosionTriggerCount++;
+            this.explosionTriggerCount += hitStrength;
             
             // Add damage visual at random position on the vehicle
             this.addDamageVisual();
@@ -331,8 +331,8 @@ class Obstacle {
                     ctx.shadowBlur = 0;
                 }
                 
-                // Add a visual indicator of jump count
-                if (this.jumpCount === 1) {
+                // One player hit can finish a container with at most one health left.
+                if (this.health > 0 && this.health <= 1) {
                     // Draw a "1 more!" indicator
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
                     ctx.font = '10px Arial';

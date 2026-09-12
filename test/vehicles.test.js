@@ -27,3 +27,25 @@ test('all standard variants retain five-hit destruction; Tesla retains ten hits 
         assert.equal(tesla.takeDamage(1), true);
     } finally { Math.random = original; }
 });
+
+test('enemy half-strength hits destroy containers and vehicles at double the hit count', () => {
+    for (const [type, hits] of [['box', 4], ['car', 10], ['cybertruck', 20]]) {
+        const obstacle = new Obstacle(0, 0, type, { width: 1000, height: 600 });
+        for (let i = 1; i < hits; i++) assert.equal(obstacle.takeDamage(5, 0.5), false, `${type} hit ${i}`);
+        assert.equal(obstacle.takeDamage(5, 0.5), true, type);
+    }
+});
+
+test('mixed player and enemy hits accumulate and container cracks cross fractional thresholds', () => {
+    const box = new Obstacle(0, 0, 'box', { width: 1000, height: 600 });
+    assert.equal(box.takeDamage(5, 0.5), false);
+    assert.equal(box.health, 1.5);
+    assert.equal(box.takeDamage(15), false);
+    assert.equal(box.health, 0.5);
+    assert.ok(box.cracks.length > 0);
+    assert.equal(box.takeDamage(5, 0.5), true);
+    const car = new Obstacle(0, 0, 'car', { width: 1000, height: 600 });
+    for (let i = 0; i < 4; i++) car.takeDamage(15);
+    assert.equal(car.takeDamage(5, 0.5), false);
+    assert.equal(car.takeDamage(5, 0.5), true);
+});

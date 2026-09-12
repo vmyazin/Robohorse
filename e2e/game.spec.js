@@ -243,3 +243,86 @@ test('blocked session storage does not break name entry or retry', async ({ page
     await page.evaluate(() => { window.__game.score = 42; window.__game.endGame(); });
     await expect(page.locator('.game-over-name-char').first()).toHaveText('A');
 });
+
+test('enemy bullets hit vehicle far edges at half strength and are consumed', async ({ page }) => {
+    await page.route('**/api/scores', route => route.fulfill({ json: [] }));
+    await page.goto('/robohorse/');
+    await page.keyboard.press('Space');
+    const result = await page.evaluate(() => {
+        const game = window.__game;
+        game.levelManager.loadLevel(2);
+        const car = game.obstacles.find(obstacle => obstacle.type === 'cybertruck');
+        game.obstacles = [car];
+        game.enemies = [];
+        game.projectiles = [];
+        car.x = 500;
+        car.y = 200;
+        const shot = { x: car.x + car.width - 20, y: car.y + 20,
+            width: 7, height: 7, velX: -5, velY: 0, damage: 5,
+            color: '#ffbf69', isPlayerProjectile: false };
+        game.projectiles.push(shot);
+        game.update(1);
+        return { hits: car.explosionTriggerCount, consumed: !game.projectiles.includes(shot) };
+    });
+    expect(result).toEqual({ hits: 0.5, consumed: true });
+});
+
+test('enemy attack cues, shots and player impacts keep rendering and simulation alive', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.route('**/api/scores', route => route.fulfill({ json: [] }));
+    await page.goto('/robohorse/');
+    await page.keyboard.press('Space');
+    await page.evaluate(() => {
+        const game = window.__game;
+        game.obstacles = [];
+        game.enemies = [];
+        game.spawnEnemy();
+        const enemy = game.enemies[0];
+        game.enemies = [enemy];
+        enemy.x = 500;
+        enemy.attackTimer = 1;
+        game.player.health = 1000;
+        for (const pattern of ['drone', 'ground', 'shield']) {
+            enemy.pattern = pattern;
+            enemy.attackState = 'advance';
+            enemy.attackTimer = 1;
+            for (let frame = 0; frame < 100; frame++) {
+                game.update(1);
+                game.draw();
+            }
+        }
+        game.projectiles.push({ x: game.player.x + 10, y: game.player.y + 10,
+            width: 7, height: 7, velX: 0, velY: 0, damage: 5,
+            color: '#ffbf69', isPlayerProjectile: false });
+        game.update(1);
+        game.draw();
+    });
+    const frame = await page.evaluate(() => window.__game.frameCount);
+    await expect.poll(() => page.evaluate(() => window.__game.frameCount)).toBeGreaterThan(frame);
+    expect(errors).toEqual([]);
+});
+
+test('sustained enemy combat renders every frame', async ({ page }) => {
+    await page.route('**/api/scores', route => route.fulfill({ json: [] }));
+    await page.goto('/robohorse/');
+    await page.keyboard.press('Space');
+    await page.evaluate(() => {
+        const game = window.__game;
+        game.player.health = 100000;
+        game.levelManager.loadLevel(2);
+        const Obstacle = game.obstacles.find(obstacle => obstacle.type === 'cybertruck').constructor;
+        const box = new Obstacle(500, 200, 'box', game.canvas);
+        game.obstacles = [box];
+        // Render intact and fractional damage states, including the one-hit indicator.
+        game.draw();
+        for (let hit = 0; hit < 3; hit++) {
+            box.takeDamage(5, 0.5);
+            game.draw();
+        }
+        for (let i = 0; i < 1800; i++) {
+            game.update(1);
+            game.draw();
+        }
+    });
+});

@@ -1,6 +1,6 @@
 import { lightenColor, roundRect } from '../utils/helpers.ts';
 
-/** @typedef {{width:number,height:number,speed:number,health:number,maxHealth?:number,points:number,color:string,tentacles?:number}} EnemyType */
+/** @typedef {{width:number,height:number,speed:number,health:number,maxHealth?:number,points:number,color:string,tentacles?:number,pattern?:string,attackDelay?:number}} EnemyType */
 /** @typedef {(x:number,y:number,amount:number,color:string)=>void} Particles */
 class Enemy {
     /** @param {number} x @param {number} y @param {EnemyType} type @param {HTMLCanvasElement} canvas */
@@ -31,235 +31,66 @@ class Enemy {
         this.damageFeedbackTimer = 0;
         this.damageFeedbackDuration = 10; // 10 frames flash when damaged
         
-        // Increase aggression factor for more curious behavior
-        this.aggressionFactor = 1.5 + Math.random() * 0.5; // 1.5-2.0 for more aggressive pursuit
-        
-        // Add curiosity behavior parameters
-        this.curiosityRadius = 300; // Distance at which enemy becomes curious
-        this.orbitSpeed = 0.02; // Speed of orbiting behavior
-        this.orbitAngle = Math.random() * Math.PI * 2; // Random starting angle
-        this.behaviorState = 'curious'; // Can be 'curious' or 'aggressive'
-        this.stateSwitchTimer = 0;
-        this.stateSwitchInterval = 120; // Frames before considering state switch
-        
-        // Add a target position offset to create more varied movement
-        this.targetOffsetX = (Math.random() - 0.5) * 80;
-        this.targetOffsetY = (Math.random() - 0.5) * 80;
-        
-        // Reduce scrolling compensation to fix slowdown
-        this.scrollCompensation = 0.8; // Reduced from 1.0 to improve performance
-        
-        // Add a spawn timer to ensure enemies don't move too aggressively at first
-        this.spawnTimer = 30; // frames to gradually increase speed
-        
-        // Add a movement update frequency to reduce calculations
-        this.movementUpdateFrequency = 10; // Increased from 5 to 10 to improve performance
-        
-        console.log("Enhanced enemy created at", x, y, "with health", this.health, "and aggression", this.aggressionFactor);
+        this.pattern = type.pattern ?? 'drone';
+        this.age = 0;
+        this.baseY = Math.max(60, Math.min(y, canvas.height - this.height - 150));
+        this.attackState = 'advance';
+        this.attackTimer = 90 + (type.attackDelay ?? 0);
+        this.cueDuration = this.pattern === 'shield' ? 54 : 42;
+        this.aimX = -1;
+        this.aimY = 0;
     }
-    
+
+    get shieldActive() {
+        return this.pattern === 'shield' && this.attackState === 'advance';
+    }
+
     /** @param {import('../utils/helpers.ts').Bounds} player @param {number} frameCount @param {Particles} createParticles @param {number} timeScale */
     update(player, frameCount, createParticles, timeScale = 1) {
-        // Handle spawn timer
-        if (this.spawnTimer > 0) {
-            this.spawnTimer--;
-            // Gradually increase velocity during spawn period
-            this.x -= this.scrollCompensation * (1 - this.spawnTimer/30) * timeScale;
-            return null;
-        }
-        
-        // Decrement direction change timer if active
-        if (this.directionChangeTimer > 0) {
-            this.directionChangeTimer--;
-        }
-        
-        // Only update movement calculations every few frames to improve performance
-        if (frameCount % this.movementUpdateFrequency === 0) {
-            // Update target offset occasionally to create varied movement
-            if (frameCount % 90 === 0) {
-                this.targetOffsetX = (Math.random() - 0.5) * 80;
-                this.targetOffsetY = (Math.random() - 0.5) * 80;
-            }
-            
-            // Calculate distance to player with offset
-            const targetX = player.x + this.targetOffsetX;
-            const targetY = player.y + this.targetOffsetY;
-            const dx = targetX - this.x;
-            const dy = targetY - this.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            
-            // Update behavior state
-            if (this.stateSwitchTimer <= 0) {
-                if (dist < this.curiosityRadius) {
-                    // Close to player - switch between curious and aggressive
-                    this.behaviorState = Math.random() < 0.7 ? 'curious' : 'aggressive';
-                } else {
-                    // Far from player - become curious
-                    this.behaviorState = 'curious';
-                }
-                this.stateSwitchTimer = this.stateSwitchInterval;
-            } else {
-                this.stateSwitchTimer--;
-            }
-            
-            // Enemy AI - different behaviors based on state
-            if (this.directionChangeTimer === 0 || dist > 200) {
-                if (this.behaviorState === 'curious') {
-                    // Orbit around the player when curious
-                    this.orbitAngle += this.orbitSpeed * timeScale;
-                    const orbitRadius = Math.min(dist, this.curiosityRadius * 0.7);
-                    const orbitX = targetX + Math.cos(this.orbitAngle) * orbitRadius;
-                    const orbitY = targetY + Math.sin(this.orbitAngle) * orbitRadius;
-                    
-                    // Calculate direction to orbit position
-                    const orbitDx = orbitX - this.x;
-                    const orbitDy = orbitY - this.y;
-                    const orbitDist = Math.sqrt(orbitDx*orbitDx + orbitDy*orbitDy);
-                    
-                    // Set velocity based on orbit position
-                    if (orbitDist > 0) {
-                        this.velX = (orbitDx / orbitDist) * this.speed * timeScale;
-                        this.velY = (orbitDy / orbitDist) * this.speed * timeScale;
-                    }
-                } else {
-                    // Direct pursuit when aggressive
-                    if (dist > 0) {
-                        this.velX = (dx / dist) * this.speed * this.aggressionFactor * timeScale;
-                        this.velY = (dy / dist) * this.speed * this.aggressionFactor * timeScale;
-                    }
-                }
-                
-                this.directionChangeTimer = this.maxDirectionChangeTime;
-            }
-            
-            // Enhanced movement patterns with less randomness
-            if (frameCount % 30 === 0 && Math.random() < 0.3) {
-                // Add slight randomness to movement direction
-                const randomAngle = (Math.random() - 0.5) * Math.PI/10;
-                const angle = Math.atan2(dy, dx) + randomAngle;
-                
-                if (dist > 0) { // Prevent division by zero
-                    // Add scrolling compensation
-                    this.velX = Math.cos(angle) * this.speed * this.aggressionFactor + this.scrollCompensation;
-                    this.velY = Math.sin(angle) * this.speed * this.aggressionFactor;
-                }
-                
-                // Create visual tentacle animation effect - reduce particle count
-                createParticles(
-                    this.x + this.width/2, 
-                    this.y + this.height/2, 
-                    2, // Reduced from 3
-                    this.color
-                );
-            }
-            
-            // Improved screen boundaries for enemies
-            const bounceStrength = 0.9;
-            
-            // Left boundary - stricter to prevent enemies from going too far left
-            if (this.x < -50) {
-                this.velX = Math.abs(this.velX) * bounceStrength;
-                this.x = -50;
-            }
-            
-            // Right boundary - stricter to prevent enemies from going too far right
-            if (this.x > this.canvas.width + 50) {
-                this.velX = -Math.abs(this.velX) * bounceStrength;
-                this.x = this.canvas.width + 50;
-            }
-            
-            // Top boundary
-            if (this.y < 0) {
-                this.velY = Math.abs(this.velY) * bounceStrength;
-                this.y = 0;
-            }
-            
-            // Bottom boundary - Improved to prevent enemies from going too far below floor level
-            // The canvas.height - this.height - 30 limit ensures enemies stay at least partly visible
-            // and accessible above the floor level (which is at canvas.height - 50)
-            const floorLevel = this.canvas.height - 50; // Same as the floor level in Player.js
-            const accessibilityMargin = 20; // How much of the enemy should remain above floor for accessibility
-            
-            if (this.y + this.height > floorLevel + accessibilityMargin) {
-                this.velY = -Math.abs(this.velY) * bounceStrength;
-                this.y = floorLevel + accessibilityMargin - this.height;
-            }
-            
-            // If enemy is far from player, increase speed to catch up
-            if (dist > this.canvas.width / 4) {
-                const catchUpFactor = 1.2; // Reduced from 1.5
-                this.x += this.velX * catchUpFactor;
-                this.y += this.velY * catchUpFactor;
-            } else {
-                // Normal movement
-                this.x += this.velX;
-                this.y += this.velY;
-            }
-            
-            // Ensure minimum velocity to prevent enemies from getting stuck
-            const minVelocity = 0.5;
-            if (Math.abs(this.velX) < minVelocity && Math.abs(this.velY) < minVelocity) {
-                const angle = Math.random() * Math.PI * 2;
-                this.velX = Math.cos(angle) * this.speed * 0.8 + this.scrollCompensation;
-                this.velY = Math.sin(angle) * this.speed * 0.8;
-            }
+        this.age += timeScale;
+        this.damageFeedbackTimer = Math.max(0, this.damageFeedbackTimer - timeScale);
+        this.tentacles.forEach(tentacle => { tentacle.angle += tentacle.speed * timeScale; });
+        const advancing = this.attackState === 'advance';
+        this.velX = advancing ? -this.speed * 1.6 : 0;
+        this.x += this.velX * timeScale;
+        if (this.pattern === 'drone') {
+            // Pause on the arc while aiming so the cue and muzzle stay aligned.
+            if (advancing) this.y = this.baseY + Math.sin(this.age / 45) * 65;
+            this.y = Math.max(20, Math.min(this.y, this.canvas.height - 50 - this.height));
         } else {
-            // On frames where we don't recalculate, just apply the current velocity
-            this.x += this.velX;
-            this.y += this.velY;
+            this.y = this.canvas.height - 50 - this.height;
         }
-        
-        // Occasionally shoot at player if close enough - reduce shooting frequency
-        const dist = Math.sqrt(
-            Math.pow(player.x - this.x, 2) + 
-            Math.pow(player.y - this.y, 2)
-        );
-        
-        if (dist < 300 && frameCount % 120 === 0 && Math.random() < 0.3) { // Reduced from 90 frames and 0.4 probability
-            const dx = player.x - this.x;
-            const dy = player.y - this.y;
-            const normalizedDist = Math.sqrt(dx*dx + dy*dy);
-            
+        this.attackTimer -= timeScale;
+        // Never begin a warning or fire outside the visible play area.
+        if (this.x < 0 || this.x + this.width > this.canvas.width) return null;
+        if (this.attackTimer > 0) return null;
+        if (advancing) {
+            const dx = player.x + player.width / 2 - (this.x + this.width / 2);
+            const dy = player.y + player.height / 2 - (this.y + this.height / 2);
+            const distance = Math.hypot(dx, dy);
+            this.aimX = distance > 0 ? dx / distance : -1;
+            this.aimY = distance > 0 ? dy / distance : 0;
+            this.attackState = 'telegraph';
+            this.attackTimer = this.cueDuration;
+        } else if (this.attackState === 'telegraph') {
+            this.attackState = 'recover';
+            this.attackTimer = 36;
             return {
-                x: this.x + this.width/2,
-                y: this.y + this.height/2,
-                width: 5,
-                height: 5,
-                speed: 5,
-                velX: (dx / normalizedDist) * 5,
-                velY: (dy / normalizedDist) * 5,
-                damage: 5,
-                color: this.color,
-                isPlayerProjectile: false
+                x: this.x + this.width / 2, y: this.y + this.height / 2,
+                width: 7, height: 7, speed: 5,
+                velX: this.aimX * 5, velY: this.aimY * 5,
+                damage: 5, color: '#ffbf69', isPlayerProjectile: false
             };
+        } else {
+            this.attackState = 'advance';
+            this.attackTimer = 120;
         }
-        
-        // Apply velocity with scroll compensation
-        this.x += this.velX - this.scrollCompensation * timeScale;
-        this.y += this.velY;
-        
-        // Apply boundaries to keep enemies on screen
-        if (this.y < 0) this.y = 0;
-        if (this.y + this.height > this.canvas.height - 50) this.y = this.canvas.height - 50 - this.height;
-        
-        // Decrement damage feedback timer if active
-        if (this.damageFeedbackTimer > 0) {
-            this.damageFeedbackTimer--;
-        }
-        
-        // Animate tentacles
-        if (this.tentacles) {
-            this.tentacles.forEach(tentacle => {
-                tentacle.angle += tentacle.speed * timeScale;
-            });
-        }
-        
         return null;
     }
-    
+
     /** @param {number} damage */
     takeDamage(damage) {
-        this.health -= damage;
+        this.health -= this.shieldActive ? damage * 0.2 : damage;
         
         // Activate damage visual feedback
         this.damageFeedbackTimer = this.damageFeedbackDuration;
@@ -272,7 +103,6 @@ class Enemy {
         // Apply damage visual effect if active
         const originalColor = this.color;
         if (this.damageFeedbackTimer > 0) {
-            this.damageFeedbackTimer--;
             // Flash white or red to indicate damage
             this.color = this.damageFeedbackTimer % 2 === 0 ? '#ff3333' : '#ffffff';
         }
@@ -472,6 +302,39 @@ class Enemy {
         
         ctx.shadowBlur = 0;
         
+        const cx = this.x + this.width / 2;
+        const cy = this.y + this.height / 2;
+        if (this.pattern !== 'drone') {
+            ctx.fillStyle = '#233747';
+            roundRect(ctx, this.x - 4, this.y + this.height - 10, this.width + 8, 10, 4, true, false);
+        }
+        if (this.pattern === 'shield') {
+            ctx.strokeStyle = this.shieldActive ? '#72e5ff' : '#ffbf69';
+            ctx.lineWidth = this.shieldActive ? 4 : 2;
+            ctx.beginPath();
+            const opening = this.shieldActive ? 0 : 0.7;
+            ctx.arc(cx, cy, this.width * 0.7, Math.PI / 2 + opening, Math.PI * 1.5 - opening);
+            ctx.stroke();
+        }
+        if (this.attackState === 'telegraph') {
+            const charge = 1 - this.attackTimer / this.cueDuration;
+            ctx.strokeStyle = '#ffbf69';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 6]);
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx + this.aimX * 180, cy + this.aimY * 180);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.arc(cx, cy, this.width * 0.65 + 12 * (1 - charge), 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = '#fff3c4';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 3 + charge * 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
         // Restore original color after drawing
         this.color = originalColor;
         

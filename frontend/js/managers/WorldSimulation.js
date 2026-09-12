@@ -66,11 +66,6 @@ export function updateWorld(game, timeScale = 1) {
                 // Get nearby projectiles - use rectangle bounds check instead of filter
                 for (let j = game.projectiles.length - 1; j >= 0; j--) {
                     const proj = game.projectiles[j];
-                    if (!proj.isPlayerProjectile) continue;
-                    
-                    // Quick bounds check before detailed collision
-                    if (Math.abs(proj.x - obstacle.x) > 100 || Math.abs(proj.y - obstacle.y) > 100) continue;
-                    
                     if (isColliding(proj, obstacle)) {
                         // Remove projectile
                         game.projectiles.splice(j, 1);
@@ -82,7 +77,7 @@ export function updateWorld(game, timeScale = 1) {
                         }
                         
                         // Handle obstacle damage
-                        const shouldExplode = obstacle.takeDamage(proj.damage);
+                        const shouldExplode = obstacle.takeDamage(proj.damage, proj.isPlayerProjectile ? 1 : 0.5);
                         
                         if (shouldExplode || (obstacle.type === 'box' && obstacle.health <= 0)) {
                             // Play explosion sound for cars/cybertrucks or break sound for boxes
@@ -345,7 +340,8 @@ export function updateWorld(game, timeScale = 1) {
             const enemy = game.enemies[i];
             const previousEnemy = { x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height };
 
-            enemy.update(game.player, game.frameCount, game.createParticles.bind(game), timeScale);
+            const enemyShot = enemy.update(game.player, game.frameCount, game.createParticles.bind(game), timeScale);
+            if (enemyShot) game.projectiles.push(enemyShot);
             
             // Remove enemies that are off-screen to the left or too far to the right
             if (enemy.x + enemy.width < -100 || enemy.x > game.canvas.width + 300) {
