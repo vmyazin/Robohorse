@@ -9,14 +9,14 @@ The target is one Cloudflare Worker with Static Assets and a D1 leaderboard. The
 - `pnpm check:cloudflare`: production build and deployment dry run.
 - `pnpm typecheck` and `pnpm test`: shared API validation and PostgreSQL-to-SQLite export verification, alongside existing checks.
 
-`wrangler.jsonc` deliberately contains a local-only database ID. Deployment requires the real account/database configuration below. Test state and exports are ignored by Git. Only the generated frontend artifact is uploaded as static assets; API source and environment files are outside that directory.
+`wrangler.jsonc` binds production to `robohorse-scores` and preview to a separate database. The user authorized a fresh production leaderboard because the old server is unavailable; historical scores were not imported. Test state and exports are ignored by Git. Only the generated frontend artifact is uploaded as static assets; API source and environment files are outside that directory.
 
 ## Account setup and preview
 
 1. Authenticate with `pnpm exec wrangler login`, then confirm the account with `pnpm exec wrangler whoami`.
 2. Create the destination: `pnpm exec wrangler d1 create robohorse-scores`. Put the returned `database_id` in `wrangler.jsonc`. If multiple accounts are available, set the intended `account_id` too. Verify that rate-limit namespace `4270` is unused by other Workers, or assign an unused positive integer.
 3. Apply the schema: `pnpm exec wrangler d1 migrations apply DB --remote`.
-4. The `preview` environment uses the separate `robohorse-scores-preview` database in the Rapid Systems account. Apply its schema with `pnpm exec wrangler d1 migrations apply DB --remote --env preview`, then deploy with `pnpm build:cloudflare && pnpm exec wrangler deploy --env preview`. This publishes `robohorse-preview` on workers.dev. The default production binding remains a placeholder until the final database is created; `pnpm deploy:cloudflare` targets that default environment. Keep preview scores separate from the production import destination.
+4. The `preview` environment uses the separate `robohorse-scores-preview` database in the Rapid Systems account. Apply its schema with `pnpm exec wrangler d1 migrations apply DB --remote --env preview`, then deploy with `pnpm build:cloudflare && pnpm exec wrangler deploy --env preview`. This publishes `robohorse-preview` on workers.dev. The default production binding points to `robohorse-scores`; `pnpm deploy:cloudflare` targets that default environment. Keep preview scores separate from the production import destination.
 5. Verify gameplay, audio, menu/retry, and score submission. The health endpoint queries D1, so it detects a missing schema or unusable binding.
 
 ## Preserve existing scores and cut over
@@ -39,3 +39,7 @@ The selected production URL is `https://games.smoxu.com/robohorse/`. The default
 - Frontend player names remain in sessionStorage; they are not database credentials or authenticated identities.
 
 References: [Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/), [D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/), [D1 import/export](https://developers.cloudflare.com/d1/best-practices/import-export-data/), [Workers rate limiting](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/).
+
+## Current cutover status
+
+Production Worker `robohorse` is deployed with database `robohorse-scores` and both game-only routes. Historical import was explicitly waived by the user. Public DNS currently points directly to the Vercel target `06f9122003fbdcf3.vercel-dns-016.com`; the public game path still serves the Vercel portal. Enable **Proxied** on the existing `games` DNS record without changing its target, then verify game HTML, assets, API health, and score persistence. Wrangler OAuth cannot read/edit DNS records (403), and the in-app dashboard requires login. Do not claim public cutover is complete until those checks pass.

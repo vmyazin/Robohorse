@@ -19,9 +19,9 @@
     "verify:release": "node scripts/verify-release.js",
     "build:cloudflare": "pnpm build && node scripts/build-cloudflare.js",
     "dev:cloudflare": "pnpm build:cloudflare && wrangler d1 migrations apply DB --local && wrangler dev",
-    "deploy:cloudflare": "pnpm build:cloudflare && wrangler deploy",
+    "deploy:cloudflare": "pnpm build:cloudflare && wrangler deploy --env \"\"",
     "db:cloudflare:local": "wrangler d1 migrations apply DB --local",
-    "check:cloudflare": "pnpm build:cloudflare && wrangler deploy --dry-run",
+    "check:cloudflare": "pnpm build:cloudflare && wrangler deploy --dry-run --env \"\"",
     "test:cloudflare": "playwright test -c playwright.cloudflare.config.js"
   },
   "repository": {

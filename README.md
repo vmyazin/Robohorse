@@ -181,4 +181,4 @@ Frontend deployment protects `/api/`, `/.env`, `/node_modules/`, and `/tmp/` on 
 
 ### Cloudflare target deployment
 
-Workers Static Assets and D1 support is prepared alongside the existing PostgreSQL deployment. See [the Cloudflare migration guide](cloudflare/README.md) for local testing, account setup, historical-score import, verification, and traffic cutover. Run `pnpm dev:cloudflare` locally or `pnpm test:cloudflare` for the isolated integration suite. Production has not been switched by this code change.
+Workers Static Assets and D1 support is prepared alongside the existing PostgreSQL deployment. See [the Cloudflare migration guide](cloudflare/README.md) for local testing, account setup, historical-score import, verification, and traffic cutover. Run `pnpm dev:cloudflare` locally or `pnpm test:cloudflare` for the isolated integration suite. The production Worker and fresh D1 leaderboard are deployed. Public traffic cutover still requires enabling Cloudflare proxying for the existing `games.smoxu.com` DNS record.

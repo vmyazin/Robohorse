@@ -16,8 +16,7 @@
   "d1_databases": [{
     "binding": "DB",
     "database_name": "robohorse-scores",
-    // Local-only placeholder. Replace with the ID returned by `wrangler d1 create` before deployment.
-    "database_id": "00000000-0000-0000-0000-000000000000",
+    "database_id": "4e0a9dcf-a4f4-4ae8-90bb-071e0338e800",
     "migrations_dir": "cloudflare/migrations"
   }],
   "ratelimits": [{
