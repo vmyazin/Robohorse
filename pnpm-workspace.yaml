@@ -1,2 +1,6 @@
 packages:
   - api
+
+# GHSA-q8mj-m7cp-5q26: reject vulnerable transitive qs releases.
+overrides:
+  'qs@>=6.11.1 <=6.15.1': '^6.15.2'
