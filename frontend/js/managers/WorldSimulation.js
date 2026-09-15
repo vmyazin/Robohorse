@@ -1,11 +1,13 @@
 import { updateBossBattle } from './BossBattle.js';
 import { isColliding } from '../utils/helpers.ts';
+import { showPickupNotice, updatePickupNotice } from '../components/PickupNotice.js';
 
 export function updateWorld(game, timeScale = 1) {
         if (!game.gameStarted || game.gameOver) return;
         
         // Use a default timeScale of 1 if not provided (for backward compatibility)
         timeScale = timeScale || 1;
+        updatePickupNotice(game, timeScale);
         
         const previousPlayer = { x: game.player.x, y: game.player.y, width: game.player.width, height: game.player.height };
         game.frameCount++;
@@ -541,6 +543,7 @@ export function updateWorld(game, timeScale = 1) {
                     });
                 }
                 
+                showPickupNotice(game, powerUp.type, powerUp.color);
                 // Remove the power-up after collecting
                 game.powerUps.splice(index, 1);
                 game.createParticles(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, 15, powerUp.color);
@@ -565,6 +568,7 @@ export function updateWorld(game, timeScale = 1) {
                     game.soundManager.playSound('powerUp', 0.5);
                     
                     game.player.specialAbilityTokens++;
+                    showPickupNotice(game, 'special', token.color);
                     game.specialTokensDisplay.textContent = game.player.specialAbilityTokens;
                     game.specialTokens.splice(index, 1);
                     game.createParticles(token.x + token.width/2, token.y + token.height/2, 15, token.color);

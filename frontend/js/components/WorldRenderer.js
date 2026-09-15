@@ -1,3 +1,5 @@
+import { drawPickupNotice } from './PickupNotice.js';
+
 export function renderWorld(game) {
         // Clear canvas
         game.ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
@@ -270,5 +272,6 @@ export function renderWorld(game) {
         
         // Draw effects
         game.effectsManager.draw(game.ctx);
+        drawPickupNotice(game);
     }
     

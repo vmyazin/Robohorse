@@ -316,6 +316,7 @@ class Game {
         this.inputManager.keys = {};
         
         // Clear game entities
+        this.pickupNotices = [];
         this.enemies = [];
         this.projectiles = [];
         this.powerUps = [];
