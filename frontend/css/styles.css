@@ -650,3 +650,11 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
 [role="status"] { font: 10px/1.8 'Press Start 2P', monospace; color: #e4c7a8; }
 
 #special-ready { display: block; color: #89f5e0; font: 7px/1.6 'Press Start 2P', monospace; }
+
+/* Timed by the simulation, so pausing also freezes the arcade lettering. */
+#battle-ending { position: absolute; inset: 0; z-index: 15; pointer-events: none; display: flex; align-items: center; justify-content: center; padding-bottom: 35px; }
+#battle-ending[hidden] { display: none; }
+#battle-ending h1 { width: 900px; margin: 0; text-align: center; font-family: 'Press Start 2P', monospace; font-size: 58px; line-height: 1.45; letter-spacing: -3px; color: #ff416c; -webkit-text-stroke: 2px #ffd0f1; text-shadow: 0 4px #911848, 0 8px #6f155f, 0 12px #42134f, 0 17px #11051d, 0 0 35px #e7349f; transform: scale(var(--ending-scale, 1)); }
+#battle-ending[data-blink="purple"] h1 { color: #bb69ff; -webkit-text-stroke-color: #edd4ff; text-shadow: 0 4px #7930b0, 0 8px #521976, 0 12px #371249, 0 17px #11051d, 0 0 35px #ab35db; }
+#battle-ending[data-outcome="defeat"] h1 { width: 820px; font-size: 64px; }
+.battle-ending-active #hud { visibility: hidden; }

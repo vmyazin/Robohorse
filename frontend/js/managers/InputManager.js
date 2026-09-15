@@ -65,6 +65,8 @@ class InputManager {
         if (e.target.closest('button') && (e.key === 'Enter' || e.code === 'Space')) return;
         if (this.game.isPaused && e.code !== 'Space') return;
 
+        if (this.game.battleEnding && !this.game.isPaused) { e.preventDefault(); return; }
+
         // Set the key state
         this.keys[e.key] = true;
         

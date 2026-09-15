@@ -337,7 +337,7 @@ export function updateWorld(game, timeScale = 1) {
         }
         
         updateBossBattle(game);
-        if (!game.gameStarted) return;
+        if (!game.gameStarted || game.battleEnding) return;
 
         // Update enemies
         for (let i = game.enemies.length - 1; i >= 0; i--) {

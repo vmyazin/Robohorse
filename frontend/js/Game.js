@@ -1,3 +1,4 @@
+import { beginBattleEnding, clearBattleEnding, updateBattleEnding, drawBattleEnding } from './managers/BattleEnding.js';
 import { startBossBattle } from './managers/BossBattle.js';
 import { updateWorld } from './managers/WorldSimulation.js';
 import { renderWorld } from './components/WorldRenderer.js';
@@ -123,7 +124,10 @@ class Game {
         this.levelManager = new LevelManager(this);
         
         // Sound effects
+        this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         const soundsConfig = {
+            bossVictory: 'audio/boss-victory.m4a',
+            playerDefeat: 'audio/player-defeat.m4a',
             explosion: 'audio/explosion.mp3',
             carHit: 'audio/car_hit.mp3',
             toasty: 'audio/toasty.mp3',
@@ -195,6 +199,7 @@ class Game {
     togglePause() {
         if (!this.gameStarted || this.gameOver) return;
         this.isPaused = !this.isPaused;
+        this.soundManager.syncEndingMusic();
         this.inputManager.keys = {};
         document.getElementById('pause-screen').hidden = !this.isPaused;
         document.getElementById('controls-screen').hidden = true;
@@ -284,6 +289,7 @@ class Game {
     }
     
     resetGame() {
+        clearBattleEnding(this);
         this.session.reset();
         this.runId = (this.runId || 0) + 1;
         for (const id of ['restart-instruction-status', 'mission-complete-instruction-status']) document.getElementById(id).textContent = '';
@@ -365,7 +371,9 @@ class Game {
         this.startLoop();
     }
     
-    endGame() {
+    endGame(fromBattle = false) {
+        if (this.battleEnding) return;
+        if (this.boss && !fromBattle) { beginBattleEnding(this, 'defeat'); return; }
         this.helpToggle.disabled = true;
         this.gameOver = true;
         this.gameStarted = false;
@@ -463,15 +471,18 @@ class Game {
         
         // Stop background music and play death sound
         this.soundManager.stopBackgroundMusic();
-        this.soundManager.playSound('horseScream', 0.7);
+        if (!fromBattle) this.soundManager.playSound('horseScream', 0.7);
     }
     
     update(timeScale) {
-        updateWorld(this, timeScale);
+        if (this.battleEnding) updateBattleEnding(this);
+        else updateWorld(this, timeScale);
     }
 
     draw() {
         renderWorld(this);
+        drawBattleEnding(this);
+        this.soundManager.syncEndingMusic();
     }
 
     startLoop() {
@@ -826,7 +837,7 @@ class Game {
         this.hud.render(this.hudState());
     }
 
-    showMissionComplete() {
+    showMissionComplete(fromBattle = false) {
         this.helpToggle.disabled = true;
         this.session.finish();
         this.gameStarted = false;
@@ -866,7 +877,7 @@ class Game {
         
         // Stop background music and play victory sound
         this.soundManager.stopBackgroundMusic();
-        this.soundManager.playSound('victory', 0.7);
+        if (!fromBattle) this.soundManager.playSound('victory', 0.7);
     }
 
     restorePlayerName() {

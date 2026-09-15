@@ -25,7 +25,7 @@ test('secret boss encounter supports combat, pause, victory and clean restart', 
         g.projectiles.push({ x: g.boss.x + 20, y: g.boss.y + 100, width: 15, height: 10,
             velX: 0, velY: 0, damage: 100, isPlayerProjectile: true, color: '#fff' });
     });
-    await expect(page.locator('#mission-complete')).toBeVisible();
+    await expect(page.locator('#mission-complete')).toBeVisible({ timeout: 10000 });
     expect(await page.evaluate(() => window.__game.score)).toBe(2500);
     await page.keyboard.press('Space');
     expect(await page.evaluate(() => window.__game.boss)).toBeNull();
@@ -36,7 +36,7 @@ test('secret boss encounter supports combat, pause, victory and clean restart', 
         g.player.health = 1;
         g.boss.webs.push({ x: g.player.x, y: g.player.y, width: 25, height: 25, velX: 0, velY: 0, life: 30 });
     });
-    await expect(page.locator('#game-over')).toBeVisible();
+    await expect(page.locator('#game-over')).toBeVisible({ timeout: 12000 });
     await page.keyboard.press('Space');
     expect(await page.evaluate(() => window.__game.player.webSlowTicks)).toBe(0);
     expect(await page.evaluate(() => window.__game.boss)).toBeNull();
@@ -220,9 +220,48 @@ test('a lethal boss stomp ends the run and restart clears the jump and shake', a
         g.player.health = 35;
         g.boss.health = g.boss.nextJumpHealth;
     });
-    await expect(page.locator('#game-over')).toBeVisible();
+    await expect(page.locator('#game-over')).toBeVisible({ timeout: 12000 });
     expect(await page.evaluate(() => window.__game.player.health)).toBe(0);
     await page.keyboard.press('Space');
     expect(await page.evaluate(() => window.__game.boss)).toBeNull();
     expect(await page.evaluate(() => window.__game.player.health)).toBe(100);
+});
+
+
+test('battle endings freeze combat, blink, pause audio, and clean up on restart', async ({ page }) => {
+    await page.route('**/api/scores', route => route.fulfill({ json: [] }));
+    await page.goto('/robohorse/');
+    await page.keyboard.press('Control+Shift+B');
+    await page.evaluate(() => { window.__game.boss.health = 0; });
+    await expect(page.locator('#battle-ending h1')).toHaveText('YOU DEFEATED THE BOSS');
+    await expect(page.locator('#mission-complete')).toBeHidden();
+    await expect.poll(() => page.evaluate(() => window.__game.battleEnding.tick)).toBeGreaterThan(80);
+    const state = await page.evaluate(() => ({ boss: window.__game.boss.tick, frame: window.__game.frameCount, hp: window.__game.player.health }));
+    await page.keyboard.down('Space');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(400);
+    await page.keyboard.up('Space');
+    expect(await page.evaluate(() => ({ boss: window.__game.boss.tick, frame: window.__game.frameCount, hp: window.__game.player.health }))).toEqual(state);
+    await page.screenshot({ path: 'test-results/boss-victory-ending.png' });
+    await expect.poll(() => page.evaluate(() => window.__game.soundManager.sounds.bossVictory.duration)).toBeGreaterThan(5.9);
+    expect(await page.evaluate(() => window.__game.soundManager.sounds.bossVictory.duration)).toBeLessThan(6.2);
+    await page.keyboard.press('Escape');
+    const tick = await page.evaluate(() => window.__game.battleEnding.tick);
+    await page.waitForTimeout(250);
+    expect(await page.evaluate(() => window.__game.battleEnding.tick)).toBe(tick);
+    expect(await page.evaluate(() => window.__game.soundManager.endingMusic.paused)).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect.poll(() => page.evaluate(() => window.__game.battleEnding.tick)).toBeGreaterThan(tick);
+    await page.locator('#sound-toggle').click();
+    await expect.poll(() => page.evaluate(() => window.__game.soundManager.endingMusic.paused)).toBe(true);
+    await page.keyboard.press('Control+Shift+B');
+    await expect(page.locator('#battle-ending')).toBeHidden();
+    expect(await page.evaluate(() => window.__game.soundManager.endingMusic)).toBeNull();
+    await page.evaluate(() => { const g = window.__game; g.player.health = 0; g.endGame(); });
+    await expect(page.locator('#battle-ending h1')).toHaveText('YOU WERE DEFEATED');
+    await expect.poll(() => page.evaluate(() => window.__game.battleEnding.tick)).toBeGreaterThan(90);
+    await page.screenshot({ path: 'test-results/player-defeat-ending.png' });
+    expect(await page.evaluate(() => window.__game.soundManager.endingMusic.paused)).toBe(true);
+    await expect(page.locator('#game-over')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#battle-ending')).toBeHidden();
 });

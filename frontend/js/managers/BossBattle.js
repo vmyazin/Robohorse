@@ -1,3 +1,4 @@
+import { beginBattleEnding } from './BattleEnding.js';
 import KrakenBoss from '../entities/KrakenBoss.js';
 
 export function startBossBattle(game) {
@@ -30,13 +31,13 @@ export function updateBossBattle(game) {
         if (!game.player.health) game.endGame();
     }, game.createParticles.bind(game));
     if (boss.landed) game.soundManager.playSound('explosion', 0.55);
-    if (boss.health <= 0 && game.gameStarted) {
+    if (boss.health <= 0 && game.gameStarted && !game.battleEnding) {
         game.score += 2500;
         game.scoreDisplay.textContent = game.score;
         game.createParticles(boss.x + boss.width / 2, boss.y + boss.height / 2, 40, '#93eafa');
         game.soundManager.playSound('explosion', 0.7);
-        game.boss = null;
+
         game.player.webSlowTicks = 0;
-        game.showMissionComplete();
+        beginBattleEnding(game, 'victory');
     }
 }

@@ -170,10 +170,10 @@ export function renderWorld(game) {
             game.ctx.shadowBlur = 0;
         }
         
-        game.boss?.draw(game.ctx, false);
+        if (game.battleEnding?.outcome !== 'victory' || game.battleEnding.tick < 80 && Math.floor(game.battleEnding.tick / 5) % 2 === 0) game.boss?.draw(game.ctx, false);
 
         // Draw player
-        game.player.draw(game.ctx, game.frameCount, game.inputManager.keys);
+        if (game.battleEnding?.outcome !== 'defeat' || game.battleEnding.tick < 60 && Math.floor(game.battleEnding.tick / 5) % 2 === 0) game.player.draw(game.ctx, game.frameCount, game.inputManager.keys);
         
         if (game.player.webSlowTicks > 0) {
             const { x, y, width, height, webSlowTicks } = game.player;
@@ -263,7 +263,7 @@ export function renderWorld(game) {
         }
         
         game.ctx.restore();
-        game.boss?.drawHUD(game.ctx);
+        if (!game.battleEnding) game.boss?.drawHUD(game.ctx);
 
         // Draw UI elements
         game.drawUI();

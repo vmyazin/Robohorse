@@ -5,6 +5,7 @@ import AudioVoicePool from './AudioVoicePool.ts';
 class SoundManager {
     constructor(game) {
         this.game = game;
+        document.addEventListener('visibilitychange', () => this.syncEndingMusic());
         this.voicePool = new AudioVoicePool();
         this.sounds = {};
         this.backgroundMusic = null;
@@ -61,7 +62,7 @@ class SoundManager {
                 this.soundToggleElement.textContent = '🔊';
                 this.soundToggleElement.classList.remove('muted');
                 // Resume background music if game is started
-                if (this.game.gameStarted && !this.game.gameOver) {
+                if (this.game.gameStarted && !this.game.gameOver && !this.game.battleEnding && !this.game.isPaused) {
                     this.backgroundMusic.play().catch(e => console.warn('Could not play background music:', e));
                 }
             } else {
@@ -73,9 +74,43 @@ class SoundManager {
             }
         }
         
+        this.syncEndingMusic();
         console.log(`Sound ${this.soundEnabled ? 'enabled' : 'disabled'}`);
     }
     
+    startEndingMusic(key) {
+        this.stopBackgroundMusic();
+        this.voicePool.stop();
+        this.policeRadioSound1?.pause();
+        this.policeRadioSound2?.pause();
+        for (let i = 1; i <= 3; i++) this.sounds[`alienWhisper${i}`]?.pause();
+        this.endingMusic = this.sounds[key];
+        this.endingMusic.currentTime = 0;
+        this.endingMusic.volume = 0.75;
+        this.endingPlaying = false;
+        this.syncEndingMusic();
+    }
+
+    syncEndingMusic() {
+        if (!this.endingMusic) return;
+        const shouldPlay = this.soundEnabled && !this.game.isPaused && !document.hidden;
+        if (shouldPlay === this.endingPlaying) return;
+        this.endingPlaying = shouldPlay;
+        if (shouldPlay) {
+            this.endingMusic.currentTime = Math.min(5.99, (this.game.battleEnding?.tick || 0) / 60);
+            this.endingMusic.play().catch(() => {});
+        } else this.endingMusic.pause();
+    }
+
+    stopEndingMusic() {
+        if (this.endingMusic) {
+            this.endingMusic.pause();
+            this.endingMusic.currentTime = 0;
+        }
+        this.endingMusic = null;
+        this.endingPlaying = false;
+    }
+
     playSound(soundKey, volume = 0.5) {
         if (!this.soundEnabled || !this.sounds[soundKey]) return;
         
