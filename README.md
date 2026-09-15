@@ -26,19 +26,21 @@ The game includes a dedicated playtest environment for testing and balancing:
 - Frame-by-frame analysis with **F** key
 - Performance metrics visible in playtest mode
 
-## New Boss: The Quantum Kraken
+## Boss battle: Krakenarachnid
 
-The game now features an epic boss battle against the Quantum Kraken:
+Level three ends in a stationary boss arena. Defeat the Krakenarachnid to finish the mission and earn 2,500 points.
 
-- Massive cybernetic cephalopod with quantum abilities
-- Three distinct battle phases
-- Special attacks:
-  - Quantum Tentacle Strike: Creates time-delayed attacks
-  - Dimensional Rift: Spawns mirror images
-  - Temporal Storm: Slows down player movement
-- Requires strategic use of all weapons and abilities
-- Drops unique power-ups during the battle
-- Defeating the Kraken unlocks a special weapon
+- Active eyes take full damage. Every projectile impact briefly blinks one random active eye. One eye permanently switches off for each 100 HP lost (500, 400, 300, 200, 100, then 0 HP), briefly stunning the boss and exposing its armored body.
+- Three health phases increase attack pressure.
+- Web volleys can be shot down; a hit slows movement briefly.
+- Telegraphs warn before tentacle shockwaves (jump over them) and spiderling spawns (shoot them).
+- After each randomly sampled 20–30% of maximum health lost, the boss telegraphs a high jump to the opposite side and turns to face the arena. Its attacks reverse direction too.
+- Landing shakes the ground and kicks up dust. A direct landing on the horse deals 40 HP damage and knocks it toward the center; dodge the marked landing zone to avoid it.
+- Pause freezes the encounter, jumps and shake, and restart clears all boss hazards.
+
+**Secret testing shortcut: Ctrl+Shift+B** starts a fresh boss fight from the menu, gameplay, pause, or results screen, with full health and three special tokens. It resets the current run. Normal movement, shooting, weapon switching, and special abilities work in the arena.
+
+The older `playtest.html` retains the original isolated boss prototype; the production encounter uses `KrakenBoss.js` and `BossBattle.js`.
 
 ## New Feature: Enhanced Vehicle Destruction
 

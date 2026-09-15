@@ -82,13 +82,16 @@ class Player {
         
         this.isMoving = Boolean(keys['ArrowLeft'] || keys['ArrowRight'] || keys['a'] || keys['A'] || keys['d'] || keys['D']);
 
+        const movementScale = this.webSlowTicks > 0 ? 0.45 : 1;
+        this.webSlowTicks = Math.max(0, (this.webSlowTicks || 0) - 1);
+
         // Handle movement - support both arrow keys and WASD
         if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
-            this.x -= this.speed * timeScale;
+            this.x -= this.speed * timeScale * movementScale;
             this.direction = -1;
         }
         if (keys['ArrowRight'] || keys['d'] || keys['D']) {
-            this.x += this.speed * timeScale;
+            this.x += this.speed * timeScale * movementScale;
             this.direction = 1;
         }
         

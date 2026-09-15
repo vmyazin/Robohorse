@@ -1,3 +1,4 @@
+import { startBossBattle } from './managers/BossBattle.js';
 import { updateWorld } from './managers/WorldSimulation.js';
 import { renderWorld } from './components/WorldRenderer.js';
 import SessionState from './managers/SessionState.ts';
@@ -245,6 +246,15 @@ class Game {
         });
     }
     
+    startBossBattle() { startBossBattle(this); }
+
+    startBossTest() {
+        this.resetGame();
+        this.startGame();
+        this.player.specialAbilityTokens = 3;
+        this.startBossBattle();
+    }
+
     startGame() {
         this.isPaused = false;
         document.getElementById('pause-screen').hidden = true;
@@ -295,6 +305,9 @@ class Game {
         
         // Reset player using the reset method
         this.player.reset();
+        this.player.webSlowTicks = 0;
+        this.boss = null;
+        this.inputManager.keys = {};
         
         // Clear game entities
         this.enemies = [];
@@ -617,6 +630,7 @@ class Game {
     
     // Add a new method to show level announcement
     showLevelAnnouncement(levelName) {
+        this.levelAnnouncement.hidden = false;
         // Extract level number from level name if possible
         const levelNumber = this.levelManager.currentLevel + 1;
         
@@ -753,6 +767,7 @@ class Game {
     
     // Add level navigation methods
     goToNextLevel() {
+        if (this.boss) return;
         if (!this.levelManager) return;
         
         const allLevels = this.levelManager.getAllLevels();
@@ -774,6 +789,7 @@ class Game {
     }
     
     goToPreviousLevel() {
+        if (this.boss) return;
         if (!this.levelManager) return;
         
         const allLevels = this.levelManager.getAllLevels();

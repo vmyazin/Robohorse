@@ -39,6 +39,11 @@ class InputManager {
     }
     
     handleKeyDown(e) {
+        if (e.ctrlKey && e.shiftKey && e.code === 'KeyB') {
+            e.preventDefault();
+            if (!e.repeat) this.game.startBossTest();
+            return;
+        }
         // Allow browser shortcuts to pass through
         // Skip handling if Command (Meta), Control, or Alt keys are pressed (except for specific shortcuts)
         if ((e.metaKey || e.ctrlKey) && 

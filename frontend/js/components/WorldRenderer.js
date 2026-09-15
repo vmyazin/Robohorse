@@ -5,6 +5,12 @@ export function renderWorld(game) {
         // Draw background
         game.background.draw(game.ctx, game.frameCount);
         
+        game.ctx.save();
+        if (game.boss?.shakeTicks > 0) {
+            const strength = game.boss.shakeTicks / 36;
+            game.ctx.translate(Math.sin(game.boss.tick * 2.4) * 7 * strength,
+                Math.cos(game.boss.tick * 1.9) * 10 * strength);
+        }
         // Draw platforms - use simple for loop instead of filter for better performance
         for (let i = 0; i < game.platforms.length; i++) {
             const platform = game.platforms[i];
@@ -164,9 +170,43 @@ export function renderWorld(game) {
             game.ctx.shadowBlur = 0;
         }
         
+        game.boss?.draw(game.ctx, false);
+
         // Draw player
         game.player.draw(game.ctx, game.frameCount, game.inputManager.keys);
         
+        if (game.player.webSlowTicks > 0) {
+            const { x, y, width, height, webSlowTicks } = game.player;
+            const ctx = game.ctx;
+            const cx = x + width * 0.5, cy = y + height * 0.48;
+            const spokes = 10;
+            const point = (i, radius) => {
+                const angle = i * Math.PI * 2 / spokes;
+                return { x: cx + Math.cos(angle) * width * 0.56 * radius,
+                    y: cy + Math.sin(angle) * height * 0.57 * radius };
+            };
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, webSlowTicks / 20);
+            ctx.strokeStyle = 'rgba(223,249,255,.88)';
+            ctx.lineWidth = 1.2;
+            // Radial strands and bowed silk rings form a net around the moving horse.
+            for (let i = 0; i < spokes; i++) {
+                const tip = point(i, 1);
+                ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tip.x, tip.y); ctx.stroke();
+            }
+            for (const radius of [0.3, 0.55, 0.8, 1]) {
+                const start = point(0, radius);
+                ctx.beginPath(); ctx.moveTo(start.x, start.y);
+                for (let i = 0; i < spokes; i++) {
+                    const from = point(i, radius), to = point(i + 1, radius);
+                    ctx.quadraticCurveTo(cx + ((from.x + to.x) / 2 - cx) * 0.84,
+                        cy + ((from.y + to.y) / 2 - cy) * 0.84, to.x, to.y);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
         // Draw enemies - use simple for loop instead of filter for better performance
         for (let i = 0; i < game.enemies.length; i++) {
             const enemy = game.enemies[i];
@@ -222,6 +262,9 @@ export function renderWorld(game) {
             particlesDrawn++;
         }
         
+        game.ctx.restore();
+        game.boss?.drawHUD(game.ctx);
+
         // Draw UI elements
         game.drawUI();
         

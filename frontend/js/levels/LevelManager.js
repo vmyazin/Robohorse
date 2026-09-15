@@ -76,8 +76,8 @@ class LevelManager {
             
             // Check if we just completed level 3
             if (this.currentLevel === 2) { // 0-based index, so 2 is level 3
-                // Show mission complete screen instead of loading next level
-                this.game.showMissionComplete();
+                // Final encounter gates mission completion.
+                this.game.startBossBattle();
                 return;
             }
             

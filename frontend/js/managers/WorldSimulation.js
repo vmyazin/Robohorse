@@ -1,3 +1,4 @@
+import { updateBossBattle } from './BossBattle.js';
 import { isColliding } from '../utils/helpers.ts';
 
 export function updateWorld(game, timeScale = 1) {
@@ -281,7 +282,7 @@ export function updateWorld(game, timeScale = 1) {
         }
         
         // Update level manager
-        game.levelManager.update();
+        if (!game.boss) game.levelManager.update();
         
         // Update projectiles
         for (let i = game.projectiles.length - 1; i >= 0; i--) {
@@ -335,6 +336,9 @@ export function updateWorld(game, timeScale = 1) {
             }
         }
         
+        updateBossBattle(game);
+        if (!game.gameStarted) return;
+
         // Update enemies
         for (let i = game.enemies.length - 1; i >= 0; i--) {
             const enemy = game.enemies[i];
@@ -503,7 +507,7 @@ export function updateWorld(game, timeScale = 1) {
         }
         
         // Spawn enemies periodically
-        if (game.frameCount - game.lastSpawnTime > 300) { // Spawn every 5 seconds at 60fps (was 120 - 2 seconds)
+        if (!game.boss && game.frameCount - game.lastSpawnTime > 300) { // Spawn every 5 seconds at 60fps (was 120 - 2 seconds)
             game.spawnEnemy();
             game.lastSpawnTime = game.frameCount;
         }
@@ -628,7 +632,7 @@ export function updateWorld(game, timeScale = 1) {
             const platform = game.platforms[i];
             
             // Move platform with level scrolling
-            platform.x -= game.levelManager.scrollSpeed * game.gameSpeed;
+            if (!game.boss) platform.x -= game.levelManager.scrollSpeed * game.gameSpeed;
             
             // If a ground segment moves off-screen, reposition it to the right
             if (platform.type === 'ground' && platform.x + platform.width < -100) { // Changed from -200 to -100 for smoother terrain
