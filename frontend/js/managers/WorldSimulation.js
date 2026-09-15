@@ -2,6 +2,7 @@ import { maybeStartNest, updateNestScroll, updateNest } from './NestEncounter.js
 import { updateBossBattle } from './BossBattle.js';
 import { isColliding } from '../utils/helpers.ts';
 import { showPickupNotice, updatePickupNotice } from '../components/PickupNotice.js';
+import { updateMushroom } from './PickupPhysics.js';
 
 export function updateWorld(game, timeScale = 1) {
         if (!game.gameStarted || game.gameOver) return;
@@ -521,14 +522,21 @@ export function updateWorld(game, timeScale = 1) {
         }
         
         // Update power-ups
-        game.powerUps.forEach((powerUp, index) => {
-            powerUp.y += Math.sin(game.frameCount * 0.1) * 0.5; // Floating effect
-            
-            // Ensure power-ups don't go below the floor level
-            const floorLevel = game.canvas.height - 50; // Same floor level as used for player
-            const accessibilityMargin = 10; // Smaller margin than enemies for better visibility
-            if (powerUp.y + powerUp.height > floorLevel + accessibilityMargin) {
-                powerUp.y = floorLevel + accessibilityMargin - powerUp.height;
+        for (let index = game.powerUps.length - 1; index >= 0; index--) {
+            const powerUp = game.powerUps[index];
+            const floorLevel = game.canvas.height - 50;
+            if (powerUp.type === 'mushroom') {
+                // Match the ground's displacement, including encounter scroll pauses.
+                const scrollDistance = game.boss ? 0
+                    : game.levelManager.scrollSpeed * game.gameSpeed * (game.scrollFactor ?? 1);
+                updateMushroom(powerUp, floorLevel, scrollDistance, timeScale);
+                if (powerUp.x + powerUp.width < 0) {
+                    game.powerUps.splice(index, 1);
+                    continue;
+                }
+            } else {
+                powerUp.y += Math.sin(game.frameCount * 0.1) * 0.5;
+                powerUp.y = Math.min(powerUp.y, floorLevel + 10 - powerUp.height);
             }
             
             if (isColliding(powerUp, game.player)) {
@@ -549,12 +557,12 @@ export function updateWorld(game, timeScale = 1) {
                     });
                 }
                 
-                showPickupNotice(game, powerUp.type, powerUp.color);
                 // Remove the power-up after collecting
+                showPickupNotice(game, powerUp.type, powerUp.color);
                 game.powerUps.splice(index, 1);
                 game.createParticles(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2, 15, powerUp.color);
             }
-        });
+        }
         
         // Update special tokens
         game.specialTokens.forEach((token, index) => {

@@ -1,4 +1,5 @@
 import { drawPickupNotice } from './PickupNotice.js';
+import { drawMushroomPickup } from './MushroomPickup.js';
 
 export function renderWorld(game) {
         // Clear canvas
@@ -83,6 +84,10 @@ export function renderWorld(game) {
         // Draw power-ups
         for (let i = 0; i < game.powerUps.length; i++) {
             const powerUp = game.powerUps[i];
+            if (powerUp.type === 'mushroom') {
+                drawMushroomPickup(game.ctx, powerUp, game.frameCount);
+                continue;
+            }
             
             // Draw power-up base
             game.ctx.fillStyle = powerUp.color;
@@ -119,23 +124,7 @@ export function renderWorld(game) {
                 }
                 game.ctx.closePath();
                 game.ctx.fill();
-            } else if (powerUp.type === 'mushroom') {
-                // Draw mushroom cap
-                game.ctx.fillStyle = '#ff0000';
-                game.ctx.beginPath();
-                game.ctx.arc(powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2 - 2, powerUp.width/2 - 2, 0, Math.PI, true);
-                game.ctx.fill();
-                
-                // Draw mushroom stem
-                game.ctx.fillStyle = '#ffffff';
-                game.ctx.fillRect(powerUp.x + powerUp.width/2 - 3, powerUp.y + powerUp.height/2 - 2, 6, powerUp.height/2);
-                
-                // Draw spots
-                game.ctx.fillStyle = '#ffffff';
-                game.ctx.beginPath();
-                game.ctx.arc(powerUp.x + powerUp.width/2 - 5, powerUp.y + powerUp.height/2 - 5, 2, 0, Math.PI * 2);
-                game.ctx.arc(powerUp.x + powerUp.width/2 + 3, powerUp.y + powerUp.height/2 - 7, 2, 0, Math.PI * 2);
-                game.ctx.fill();
+
             }
             
             // Draw glow effect
