@@ -68,7 +68,8 @@ export function getLegPose(index, far, pose) {
     [195, 140],
   ];
   const hip = [hips[index][0] + (far ? 9 : 0), hips[index][1] - (far ? 3 : 0)];
-  const phase = pose.phase + (index * Math.PI * 2) / 3 + (far ? Math.PI : 0);
+  // Sweep planted hooves backward, then lift them forward for the next step.
+  const phase = -pose.phase + (index * Math.PI * 2) / 3 + (far ? Math.PI : 0);
   const footX =
     [57, 139, 222][index] + (far ? 10 : 0) + Math.cos(phase) * 17 * pose.stride;
   const lift = pose.airborne
