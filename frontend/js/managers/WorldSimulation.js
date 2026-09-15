@@ -1,3 +1,4 @@
+import { maybeStartNest, updateNestScroll, updateNest } from './NestEncounter.js';
 import { updateBossBattle } from './BossBattle.js';
 import { isColliding } from '../utils/helpers.ts';
 import { showPickupNotice, updatePickupNotice } from '../components/PickupNotice.js';
@@ -11,6 +12,8 @@ export function updateWorld(game, timeScale = 1) {
         
         const previousPlayer = { x: game.player.x, y: game.player.y, width: game.player.width, height: game.player.height };
         game.frameCount++;
+        maybeStartNest(game);
+        updateNestScroll(game, timeScale);
         
         // Update player with sound callback and timeScale
         game.player.update(game.inputManager.keys, game.frameCount, game.createParticles.bind(game), (weaponName) => {
@@ -284,7 +287,7 @@ export function updateWorld(game, timeScale = 1) {
         }
         
         // Update level manager
-        if (!game.boss) game.levelManager.update();
+        if (!game.boss && (game.scrollFactor ?? 1) > 0) game.levelManager.update();
         
         // Update projectiles
         for (let i = game.projectiles.length - 1; i >= 0; i--) {
@@ -338,6 +341,7 @@ export function updateWorld(game, timeScale = 1) {
             }
         }
         
+        updateNest(game, timeScale);
         updateBossBattle(game);
         if (!game.gameStarted || game.battleEnding) return;
 
@@ -348,6 +352,8 @@ export function updateWorld(game, timeScale = 1) {
 
             const enemyShot = enemy.update(game.player, game.frameCount, game.createParticles.bind(game), timeScale);
             if (enemyShot) game.projectiles.push(enemyShot);
+            // Keep combatants in the stopped encounter instead of letting them drift away.
+            if (game.nest && enemy.x < 8) enemy.x = 8;
             
             // Remove enemies that are off-screen to the left or too far to the right
             if (enemy.x + enemy.width < -100 || enemy.x > game.canvas.width + 300) {
@@ -509,7 +515,7 @@ export function updateWorld(game, timeScale = 1) {
         }
         
         // Spawn enemies periodically
-        if (!game.boss && game.frameCount - game.lastSpawnTime > 300) { // Spawn every 5 seconds at 60fps (was 120 - 2 seconds)
+        if (!game.boss && !game.nest && game.frameCount - game.lastSpawnTime > 300) { // Spawn every 5 seconds at 60fps (was 120 - 2 seconds)
             game.spawnEnemy();
             game.lastSpawnTime = game.frameCount;
         }
@@ -636,7 +642,7 @@ export function updateWorld(game, timeScale = 1) {
             const platform = game.platforms[i];
             
             // Move platform with level scrolling
-            if (!game.boss) platform.x -= game.levelManager.scrollSpeed * game.gameSpeed;
+            if (!game.boss) platform.x -= game.levelManager.scrollSpeed * game.gameSpeed * (game.scrollFactor ?? 1);
             
             // If a ground segment moves off-screen, reposition it to the right
             if (platform.type === 'ground' && platform.x + platform.width < -100) { // Changed from -200 to -100 for smoother terrain

@@ -26,6 +26,16 @@ The game includes a dedicated playtest environment for testing and balancing:
 - Frame-by-frame analysis with **F** key
 - Performance metrics visible in playtest mode
 
+## Cephalopod nest encounters
+
+Each level has one nest encounter near its midpoint. The nest enters with the scenery as scrolling eases to a stop over four seconds. Fight its 240-HP core in the existing level, with enemies, obstacles, pickups, and your position preserved.
+
+- Orange warnings alternate between two hatchlings and a three-shot projectile fan.
+- After each attack, the core glows green and opens for 3.5 seconds. Shoot the core with your normal weapons; the closed armor blocks shots.
+- Hatchlings can be shot or stomped, and their population is capped at six.
+- Destroying the nest awards 750 points and one special token (up to your carrying limit), then eases scrolling back to full speed over four seconds. Surviving enemies and projectiles remain in play.
+- Pause freezes the encounter. Restart, changing levels, and the boss shortcut clear it.
+
 ## Boss battle: Krakenarachnid
 
 Level three ends in a stationary boss arena. Defeat the Krakenarachnid to finish the mission and earn 2,500 points.

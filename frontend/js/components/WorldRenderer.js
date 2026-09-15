@@ -5,7 +5,7 @@ export function renderWorld(game) {
         game.ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
         
         // Draw background
-        game.background.draw(game.ctx, game.frameCount);
+        game.background.draw(game.ctx, game.scrollFrame ?? game.frameCount);
         
         game.ctx.save();
         if (game.boss?.shakeTicks > 0) {
@@ -174,6 +174,8 @@ export function renderWorld(game) {
         
         if (game.battleEnding?.outcome !== 'victory' || game.battleEnding.tick < 80 && Math.floor(game.battleEnding.tick / 5) % 2 === 0) game.boss?.draw(game.ctx, false);
 
+        game.nest?.draw(game.ctx);
+
         // Draw player
         if (game.battleEnding?.outcome !== 'defeat' || game.battleEnding.tick < 60 && Math.floor(game.battleEnding.tick / 5) % 2 === 0) game.player.draw(game.ctx, game.frameCount, game.inputManager.keys);
         
@@ -266,6 +268,8 @@ export function renderWorld(game) {
         
         game.ctx.restore();
         if (!game.battleEnding) game.boss?.drawHUD(game.ctx);
+
+        game.nest?.drawHUD(game.ctx, game.canvas);
 
         // Draw UI elements
         game.drawUI();

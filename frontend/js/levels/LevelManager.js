@@ -1,3 +1,4 @@
+import { clearNest } from '../managers/NestEncounter.js';
 import Obstacle from '../entities/Obstacle.js';
 import Enemy from '../entities/Enemy.js';
 import { isColliding } from '../utils/helpers.ts';
@@ -21,6 +22,8 @@ class LevelManager {
     }
     
     loadLevel(levelIndex) {
+        clearNest(this.game);
+        this.nestCompleted = false;
         this.currentLevel = levelIndex;
         this.levelProgress = 0;
         this.levelPosition = 0; // Reset level position when loading a new level
@@ -55,7 +58,7 @@ class LevelManager {
     
     update() {
         // Update level position
-        this.levelPosition += this.scrollSpeed * this.game.gameSpeed;
+        this.levelPosition += this.scrollSpeed * this.game.gameSpeed * (this.game.scrollFactor ?? 1);
         
         // Calculate level progress based on position
         this.levelProgress = this.levelPosition / this.levelLength;
@@ -101,7 +104,7 @@ class LevelManager {
             const obstacle = this.game.obstacles[i];
             
             // Move obstacle with level scrolling
-            obstacle.x -= this.scrollSpeed * this.game.gameSpeed;
+            obstacle.x -= this.scrollSpeed * this.game.gameSpeed * (this.game.scrollFactor ?? 1);
             
             // Game owns obstacle state updates; this manager only scrolls the level.
         }

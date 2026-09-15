@@ -3,6 +3,9 @@ import KrakenBoss from '../entities/KrakenBoss.js';
 
 export function startBossBattle(game) {
     if (game.boss) return;
+    game.nest = null;
+    game.nestTransition = null;
+    game.scrollFactor = 1;
     game.boss = new KrakenBoss(game.canvas);
     game.enemies = [];
     game.obstacles = [];

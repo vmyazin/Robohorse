@@ -313,6 +313,10 @@ class Game {
         this.player.reset();
         this.player.webSlowTicks = 0;
         this.boss = null;
+        this.nest = null;
+        this.nestTransition = null;
+        this.scrollFactor = 1;
+        this.scrollFrame = 0;
         this.inputManager.keys = {};
         
         // Clear game entities
