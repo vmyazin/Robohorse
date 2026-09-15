@@ -43,3 +43,29 @@ References: [Workers Static Assets](https://developers.cloudflare.com/workers/st
 ## Current cutover status
 
 Production Worker `robohorse` is deployed with database `robohorse-scores` and both game-only routes. Historical import was explicitly waived by the user. The existing `games` CNAME retains its Vercel target and is proxied through Cloudflare. Automatic SSL/TLS is enabled for the zone, with an active Configuration Rule named `Use strict SSL for games.smoxu.com`; this avoids the Flexible-mode redirect loop without changing SSL behavior for other hosts. The game HTML, D1 health endpoint, empty leaderboard, and unaffected Vercel portal root were verified after cutover.
+
+
+## Automatic production deployment
+
+The `Checks` GitHub Actions workflow deploys pushes to `main` after every
+verification job passes. Pull requests and other branches only run checks.
+The production job builds assets, applies pending D1 migrations, deploys the
+Worker and assets, and checks the public game and database health endpoint.
+Deployments run serially; superseded commits are skipped before deployment.
+The account and routes come from `wrangler.jsonc`.
+
+One-time setup: add a GitHub Actions repository secret named
+`CLOUDFLARE_API_TOKEN` at:
+https://github.com/vmyazin/Robohorse/settings/secrets/actions
+
+Create a dedicated Cloudflare token scoped to the configured Rapid Systems
+account and `smoxu.com` zone. It needs Workers Scripts Edit, D1 Edit, and
+Workers Routes Edit, plus Account Settings Read and Zone Read for Wrangler
+resource discovery. Do not use a Global API Key or copy local Wrangler OAuth
+credentials into GitHub. Cloudflare documents the GitHub Actions setup at
+https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/.
+
+After adding the secret, rerun the failed deployment job, or run the `Checks`
+workflow manually on `main`. New pushes then deploy automatically. A failed
+verification prevents deployment; a missing token produces an explicit setup
+error. The existing manual `pnpm deploy:cloudflare` remains available.

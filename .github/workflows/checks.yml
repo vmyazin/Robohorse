@@ -1,5 +1,10 @@
 name: Checks
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -18,3 +23,57 @@ jobs:
       - run: pnpm test:cloudflare
       - run: pnpm check:cloudflare
       - run: pnpm verify:release
+
+  deploy:
+    name: Deploy Cloudflare production
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: cloudflare-production
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: https://games.smoxu.com/robohorse/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - name: Check deployment credential
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Add the CLOUDFLARE_API_TOKEN repository secret to enable production deployments. See cloudflare/README.md."
+            exit 1
+          fi
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:cloudflare
+      - name: Check this commit is still main
+        id: current
+        run: |
+          remote_sha=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ "$remote_sha" = "$GITHUB_SHA" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Skipping superseded commit $GITHUB_SHA"
+          fi
+      - name: Apply D1 migrations
+        if: steps.current.outputs.deploy == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: pnpm exec wrangler d1 migrations apply DB --remote --env ''
+      - name: Deploy Worker and game assets
+        if: steps.current.outputs.deploy == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: pnpm exec wrangler deploy --env ''
+      - name: Verify production health
+        if: steps.current.outputs.deploy == 'true'
+        run: |
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 5 https://games.smoxu.com/robohorse/api/health
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 5 https://games.smoxu.com/robohorse/ --output /dev/null
