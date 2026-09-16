@@ -326,3 +326,42 @@ test('sustained enemy combat renders every frame', async ({ page }) => {
         }
     });
 });
+
+test('weapon crate drops a pickup that equips immediately without Enter', async ({ page }) => {
+    await page.route('**/api/scores', route => route.fulfill({ json: [] }));
+    await page.goto('/robohorse/');
+    await page.keyboard.press('Space');
+    const result = await page.evaluate(() => {
+        const game = window.__game;
+        game.levelManager.loadLevel(2);
+        const Obstacle = game.obstacles.find(o => o.type === 'cybertruck').constructor;
+        const box = new Obstacle(500, 200, 'box', game.canvas);
+        box.containsWeapon = true;
+        box.containsMushroom = false;
+        game.obstacles = [box];
+        game.enemies = [];
+        game.powerUps = [];
+        game.projectiles = [];
+        game.draw();
+        for (let i = 0; i < 2; i++) {
+            game.projectiles.push({ x: box.x + 10, y: box.y + 10, width: 7, height: 7,
+                velX: 0, velY: 0, damage: 15, color: '#fff', isPlayerProjectile: true });
+            game.update(1);
+        }
+        const pickup = game.powerUps.find(p => p.type === 'weapon');
+        game.draw();
+        pickup.x = game.player.x + 20;
+        pickup.y = game.player.y + 20;
+        const before = game.player.currentWeaponIndex;
+        game.update(1);
+        game.draw();
+        return { changed: game.player.currentWeaponIndex !== before,
+            synced: game.player.currentWeapon === game.weapons[game.player.currentWeaponIndex],
+            consumed: !game.powerUps.includes(pickup),
+            hud: game.weaponDisplay.textContent, name: game.player.currentWeapon.name };
+    });
+    expect(result.changed).toBe(true);
+    expect(result.synced).toBe(true);
+    expect(result.consumed).toBe(true);
+    expect(result.hud).toBe(result.name);
+});

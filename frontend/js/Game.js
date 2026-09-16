@@ -545,9 +545,9 @@ class Game {
         }
     }
     
-    spawnPowerUp(x, y) {
+    spawnPowerUp(x, y, requestedType) {
         const types = ['health', 'weapon', 'mushroom'];
-        const type = types[Math.floor(Math.random() * types.length)];
+        const type = requestedType ?? types[Math.floor(Math.random() * types.length)];
         let color;
         let size;
         
@@ -557,8 +557,8 @@ class Game {
                 size = 25;
                 break;
             case 'weapon':
-                color = '#ff0';
-                size = 20;
+                color = '#ffe66d';
+                size = 28;
                 break;
             case 'mushroom':
                 color = '#ff0000';

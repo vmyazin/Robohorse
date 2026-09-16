@@ -5,6 +5,7 @@ export interface CombatObstacle extends Bounds {
     type: string;
     getSurfaceY?(left: number, right: number): number | null;
     containsMushroom?: boolean;
+    containsWeapon?: boolean;
     points: number;
     color: string;
 }
@@ -27,6 +28,7 @@ export interface CombatHost {
     score: number;
     createParticles: Particles;
     spawnMushroomPowerUp(x: number, y: number): void;
+    spawnPowerUp(x: number, y: number, type: string): void;
     updateHealthDisplay(): void;
     effectsManager: { triggerDamageFlash(): void };
     endGame(): void;
@@ -76,6 +78,7 @@ export default class CombatSystem {
             if (obstacle.type === 'box' && player.checkBoxSmash([obstacle], particles)) {
                 const index = host.obstacles.indexOf(obstacle);
                 if (index !== -1) {
+                    if (obstacle.containsWeapon) host.spawnPowerUp(obstacle.x, obstacle.y - 20, 'weapon');
                     if (obstacle.containsMushroom) host.spawnMushroomPowerUp(obstacle.x, obstacle.y - 20);
                     host.obstacles.splice(index, 1);
                     player.standingOnObstacle = null;

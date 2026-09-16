@@ -102,28 +102,10 @@ export function renderWorld(game) {
                 game.ctx.fillRect(powerUp.x + powerUp.width/2 - 2, powerUp.y + powerUp.height/4, 4, powerUp.height/2);
                 game.ctx.fillRect(powerUp.x + powerUp.width/4, powerUp.y + powerUp.height/2 - 2, powerUp.width/2, 4);
             } else if (powerUp.type === 'weapon') {
-                // Draw star
-                const centerX = powerUp.x + powerUp.width/2;
-                const centerY = powerUp.y + powerUp.height/2;
-                const spikes = 5;
-                const outerRadius = powerUp.width/2 - 2;
-                const innerRadius = powerUp.width/4;
-                
-                game.ctx.beginPath();
-                for (let i = 0; i < spikes * 2; i++) {
-                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
-                    const angle = (Math.PI * 2 * i) / (spikes * 2) - Math.PI/2;
-                    const x = centerX + Math.cos(angle) * radius;
-                    const y = centerY + Math.sin(angle) * radius;
-                    
-                    if (i === 0) {
-                        game.ctx.moveTo(x, y);
-                    } else {
-                        game.ctx.lineTo(x, y);
-                    }
-                }
-                game.ctx.closePath();
-                game.ctx.fill();
+                // Match the gun marking on weapon crates.
+                game.ctx.fillStyle = '#253044';
+                game.ctx.fillRect(powerUp.x + 5, powerUp.y + 8, powerUp.width - 9, 7);
+                game.ctx.fillRect(powerUp.x + 8, powerUp.y + 15, 5, 7);
 
             }
             

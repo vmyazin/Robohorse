@@ -93,7 +93,9 @@ class Obstacle {
                 this.woodGrainColor = '#8d6a4b'; // Color for wood grain
                 
                 // Determine if this box contains a mushroom power-up (30% chance)
-                this.containsMushroom = Math.random() < 0.3;
+                const lootRoll = Math.random();
+                this.containsMushroom = lootRoll < 0.3;
+                this.containsWeapon = lootRoll >= 0.3 && lootRoll < 0.65;
                 
                 // If it contains a mushroom, make it slightly different in appearance
                 if (this.containsMushroom) {
@@ -331,6 +333,12 @@ class Obstacle {
                     ctx.shadowBlur = 0;
                 }
                 
+                if (this.containsWeapon) {
+                    ctx.fillStyle = '#ffe66d';
+                    ctx.fillRect(this.x + 9, this.y + yOffset + 12, 23, 8);
+                    ctx.fillRect(this.x + 12, this.y + yOffset + 20, 6, 9);
+                }
+
                 // One player hit can finish a container with at most one health left.
                 if (this.health > 0 && this.health <= 1) {
                     // Draw a "1 more!" indicator

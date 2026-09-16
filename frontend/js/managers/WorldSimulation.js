@@ -91,6 +91,7 @@ export function updateWorld(game, timeScale = 1) {
                             if (obstacle.type === 'box') {
                                 game.soundManager.playSound('carHit', 0.5);
                                 
+                                if (obstacle.containsWeapon) game.spawnPowerUp(obstacle.x, obstacle.y - 20, 'weapon');
                                 // Spawn mushroom if box contained one
                                 if (obstacle.containsMushroom) {
                                     game.spawnMushroomPowerUp(obstacle.x, obstacle.y - 20);
@@ -548,8 +549,7 @@ export function updateWorld(game, timeScale = 1) {
                     game.updateHealthDisplay();
                 } else if (powerUp.type === 'weapon') {
                     // Cycle to next weapon - fix property name to match Player.js
-                    game.player.currentWeaponIndex = (game.player.currentWeaponIndex + 1) % game.weapons.length;
-                    game.weaponDisplay.textContent = game.weapons[game.player.currentWeaponIndex].name;
+                    game.weaponDisplay.textContent = game.player.switchWeapon();
                 } else if (powerUp.type === 'mushroom') {
                     game.player.health = Math.min(game.player.health + 5, game.player.maxHealth);
                     game.updateHealthDisplay();

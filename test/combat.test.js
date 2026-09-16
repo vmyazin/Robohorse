@@ -80,3 +80,14 @@ test('stomp checks horizontal overlap at impact rather than only at the end of a
     // Impact is one quarter through the fall, while the horse overlaps the enemy.
     assert.deepEqual(combat.stompEnemy(enemy, previous, enemy), { dead: false });
 });
+
+test('stomping a weapon crate releases its weapon pickup', () => {
+    const host = fixture();
+    const drops = [];
+    host.spawnPowerUp = (x, y, type) => drops.push({ x, y, type });
+    const box = { x: 10, y: 12, width: 20, height: 20, type: 'box', points: 50, color: '#fff', containsWeapon: true };
+    host.obstacles.push(box);
+    new CombatSystem(host).collide(box);
+    assert.deepEqual(drops, [{ x: 10, y: -8, type: 'weapon' }]);
+    assert.equal(host.obstacles.length, 0);
+});
