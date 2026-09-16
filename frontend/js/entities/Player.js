@@ -255,6 +255,7 @@ class Player {
             return false;
         }
         
+        const activating = !this.specialAbilityActive;
         // Activate special ability if not already active
         if (!this.specialAbilityActive && this.specialAbilityTokens > 0) {
             this.specialAbilityActive = true;
@@ -290,7 +291,7 @@ class Player {
             }
             
             // Fire special ability projectiles
-            if (frameCount % 10 === 0) {
+            if (activating || frameCount % 10 === 0) {
                 const weapon = this.weapons[this.currentWeaponIndex];
                 this.appearance.recoil = 1;
                 const muzzle = this.getMuzzlePosition();

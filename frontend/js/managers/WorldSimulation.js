@@ -551,6 +551,8 @@ export function updateWorld(game, timeScale = 1) {
                     game.player.currentWeaponIndex = (game.player.currentWeaponIndex + 1) % game.weapons.length;
                     game.weaponDisplay.textContent = game.weapons[game.player.currentWeaponIndex].name;
                 } else if (powerUp.type === 'mushroom') {
+                    game.player.health = Math.min(game.player.health + 5, game.player.maxHealth);
+                    game.updateHealthDisplay();
                     game.player.activateMushroomPower(game.createParticles.bind(game), () => {
                         // Play mushroom power-up sound
                         game.soundManager.playSound('powerUp', 0.6);
@@ -582,6 +584,12 @@ export function updateWorld(game, timeScale = 1) {
                     game.soundManager.playSound('powerUp', 0.5);
                     
                     game.player.specialAbilityTokens++;
+                    if (!game.player.specialAbilityActive) {
+                        game.player.specialAbility(game.frameCount, game.projectiles, game.createParticles.bind(game), (weaponName) => {
+                            const soundKey = game.weaponSounds[weaponName];
+                            if (soundKey) game.soundManager.playSound(soundKey, 0.3);
+                        });
+                    }
                     showPickupNotice(game, 'special', token.color);
                     game.specialTokensDisplay.textContent = game.player.specialAbilityTokens;
                     game.specialTokens.splice(index, 1);

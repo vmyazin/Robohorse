@@ -9,7 +9,7 @@ const WEAPON_EFFECTS = {
 
 export function showPickupNotice(game, type, color) {
     const text = type === 'weapon' ? WEAPON_EFFECTS[game.player.currentWeapon.name]
-        : { health: 'Health Restored', mushroom: 'Grow Bigger', special: 'Special Loaded' }[type];
+        : { health: 'Health Restored', mushroom: 'Grow Bigger', special: 'Special Active' }[type];
     if (!text) return;
     const notices = game.pickupNotices ??= [];
     // Keep the current message readable, with at most two recent pickups waiting.
