@@ -81,6 +81,7 @@ The latest update improves vehicle destruction mechanics:
 ## Controls
 
 - **←→** or **A D**: Move
+- **↓** or **S** (hold): Crouch; move to crawl and shoot below the normal firing line
 - **↑** or **W** or **Z**: Jump
 - **SPACE**: Shoot
 - **ENTER**: Change Weapon

@@ -23,7 +23,7 @@ export function updateWorld(game, timeScale = 1) {
             if (soundKey) {
                 game.soundManager.playSound(soundKey, 0.3);
             }
-        }, timeScale);
+        }, timeScale, game.obstacles);
         
         const previousSupport = game.player.standingOnObstacle;
         game.player.standingOnObstacle = null;

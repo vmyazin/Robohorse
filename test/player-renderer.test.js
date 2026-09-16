@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { isColliding } from '../frontend/js/utils/helpers.ts';
 import Player from '../frontend/js/entities/Player.js';
 import { getArtBounds, getHorsePose, getLegPose } from '../frontend/js/components/PlayerRenderer.js';
 
@@ -86,4 +87,77 @@ test('growth and shrinking keep feet anchored and reset restores base bounds', (
     p.reset();
     assert.equal(p.width, 120); assert.equal(p.height, 80);
     assert.equal(p.appearance.recoil, 0);
+});
+
+test('crawling lowers collision bounds and both weapon muzzles while preserving feet and width', () => {
+    for (const key of ['ArrowDown', 's', 'S']) for (const direction of [-1, 1]) {
+        const p = player(); p.y = 550 - p.height;
+        const top = p.y, feet = p.y + p.height, width = p.width;
+        const muzzle = p.getMuzzlePosition();
+        const highAttack = { x: p.x + 40, y: top + 12, width: 12, height: 8 };
+        const lowAttack = { ...highAttack, y: feet - 12 };
+        assert.equal(isColliding(p, highAttack), true);
+        p.update({ [key]: true, [direction < 0 ? 'ArrowLeft' : 'ArrowRight']: true }, 1, noop, noop);
+        assert.equal(p.isCrouching, true);
+        close(p.height, 44); close(p.y + p.height, feet); close(p.width, width);
+        close(p.x, 100 + direction * 5 * 0.45);
+        assert.equal(isColliding(p, highAttack), false);
+        assert.equal(isColliding(p, lowAttack), true);
+        assert.ok(p.getMuzzlePosition().y > muzzle.y + 15);
+        close(getArtBounds(p).width, width);
+        const shots = [];
+        p.shoot(60, shots, noop, noop);
+        close(shots[0].y + shots[0].height / 2, p.getMuzzlePosition().y);
+        p.specialAbilityTokens = 1;
+        p.specialAbility(70, shots, noop, noop);
+        for (const shot of shots.slice(1)) close(shot.y + shot.height / 2, p.getMuzzlePosition().y);
+        p.update({}, 2, noop, noop);
+        assert.equal(p.isCrouching, false); close(p.height, 80); close(p.y + p.height, feet);
+    }
+});
+
+test('crouch supports jumping, overhead cover, power changes, and reset', () => {
+    const p = player(); p.y = 470;
+    p.update({ s: true }, 1, noop, noop);
+    const cover = [{ x: 90, y: 480, width: 160, height: 20, type: 'box' }];
+    p.update({ w: true }, 2, noop, noop, 1, cover);
+    assert.equal(p.isCrouching, true); assert.equal(p.isJumping, false);
+    p.update({ w: true }, 3, noop, noop);
+    assert.equal(p.isCrouching, false); assert.equal(p.isJumping, true);
+    p.update({ s: true }, 4, noop, noop);
+    assert.equal(p.isCrouching, false);
+    p.isJumping = false; p.velY = 0; p.y = 470;
+    p.update({ s: true }, 5, noop, noop);
+    p.activateMushroomPower(noop, noop);
+    for (let i = 0; i < 30; i++) p.update({ s: true }, 6 + i, noop, noop);
+    close(p.width, 180); close(p.height, 66); close(p.y + p.height, 550);
+    p.deactivateMushroomPower(noop);
+    close(p.height, 44); close(p.y + p.height, 550);
+    p.update({}, 40, noop, noop);
+    close(p.height, 80);
+    p.reset(); assert.equal(p.isCrouching, false); close(p.height, 80);
+});
+
+test('crouching preserves art scale and limb lengths throughout its planted crawl cycle', () => {
+    const p = player();
+    const standing = getArtBounds(p);
+    p.setCrouching(true);
+    const crouching = getArtBounds(p);
+    close(crouching.width, standing.width);
+    close(crouching.height, standing.height);
+    p.appearance.stride = 1;
+    for (let tick = 0; tick < 120; tick++) {
+        p.appearance.phase = tick / 120 * Math.PI * 2;
+        const pose = getHorsePose(p);
+        let planted = 0;
+        for (let i = 0; i < 3; i++) for (const far of [false, true]) {
+            const leg = getLegPose(i, far, pose);
+            close(Math.hypot(leg.knee[0] - leg.hip[0], leg.knee[1] - leg.hip[1]), [54, 51, 55][i]);
+            close(Math.hypot(leg.ankle[0] - leg.knee[0], leg.ankle[1] - leg.knee[1]), [54, 51, 55][i]);
+            const sole = leg.ankle[1] + pose.bob + pose.bodyDrop + 12;
+            assert.ok(sole <= 252 + 1e-8);
+            if (Math.abs(sole - 252) < 1e-8) planted++;
+        }
+        assert.ok(planted >= 3);
+    }
 });

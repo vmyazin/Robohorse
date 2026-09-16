@@ -28,7 +28,7 @@ export function advanceAppearance(player, timeScale = 1, scrollSpeed = 0) {
   const a = player.appearance;
   const dt = Math.max(0, Math.min(3, timeScale));
   const airborne = player.isJumping || Math.abs(player.velY) > 0.6;
-  a.phase += dt * (player.isMoving ? 0.24 : scrollSpeed > 0 ? 0.15 : 0.035);
+  a.phase += dt * (player.isCrouching ? 0.55 : 1) * (player.isMoving ? 0.24 : scrollSpeed > 0 ? 0.15 : 0.035);
   const target = airborne ? 0 : player.isMoving || scrollSpeed > 0 ? 1 : 0;
   a.stride += (target - a.stride) * Math.min(1, 0.2 * dt);
   a.landing = Math.max(0, a.landing - 0.13 * dt);
@@ -47,6 +47,9 @@ export function getHorsePose(player) {
     phase: a.phase,
     stride: a.stride,
     airborne,
+    crouching: Boolean(player.isCrouching),
+    bodyDrop: player.isCrouching ? 43 : 0,
+    cannonDrop: player.isCrouching ? 12 : 0,
     bob: airborne ? 0 : Math.sin(a.phase * 2) * 2.4 * a.stride + a.landing * 7,
     headTilt:
       Math.sin(a.phase - 0.5) * 0.025 * a.stride +
@@ -71,11 +74,11 @@ export function getLegPose(index, far, pose) {
   // Sweep planted hooves backward, then lift them forward for the next step.
   const phase = -pose.phase + (index * Math.PI * 2) / 3 + (far ? Math.PI : 0);
   const footX =
-    [57, 139, 222][index] + (far ? 10 : 0) + Math.cos(phase) * 17 * pose.stride;
+    [57, 139, 222][index] + (far ? 10 : 0) + Math.cos(phase) * (pose.crouching ? 9 : 17) * pose.stride;
   const lift = pose.airborne
     ? 23 + index * 4
-    : Math.max(0, Math.sin(phase)) * 23 * pose.stride;
-  const ankle = [footX, 240 - pose.bob - lift];
+    : Math.max(0, Math.sin(phase)) * (pose.crouching ? 7 : 23) * pose.stride;
+  const ankle = [footX, 240 - (pose.bodyDrop || 0) - pose.bob - lift];
   const upper = [54, 51, 55][index],
     lower = [54, 51, 55][index];
   const dx = ankle[0] - hip[0],
@@ -108,7 +111,7 @@ export function getArtBounds(player) {
   // Uniform art scaling preserves the selected silhouette during the taller growth hitbox.
   const scale = player.isShrinking
     ? player.shrinkScale
-    : Math.min(player.width / PLAYER_SIZE.width, player.height / PLAYER_SIZE.height);
+    : player.width / PLAYER_SIZE.width;
   const width = PLAYER_SIZE.width * scale,
     height = PLAYER_SIZE.height * scale;
   return {
@@ -125,7 +128,7 @@ export function getMuzzlePosition(player) {
   const u = (HORSE_ART.muzzleX - pose.recoil * 7) / HORSE_ART.width;
   return {
     x: b.x + b.width * (player.direction < 0 ? 1 - u : u),
-    y: b.y + (b.height * (HORSE_ART.muzzleY + pose.bob)) / HORSE_ART.height + CANNON_Y_OFFSET,
+    y: b.y + (b.height * (HORSE_ART.muzzleY + pose.bob + pose.bodyDrop + pose.cannonDrop)) / HORSE_ART.height + CANNON_Y_OFFSET,
   };
 }
 
@@ -196,7 +199,7 @@ export function drawPlatedHorse(ctx, x, y, w, h, flip = false, pose = null) {
   ctx.save();
   ctx.translate(x + (flip ? w : 0), y);
   ctx.scale(((flip ? -1 : 1) * w) / 300, h / 260);
-  if (pose) ctx.translate(0, pose.bob);
+  if (pose) ctx.translate(0, pose.bob + pose.bodyDrop);
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
   function poly(points, fill, stroke = p.edge, lw = 3) {
@@ -334,6 +337,11 @@ export function drawPlatedHorse(ctx, x, y, w, h, flip = false, pose = null) {
   }
   for (let i = 0; i < 3; i++) leg(i, true);
   ctx.save();
+  if (pose?.crouching) {
+    ctx.translate(70, 126);
+    ctx.rotate(0.45);
+    ctx.translate(-70, -126);
+  }
   ctx.shadowColor = "#36e4ff";
   ctx.shadowBlur = 5;
   ctx.beginPath();
@@ -347,7 +355,6 @@ export function drawPlatedHorse(ctx, x, y, w, h, flip = false, pose = null) {
   ctx.strokeStyle = "#66eaff";
   ctx.lineWidth = 3;
   ctx.stroke();
-  ctx.restore();
   line(
     [
       [16 + (pose ? pose.tailSway : 0), 208],
@@ -357,6 +364,7 @@ export function drawPlatedHorse(ctx, x, y, w, h, flip = false, pose = null) {
     2,
   );
   circle(5 + (pose ? pose.tailSway : 0), 221, 1.5, "#b3faff", null);
+  ctx.restore();
 
   plate([
     [62, 107],
@@ -416,6 +424,12 @@ export function drawPlatedHorse(ctx, x, y, w, h, flip = false, pose = null) {
     p.edge,
     3,
   );
+  ctx.save();
+  if (pose?.crouching) {
+    ctx.translate(183, 123);
+    ctx.rotate(0.95);
+    ctx.translate(-183, -123);
+  }
   plate([
     [162, 98],
     [192, 47],
@@ -444,6 +458,7 @@ export function drawPlatedHorse(ctx, x, y, w, h, flip = false, pose = null) {
     "#55e5fc",
     4,
   );
+  ctx.restore();
   {
     line(
       [
@@ -475,6 +490,11 @@ export function drawPlatedHorse(ctx, x, y, w, h, flip = false, pose = null) {
   circle(...core, 4, "#5be8f3", null);
   for (let i = 0; i < 3; i++) leg(i, false);
   ctx.save();
+  if (pose?.crouching) {
+    // Follow the neck hinge while keeping the head facing forward.
+    ctx.translate(183 + 30 * Math.cos(0.95) + 58 * Math.sin(0.95) - 213,
+      123 + 30 * Math.sin(0.95) - 58 * Math.cos(0.95) - 65);
+  }
   if (pose) {
     ctx.translate(213, 65);
     ctx.rotate(pose.headTilt);
@@ -563,7 +583,7 @@ export function drawPlatedHorse(ctx, x, y, w, h, flip = false, pose = null) {
   );
   ctx.restore();
   ctx.save();
-  if (pose) ctx.translate(-pose.recoil * 7, CANNON_Y_OFFSET * HORSE_ART.height / h);
+  if (pose) ctx.translate(-pose.recoil * 7, CANNON_Y_OFFSET * HORSE_ART.height / h + pose.cannonDrop);
   plate([
     [178, 111],
     [206, 109],
@@ -632,7 +652,7 @@ export function drawPlatedHorse(ctx, x, y, w, h, flip = false, pose = null) {
       [116, 82],
       [175, 151],
       [105, 180],
-      [245, 44],
+
     ])
       circle(a, b, 2, p.dark, null);
   }

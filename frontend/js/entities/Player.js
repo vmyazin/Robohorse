@@ -1,6 +1,8 @@
 import { PLAYER_SIZE, advanceAppearance, createAppearance, drawPlayer, getMuzzlePosition } from '../components/PlayerRenderer.js';
 
 const POWERED_SIZE_MULTIPLIER = 1.5;
+const CROUCH_HEIGHT_RATIO = 0.55;
+const CRAWL_SPEED_RATIO = 0.45;
 
 class Player {
     constructor(canvas, weapons) {
@@ -46,11 +48,12 @@ class Player {
         
         this.appearance = createAppearance(this.health);
         this.isMoving = false;
+        this.isCrouching = false;
 
         // Mushroom power-up properties
         this.mushroomPowerActive = false;
         this.originalWidth = this.width;
-        this.originalHeight = this.height;
+        this.originalHeight = this.height / (this.isCrouching ? CROUCH_HEIGHT_RATIO : 1);
         this.weaponDamageMultiplier = 1;
         
         // Growth animation properties
@@ -66,7 +69,7 @@ class Player {
         this.shrinkAnimationFrame = 0;
     }
     
-    update(keys, frameCount, createParticles, playSound, timeScale = 1) {
+    update(keys, frameCount, createParticles, playSound, timeScale = 1, obstacles = []) {
         // Store previous velocity for landing detection
         this.lastVelY = this.velY;
         
@@ -82,7 +85,10 @@ class Player {
         
         this.isMoving = Boolean(keys['ArrowLeft'] || keys['ArrowRight'] || keys['a'] || keys['A'] || keys['d'] || keys['D']);
 
-        const movementScale = this.webSlowTicks > 0 ? 0.45 : 1;
+        const wantsJump = keys['z'] || keys['Z'] || keys['ArrowUp'] || keys['w'] || keys['W'];
+        const wantsCrouch = keys['ArrowDown'] || keys['s'] || keys['S'];
+        this.setCrouching(Boolean(wantsCrouch && !wantsJump && !this.isJumping), obstacles);
+        const movementScale = (this.webSlowTicks > 0 ? 0.45 : 1) * (this.isCrouching ? CRAWL_SPEED_RATIO : 1);
         this.webSlowTicks = Math.max(0, (this.webSlowTicks || 0) - 1);
 
         // Handle movement - support both arrow keys and WASD
@@ -96,7 +102,7 @@ class Player {
         }
         
         // Handle jumping - allow 'z' key, 'ArrowUp' key, and 'w' key
-        if ((keys['z'] || keys['ArrowUp'] || keys['w'] || keys['W']) && !this.isJumping) {
+        if (wantsJump && !this.isJumping && !this.isCrouching) {
             this.velY = -this.jumpPower;
             this.isJumping = true;
             this.standingOnObstacle = null; // Clear obstacle reference when jumping
@@ -121,6 +127,21 @@ class Player {
         // Note: We don't handle shooting and special ability here anymore,
         // as they are handled by the Game class directly to avoid projectiles reference issues
         
+    }
+
+    setCrouching(crouching, obstacles = []) {
+        if (crouching === this.isCrouching) return;
+        const feetY = this.y + this.height;
+        const height = this.height * (crouching ? CROUCH_HEIGHT_RATIO : 1 / CROUCH_HEIGHT_RATIO);
+        const top = feetY - height;
+        // Remain low when solid cover prevents standing up.
+        if (!crouching && obstacles.some(obstacle => !obstacle.isExploding &&
+            !obstacle.type?.endsWith('_explosion') &&
+            this.x < obstacle.x + obstacle.width && this.x + this.width > obstacle.x &&
+            top < obstacle.y + obstacle.height && feetY > obstacle.y)) return;
+        this.isCrouching = crouching;
+        this.height = height;
+        this.y = top;
     }
 
     updateAppearance(timeScale = 1, scrollSpeed = 0) {
@@ -318,7 +339,7 @@ class Player {
         if (!this.mushroomPowerActive && !this.isGrowing) {
             // Store original dimensions
             this.originalWidth = this.width;
-            this.originalHeight = this.height;
+            this.originalHeight = this.height / (this.isCrouching ? CROUCH_HEIGHT_RATIO : 1);
             
             // Create power-up effect particles
             createParticles(this.x + this.width/4, this.y + this.height/4, 30, '#ff0000');
@@ -355,7 +376,7 @@ class Player {
             
             const scale = 1 + growthProgress * (POWERED_SIZE_MULTIPLIER - 1);
             this.width = this.originalWidth * scale;
-            this.height = this.originalHeight * scale;
+            this.height = this.originalHeight * scale * (this.isCrouching ? CROUCH_HEIGHT_RATIO : 1);
             this.y = feetY - this.height;
             
             // Adjust position to prevent clipping through floor
@@ -373,7 +394,7 @@ class Player {
                 this.isGrowing = false;
                 this.mushroomPowerActive = true;
                 this.width = this.originalWidth * POWERED_SIZE_MULTIPLIER;
-                this.height = this.originalHeight * POWERED_SIZE_MULTIPLIER;
+                this.height = this.originalHeight * POWERED_SIZE_MULTIPLIER * (this.isCrouching ? CROUCH_HEIGHT_RATIO : 1);
                 
                 // Adjust position one final time
                 if (this.y + this.height > this.canvas.height - 50) {
@@ -391,10 +412,10 @@ class Player {
         this.mushroomPowerActive = false;
         this.mushroomPowerTimer = 0;
         const feetY = this.y + this.height;
-        this.shrinkScale = Math.min(this.width / PLAYER_SIZE.width, this.height / PLAYER_SIZE.height);
+        this.shrinkScale = this.width / PLAYER_SIZE.width;
         this.isGrowing = false;
         this.width = PLAYER_SIZE.width;
-        this.height = PLAYER_SIZE.height;
+        this.height = PLAYER_SIZE.height * (this.isCrouching ? CROUCH_HEIGHT_RATIO : 1);
         this.y = feetY - this.height;
         this.speed = 5;
         this.jumpPower = 12;
@@ -445,6 +466,7 @@ class Player {
         this.height = this.originalHeight = PLAYER_SIZE.height;
         this.appearance = createAppearance(this.health);
         this.isMoving = false;
+        this.isCrouching = false;
 
         // Reset weapons
         this.currentWeaponIndex = 0;
