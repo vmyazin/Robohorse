@@ -32,7 +32,7 @@ export class CephalopodNest {
                 for (let i = 0; i < 2 && game.enemies.length < 6; i++) {
                     game.enemies.push(new Enemy(this.x - 42 - i * 45, this.y + 70,
                         { width: 28, height: 28, speed: 1, health: 20, points: 25,
-                            color: '#b595ff', tentacles: 4, pattern: i ? 'drone' : 'ground' }, game.canvas));
+                            color: '#b595ff', hatchling: true, tentacles: 4, pattern: i ? 'drone' : 'ground' }, game.canvas));
                 }
             } else {
                 for (const angle of [-0.35, 0, 0.35]) {

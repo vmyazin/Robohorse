@@ -1,11 +1,13 @@
+import { drawHatchling } from '../components/HatchlingRenderer.ts';
 import { lightenColor, roundRect } from '../utils/helpers.ts';
 
-/** @typedef {{width:number,height:number,speed:number,health:number,maxHealth?:number,points:number,color:string,tentacles?:number,pattern?:string,attackDelay?:number}} EnemyType */
+/** @typedef {{width:number,height:number,speed:number,health:number,maxHealth?:number,points:number,color:string,tentacles?:number,pattern?:string,attackDelay?:number,hatchling?:boolean}} EnemyType */
 /** @typedef {(x:number,y:number,amount:number,color:string)=>void} Particles */
 class Enemy {
     /** @param {number} x @param {number} y @param {EnemyType} type @param {HTMLCanvasElement} canvas */
     constructor(x, y, type, canvas) {
         this.canvas = canvas;
+        this.hatchling = type.hatchling ?? false;
         this.x = x;
         this.y = y;
         this.width = type.width;
@@ -100,6 +102,10 @@ class Enemy {
     
     /** @param {CanvasRenderingContext2D} ctx @param {number} frameCount @param {import('../utils/helpers.ts').Bounds} player */
     draw(ctx, frameCount, player) {
+        if (this.hatchling) {
+            drawHatchling(ctx, this);
+            return;
+        }
         // Apply damage visual effect if active
         const originalColor = this.color;
         if (this.damageFeedbackTimer > 0) {
