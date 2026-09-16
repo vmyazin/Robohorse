@@ -50,11 +50,6 @@ export function drawTitan(ctx, boss) {
     ctx.save();
     ctx.fillStyle = 'rgba(5,12,23,.32)';
     ctx.beginPath(); ctx.ellipse(boss.x + boss.width / 2, (boss.groundY ?? boss.y) + boss.height - 4, boss.width * 0.46, 9, 0, 0, Math.PI * 2); ctx.fill();
-    if (boss.jump) {
-        ctx.strokeStyle = '#ffbb80'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.ellipse(boss.jump.to + boss.width / 2, boss.groundY + boss.height - 3,
-            boss.width * 0.45, 7, 0, 0, Math.PI * 2); ctx.stroke();
-    }
     ctx.save();
     if (boss.facing === 1) { ctx.translate(2 * boss.x + boss.width, 0); ctx.scale(-1, 1); }
     if (titanSprite?.complete && titanSprite.naturalWidth) {
@@ -95,6 +90,24 @@ export function drawTitan(ctx, boss) {
             ctx.globalAlpha = 1;
         }
     });
+    if (boss.shieldCharge || boss.shieldActive) {
+        // Angular panels around the shell, distinct from the removed landing oval.
+        const cx = boss.x + boss.width / 2, cy = boss.y + boss.height * 0.43;
+        const rx = boss.width * 0.42, ry = boss.height * 0.46;
+        ctx.strokeStyle = '#88e4ff'; ctx.fillStyle = '#58c9fa';
+        ctx.lineWidth = boss.shieldActive ? 3 : 1.5;
+        ctx.globalAlpha = boss.shieldActive ? 0.75 : 0.25 + Math.sin(boss.tick * 0.35) * 0.15;
+        ctx.setLineDash(boss.shieldActive ? [] : [6, 8]);
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+            const angle = Math.PI / 3 * i;
+            const x = cx + Math.cos(angle) * rx, y = cy + Math.sin(angle) * ry;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.closePath(); ctx.stroke();
+        if (boss.shieldActive) { ctx.globalAlpha = 0.08; ctx.fill(); }
+        ctx.globalAlpha = 1; ctx.setLineDash([]);
+    }
     // The recessed vent charges before web shots and exposes a cyan core during stun.
     const vent = titanPoint(boss, 560, 500);
     if (boss.stunTimer || (boss.currentAttack === 'Web Shot' && boss.attackTick < 60)) {

@@ -35,6 +35,7 @@ export function updateBossBattle(game) {
         if (game.player.mushroomPowerActive) game.player.deactivateMushroomPower(game.createParticles.bind(game));
         if (!game.player.health) game.endGame();
     }, game.createParticles.bind(game));
+    if (!game.gameOver && !game.battleEnding) boss.updateFlyingReinforcements(game.enemies);
     if (boss.landed) game.soundManager.playSound('explosion', 0.55);
     if (boss.health <= 0 && game.gameStarted && !game.battleEnding) {
         game.score += 2500;

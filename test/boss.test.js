@@ -158,3 +158,75 @@ test('landing directly on the horse deals 40 damage once and knocks it clear', (
     for (let i = 0; i < 110; i++) safeBoss.update({ x: 450, y: 470, width: 120, height: 80 }, [], amount => damage += amount, noop);
     assert.equal(damage, 40, 'dodging the landing zone avoids stomp damage');
 });
+
+test('sustained fire warns before shielding, reduces damage, then guarantees a cooldown', () => {
+    const boss = new KrakenBoss(canvas);
+    const shot = { x: boss.x, y: boss.y, width: 5, height: 5 };
+    boss.takeDamage(150, shot);
+    assert.equal(boss.shieldCharge, 30);
+    assert.equal(boss.shieldActive, false);
+    for (let i = 0; i < 29; i++) boss.updateShield();
+    assert.equal(boss.shieldActive, false);
+    boss.updateShield();
+    assert.equal(boss.shieldActive, true);
+    const before = boss.health;
+    boss.takeDamage(20, shot);
+    assert.ok(Math.abs(before - boss.health - 3.2) < 1e-8);
+    for (let i = 0; i < 90; i++) boss.updateShield();
+    assert.equal(boss.shieldActive, false);
+    assert.equal(boss.shieldCooldown, 360);
+    boss.takeDamage(20, shot);
+    assert.equal(boss.shieldCharge, 0);
+});
+
+test('eye breaks cancel shields and stun remains a full-damage opening', () => {
+    const boss = new KrakenBoss(canvas);
+    boss.health = 501;
+    boss.shieldTicks = 80;
+    const shot = { x: boss.x, y: boss.y, width: 5, height: 5 };
+    boss.takeDamage(20, shot);
+    assert.equal(boss.shieldTicks, 0);
+    assert.equal(boss.shieldCharge, 0);
+    assert.equal(boss.stunTimer, 90);
+    const before = boss.health;
+    boss.takeDamage(20, shot);
+    assert.equal(boss.health, before - 20);
+});
+
+test('boss adapts next attacks to range and jumping without repeating the same attack', () => {
+    const boss = new KrakenBoss(canvas);
+    boss.attackIndex = 1;
+    boss.chooseNextAttack({ ...player(), y: 300 }); assert.equal(boss.currentAttack, 'Web Shot');
+    boss.chooseNextAttack({ ...player(), x: 450 }); assert.equal(boss.currentAttack, 'Tentacle Slam');
+    boss.chooseNextAttack(player()); assert.equal(boss.currentAttack, 'Spider Spawn');
+    boss.chooseNextAttack(player()); assert.notEqual(boss.currentAttack, 'Spider Spawn');
+});
+
+test('boss occasionally summons one flying hatchling after a full warning', () => {
+    const boss = new KrakenBoss(canvas), enemies = [];
+    for (let i = 0; i < 600; i++) boss.updateFlyingReinforcements(enemies);
+    assert.equal(enemies.length, 0);
+    assert.equal(boss.flyerWarning, 60);
+    for (let i = 0; i < 59; i++) boss.updateFlyingReinforcements(enemies);
+    assert.equal(enemies.length, 0);
+    boss.updateFlyingReinforcements(enemies);
+    assert.equal(enemies.length, 1);
+    assert.equal(enemies[0].pattern, 'drone');
+    assert.equal(enemies[0].hatchling, true);
+    for (let i = 0; i < 900; i++) boss.updateFlyingReinforcements(enemies);
+    assert.equal(enemies.length, 1);
+    enemies.length = 0;
+    boss.updateFlyingReinforcements(enemies);
+    assert.equal(boss.flyerCooldown, 599);
+});
+
+test('flying reinforcements wait during jumps and stun and stop when boss dies', () => {
+    const boss = new KrakenBoss(canvas), enemies = [];
+    boss.flyerCooldown = 0; boss.flyerWarning = 1;
+    boss.stunTimer = 10; boss.updateFlyingReinforcements(enemies);
+    assert.equal(boss.flyerWarning, 1);
+    boss.stunTimer = 0; boss.jump = { tick: 1 }; boss.updateFlyingReinforcements(enemies);
+    assert.equal(enemies.length, 0);
+    boss.jump = null; boss.health = 0; boss.updateFlyingReinforcements(enemies);
+    assert.equal(enemies.length, 0);
+});

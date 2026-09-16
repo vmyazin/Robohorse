@@ -1,3 +1,6 @@
+import Enemy from './Enemy.js';
+import { drawPlagueWave } from '../components/PlagueWaveRenderer.js';
+import { drawSpiderling } from '../components/SpiderlingRenderer.ts';
 import { drawTitan, titanPoint, TITAN_EYES } from '../components/BossRenderer.js';
 import { isColliding } from '../utils/helpers.ts';
 
@@ -25,15 +28,69 @@ export default class KrakenBoss {
         this.stunTimer = 0;
         this.hitCooldown = 0;
         this.hitFlash = 0;
+        this.shieldCharge = 0;
+        this.shieldTicks = 0;
+        this.shieldCooldown = 0;
+        this.pressureDamage = 0;
+        this.pressureTicks = 0;
         this.lastHit = { x: this.x, y: this.y };
         this.webs = [];
         this.waves = [];
         this.spiderlings = [];
+        this.flyerCooldown = 600;
+        this.flyerWarning = 0;
         this.eyes = Array.from({ length: 6 }, (_, i) => ({
             x: (TITAN_EYES[i][0] - 14) * this.width / 1225,
             y: (TITAN_EYES[i][1] - 150) * this.height / 960,
             active: true, blinkTicks: 0,
         }));
+    }
+
+    updateFlyingReinforcements(enemies) {
+        if (this.health <= 0 || this.jump || this.stunTimer) return;
+        // One airborne hatchling at a time; start a fresh interval after it is gone.
+        if (enemies.some(enemy => enemy.hatchling && enemy.pattern === 'drone')) {
+            this.flyerCooldown = 600;
+            this.flyerWarning = 0;
+            return;
+        }
+        if (this.flyerCooldown > 0) {
+            if (--this.flyerCooldown === 0) this.flyerWarning = 60;
+            return;
+        }
+        if (--this.flyerWarning > 0) return;
+        const y = Math.max(80, this.canvas.height * 0.38);
+        enemies.push(new Enemy(this.canvas.width - 34, y,
+            { width: 28, height: 28, speed: 1.3, health: 20, points: 25,
+                color: '#b595ff', hatchling: true, pattern: 'drone', tentacles: 4 }, this.canvas));
+        this.flyerCooldown = 600;
+        this.flyerWarning = 0;
+    }
+
+    get shieldActive() { return this.shieldTicks > 0 && !this.stunTimer && !this.jump; }
+
+    updateShield() {
+        this.shieldCooldown = Math.max(0, this.shieldCooldown - 1);
+        this.pressureTicks = Math.max(0, this.pressureTicks - 1);
+        if (!this.pressureTicks) this.pressureDamage = 0;
+        if (this.stunTimer || this.jump) {
+            if (this.shieldTicks || this.shieldCharge) this.shieldCooldown = 360;
+            this.shieldTicks = this.shieldCharge = this.pressureDamage = 0;
+            return;
+        }
+        if (this.shieldTicks > 0) {
+            if (--this.shieldTicks === 0) this.shieldCooldown = 360;
+        } else if (this.shieldCharge > 0 && --this.shieldCharge === 0) {
+            this.shieldTicks = 90;
+        }
+    }
+
+    chooseNextAttack(player) {
+        const airborne = player.y + player.height < this.canvas.height - 90;
+        const distance = Math.abs(player.x + player.width / 2 - (this.x + this.width / 2));
+        const preferred = airborne ? 0 : distance < 420 ? 1 : 2;
+        // Commit before the warning begins; never switch an already telegraphed attack.
+        this.attackIndex = preferred === this.attackIndex ? (this.attackIndex + 1) % 3 : preferred;
     }
 
     get phase() { return this.health > 400 ? 1 : this.health > 200 ? 2 : 3; }
@@ -56,7 +113,16 @@ export default class KrakenBoss {
                 x: point.x - 13, y: point.y - 13, width: 26, height: 26,
             });
         });
-        this.health = Math.max(0, this.health - amount * (eye || this.stunTimer > 0 ? 1 : 0.4));
+        const damage = amount * (eye || this.stunTimer > 0 ? 1 : 0.4) * (this.shieldActive ? 0.4 : 1);
+        this.health = Math.max(0, this.health - damage);
+        if (!this.shieldCooldown && !this.shieldTicks && !this.shieldCharge && !this.stunTimer && !this.jump) {
+            this.pressureDamage += damage;
+            this.pressureTicks = 90;
+            if (this.pressureDamage >= 60) {
+                this.shieldCharge = 30;
+                this.pressureDamage = 0;
+            }
+        }
         this.updateEyeHealth();
         // One randomly selected surviving eye blinks per impact, even on armored hits.
         for (const eye of this.eyes) eye.blinkTicks = 0;
@@ -73,6 +139,8 @@ export default class KrakenBoss {
             eye.active = false;
             eye.blinkTicks = 0;
             this.stunTimer = 90;
+            this.shieldTicks = this.shieldCharge = this.pressureDamage = 0;
+            this.shieldCooldown = 360;
         }
     }
 
@@ -132,6 +200,7 @@ export default class KrakenBoss {
             if (web) player.webSlowTicks = 90;
         };
         const jumping = this.updateJump(player, particles, damagePlayer);
+        this.updateShield();
         if (jumping) {
             // Jump movement takes priority over eye stun and ordinary attacks.
         } else if (this.stunTimer > 0) {
@@ -161,7 +230,7 @@ export default class KrakenBoss {
             }
             if (this.attackTick >= 240 - this.phase * 20) {
                 this.attackTick = 0;
-                this.attackIndex = (this.attackIndex + 1) % this.attackCycle.length;
+                this.chooseNextAttack(player);
             }
         }
         for (const [group, damage] of [[this.webs, 8], [this.waves, 15], [this.spiderlings, 10]]) {
@@ -203,20 +272,8 @@ export default class KrakenBoss {
             ctx.beginPath(); ctx.moveTo(web.x, web.y); ctx.lineTo(web.x + 22, web.y + 22);
             ctx.moveTo(web.x + 22, web.y); ctx.lineTo(web.x, web.y + 22); ctx.stroke();
         }
-        for (const wave of this.waves) {
-            ctx.fillStyle = '#ffae64'; ctx.beginPath();
-            ctx.moveTo(wave.x, wave.y + wave.height); ctx.lineTo(wave.x + 21, wave.y);
-            ctx.lineTo(wave.x + 42, wave.y + wave.height); ctx.fill();
-        }
-        for (const spider of this.spiderlings) {
-            ctx.strokeStyle = '#b08cd6'; ctx.lineWidth = 3;
-            for (let i = 0; i < 4; i++) {
-                ctx.beginPath(); ctx.moveTo(spider.x + 15, spider.y + 14);
-                ctx.lineTo(spider.x - 4 + i * 12, spider.y + 28); ctx.stroke();
-            }
-            ctx.fillStyle = '#8968af'; ctx.beginPath(); ctx.ellipse(spider.x + 15, spider.y + 12, 14, 10, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#ff8d9e'; ctx.fillRect(spider.x + 3, spider.y + 8, 5, 5);
-        }
+        for (const wave of this.waves) drawPlagueWave(ctx, wave);
+        for (const spider of this.spiderlings) drawSpiderling(ctx, spider);
         ctx.restore();
         if (showHUD) this.drawHUD(ctx);
     }
@@ -228,6 +285,14 @@ export default class KrakenBoss {
         ctx.fillText(`${(this.name || 'Krakenarachnid').toUpperCase()} · PHASE ${this.phase}`, 500, 121);
         ctx.fillStyle = '#35445b'; ctx.fillRect(250, 131, 500, 9);
         ctx.fillStyle = '#ff657c'; ctx.fillRect(250, 131, 500 * this.health / this.maxHealth, 9);
+        if (this.shieldCharge || this.shieldActive) {
+            ctx.font = 'bold 11px monospace'; ctx.fillStyle = '#88e4ff';
+            ctx.fillText(this.shieldCharge ? 'SHIELD CHARGING' : 'SHIELD UP — DAMAGE REDUCED', 500, 191);
+        }
+        if (this.flyerWarning > 0) {
+            ctx.font = 'bold 11px monospace'; ctx.fillStyle = '#d4b5ff';
+            ctx.fillText('FLYING HATCHLING INCOMING — WATCH THE RIGHT', 500, 207);
+        }
         ctx.font = '12px monospace'; ctx.fillStyle = '#ffcc91'; ctx.fillText(this.warning, 500, 160);
         ctx.restore();
     }
