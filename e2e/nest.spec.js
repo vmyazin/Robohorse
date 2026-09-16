@@ -19,13 +19,21 @@ test('nest eases travel, supports real shooting and pause, rewards and resets', 
     expect(await page.evaluate(() => window.__game.nest.tick)).toBe(tick);
     await page.keyboard.press('Escape');
     await page.screenshot({ path: 'test-results/nest-gameplay.png' });
-    const score = await page.evaluate(() => {
+    const reward = await page.evaluate(() => {
         const g = window.__game; g.nest.phase = 'exposed'; g.nest.timer = 200;
-        g.projectiles.push({ ...g.nest.core, velX: 0, velY: 0, damage: 999, isPlayerProjectile: true, color: '#fff' });
-        return g.score;
+        // Isolate the nest reward from hatchling kills and shots still in flight.
+        g.enemies = [];
+        g.projectiles = [{ ...g.nest.core, velX: 0, velY: 0, damage: 999, isPlayerProjectile: true, color: '#fff' }];
+        const score = g.score;
+        const tokens = g.player.specialAbilityTokens;
+        g.update(1);
+        return { destroyed: g.nest === null, points: g.score - score,
+            tokens: g.player.specialAbilityTokens,
+            expectedTokens: Math.min(g.player.maxSpecialAbilityTokens, tokens + 1) };
     });
-    await expect.poll(() => page.evaluate(() => window.__game.nest)).toBeNull();
-    expect(await page.evaluate(() => window.__game.score)).toBe(score + 750);
+    expect(reward.destroyed).toBe(true);
+    expect(reward.points).toBe(750);
+    expect(reward.tokens).toBe(reward.expectedTokens);
     await expect.poll(() => page.evaluate(() => window.__game.levelManager.levelPosition)).toBeGreaterThan(position);
     await page.evaluate(() => { const g = window.__game; g.resetGame(); g.startGame(); g.levelManager.levelPosition = 2200; });
     await expect.poll(() => page.evaluate(() => Boolean(window.__game.nest))).toBe(true);
