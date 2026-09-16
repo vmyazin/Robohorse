@@ -1,3 +1,4 @@
+import { CHAPTER_LAYOUTS } from './ChapterLayouts.js';
 import { clearNest } from '../managers/NestEncounter.js';
 import Obstacle from '../entities/Obstacle.js';
 import Enemy from '../entities/Enemy.js';
@@ -45,6 +46,9 @@ class LevelManager {
             this.game.enemies = [];
         }
         
+        this.game.generateTerrain();
+        this.game.player.standingOnObstacle = null;
+
         // Set up initial level elements
         this.updateLevelElements();
         
@@ -77,9 +81,8 @@ class LevelManager {
         if (this.levelPosition >= this.levelLength) {
             console.log("Level complete! Loading next level");
             
-            // Check if we just completed level 3
-            if (this.currentLevel === 2) { // 0-based index, so 2 is level 3
-                // Final encounter gates mission completion.
+            // Each three-level chapter ends with its own boss encounter.
+            if (this.getCurrentLevel().endsChapter) {
                 this.game.startBossBattle();
                 return;
             }
@@ -173,7 +176,10 @@ class LevelManager {
         // Calculate the x position more accurately to ensure enemies spawn at the right edge of the screen
         // Instead of adding the full element.position, we calculate the relative position from current view
         const relativePosition = element.position - (this.levelProgress * this.levelLength);
-        let x = this.game.canvas.width + Math.min(relativePosition, 200); // Cap at 200px beyond right edge
+        // Later chapters use authored world positions, including their opening formations.
+        const x = this.getCurrentLevel().chapterIndex === 0
+            ? this.game.canvas.width + Math.min(relativePosition, 200)
+            : relativePosition;
         
         switch (element.type) {
             case 'obstacle':
@@ -276,6 +282,44 @@ class LevelManager {
         }
     }
     
+    getCurrentChapter() {
+        return CHAPTERS[this.getCurrentLevel().chapterIndex];
+    }
+
+    hasNextChapter() {
+        return this.getCurrentLevel().chapterIndex < CHAPTERS.length - 1;
+    }
+
+    // Keep the run's score, health and equipment while resetting the arena and pacing.
+    advanceToNextChapter() {
+        if (!this.hasNextChapter()) return false;
+        this.startChapter(this.getCurrentLevel().chapterIndex + 1);
+        return true;
+    }
+
+    startChapter(chapterIndex) {
+        const game = this.game;
+        const nextLevel = (chapterIndex % CHAPTERS.length) * BASE_LEVELS.length;
+        game.projectiles = [];
+        game.powerUps = [];
+        game.specialTokens = [];
+        game.particles = [];
+        game.pickupNotices = [];
+        game.gameSpeed = 1;
+        game.chapterStartFrame = game.frameCount;
+        game.lastSpawnTime = game.frameCount;
+        game.player.x = 100;
+        game.player.y = game.canvas.height - 50 - game.player.height;
+        game.player.velY = 0;
+        game.player.direction = 1;
+        game.player.standingOnObstacle = null;
+        const level = this.loadLevel(nextLevel);
+        game.levelDisplay.textContent = level.name;
+        game.showLevelAnnouncement(level.name);
+        game.soundManager.playBackgroundMusic();
+        return true;
+    }
+
     // Add new method to return all level definitions
     getAllLevels() {
         return LEVELS;
@@ -291,7 +335,7 @@ class LevelManager {
 }
 
 // Define levels
-const LEVELS = [
+const BASE_LEVELS = [
     {
         name: "Training Grounds",
         description: "Learn the basics of movement and combat",
@@ -368,4 +412,33 @@ const LEVELS = [
     }
 ];
 
-export default LevelManager; 
+// Draft campaign: independent element objects let each chapter evolve without changing
+// the original route. Equal lengths, rosters and encounters preserve its pacing.
+export const CHAPTERS = [
+    { name: 'First Contact', bossName: 'Krakenarachnid', levels: [
+        'Training Grounds', 'Urban Assault', 'Cephalopod Stronghold'
+    ] },
+    { name: 'Neon Undertow', bossName: 'Neon Widow', levels: [
+        'Neon Outskirts', 'Midnight Crossfire', 'Undertow Citadel'
+    ] },
+    { name: 'Last Transmission', bossName: 'Signal Reaper', levels: [
+        'Signal Wastes', 'Blackout Boulevard', 'Armada Nexus'
+    ] }
+];
+
+const LEVELS = CHAPTERS.flatMap((chapter, chapterIndex) => BASE_LEVELS.map((base, index) => {
+    const layout = CHAPTER_LAYOUTS[chapterIndex]?.[index];
+    return {
+        ...base,
+        name: chapter.levels[index],
+        chapterIndex,
+        endsChapter: index === BASE_LEVELS.length - 1,
+        shelves: layout?.shelves,
+        elements: layout ? layout.encounters.map(([id, position, y]) => ({
+            ...base.elements.find(element => element.id === id), position,
+            ...(y === undefined ? {} : { y })
+        })).sort((a, b) => a.position - b.position) : base.elements.map(element => ({ ...element }))
+    };
+}));
+
+export default LevelManager;

@@ -36,6 +36,7 @@ class Game {
         this.isPaused = false;
         this.score = 0;
         this.frameCount = 0;
+        this.chapterStartFrame = 0;
         this.lastSpawnTime = 0;
         this.gameSpeed = 1;
         this.lastPoliceRadioTime = 0;
@@ -253,6 +254,17 @@ class Game {
     
     startBossBattle() { startBossBattle(this); }
 
+    goToNextChapter() {
+        const chapterIndex = this.levelManager.getCurrentLevel().chapterIndex + 1;
+        if (!this.gameStarted || this.gameOver) this.resetGame();
+        clearBattleEnding(this);
+        this.boss = null;
+        this.inputManager.resetKeys();
+        this.player.webSlowTicks = 0;
+        this.levelManager.startChapter(chapterIndex);
+        this.startGame();
+    }
+
     startBossTest() {
         this.resetGame();
         this.startGame();
@@ -298,6 +310,7 @@ class Game {
         this.gameOver = false;
         this.score = 0;
         this.frameCount = 0;
+        this.chapterStartFrame = 0;
         this.background.reset();
         this.lastSpawnTime = 0;
         this.gameSpeed = 1;
@@ -651,7 +664,7 @@ class Game {
         const levelNumber = this.levelManager.currentLevel + 1;
         
         // Set content
-        this.levelAnnouncement.innerHTML = `LEVEL ${levelNumber}<br>${levelName}`;
+        this.levelAnnouncement.innerHTML = `CHAPTER ${this.levelManager.getCurrentLevel().chapterIndex + 1} / 3 · ${this.levelManager.getCurrentChapter().name}<br>LEVEL ${levelNumber} · ${levelName}`;
         
         // Remove any existing classes
         this.levelAnnouncement.classList.remove('active', 'fade-out');
@@ -692,34 +705,29 @@ class Game {
             });
         }
         
-        // Add concrete shelves on pillars
-        const shelfCount = 5;
-        for (let i = 0; i < shelfCount; i++) {
-            // Position shelves at different x positions
-            const x = 300 + i * 400;
-            // Vary the height of the shelves
-            const y = baseY - 100 - (i % 3) * 50;
-            
-            // Add the shelf platform
-            this.platforms.push({
-                x: x,
-                y: y,
-                width: 150,
-                height: 20,
-                type: 'shelf'
-            });
-            
-            // Add the supporting pillar
-            this.platforms.push({
-                x: x + 65, // Center the pillar under the shelf
-                y: y + 20, // Start from bottom of shelf
-                width: 20,
-                height: baseY - y - 20, // Extend to ground level
-                type: 'pillar'
-            });
-        }
+        // Each level owns a repeating platform route. Pillars stay attached by ID.
+        const route = this.levelManager?.getCurrentLevel().shelves
+            ?? Array.from({ length: 5 }, (_, i) => [300 + i * 400, 100 + (i % 3) * 50, 150]);
+        // Widen edge-to-edge gaps by 30%, including the gap where the route repeats.
+        const gapScale = 1.3;
+        const shelves = [];
+        route.forEach(([x, elevation, width], index) => {
+            const previous = shelves[index - 1];
+            const gap = index ? x - route[index - 1][0] - route[index - 1][2] : 0;
+            shelves.push([previous ? previous[0] + previous[2] + gap * gapScale : x, elevation, width]);
+        });
+        const lastShelf = shelves[shelves.length - 1];
+        const repeatGap = route[1][0] - route[0][0] - lastShelf[2];
+        const cycleLength = lastShelf[0] + lastShelf[2] + repeatGap * gapScale - shelves[0][0];
+        shelves.forEach(([x, elevation, width], shelfId) => {
+            const y = baseY - elevation;
+            this.platforms.push({ x, y, width, height: 20, type: 'shelf', shelfId, cycleLength });
+            this.platforms.push({ x: x + (width - 20) / 2, y: y + 20,
+                width: 20, height: elevation - 20, type: 'pillar', shelfId });
+        });
     }
     
+
     triggerElonToasty() {
         this.effectsManager.triggerElonToasty();
     }

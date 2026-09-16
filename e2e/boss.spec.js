@@ -21,6 +21,7 @@ test('secret boss encounter supports combat, pause, victory and clean restart', 
     await page.keyboard.press('Escape');
     await page.evaluate(() => {
         const g = window.__game;
+        g.levelManager.loadLevel(8);
         g.boss.health = 1;
         g.projectiles.push({ x: g.boss.x + 20, y: g.boss.y + 100, width: 15, height: 10,
             velX: 0, velY: 0, damage: 100, isPlayerProjectile: true, color: '#fff' });

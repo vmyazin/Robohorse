@@ -33,7 +33,9 @@ export function updateBattleEnding(game) {
     const { outcome } = ending;
     clearBattleEnding(game);
     game.boss = null;
-    if (outcome === 'victory') game.showMissionComplete(true);
+    if (outcome === 'victory') {
+        if (!game.levelManager.advanceToNextChapter()) game.showMissionComplete(true);
+    }
     else game.endGame(true);
 }
 
@@ -98,8 +100,8 @@ export function drawBattleEnding(game) {
     ctx.textAlign = 'center';
     ctx.font = '12px "Press Start 2P", monospace';
     ctx.fillStyle = '#e4badb';
-    ctx.fillText(win ? 'FINAL ENCOUNTER  /  CLEAR' : 'FINAL ENCOUNTER  /  SIGNAL LOST', 500, 28);
-    ctx.fillText(win ? 'THE CEPHALOPOD ARMADA HAS FALLEN' : 'THE ARMADA PREVAILS. RIDE AGAIN.', 500, 582);
+    ctx.fillText(`CHAPTER ${game.levelManager.getCurrentLevel().chapterIndex + 1}  /  ${win ? 'CLEAR' : 'SIGNAL LOST'}`, 500, 28);
+    ctx.fillText(win ? (game.levelManager.hasNextChapter() ? 'NEXT SECTOR AWAITS. RIDE ON.' : 'THE CEPHALOPOD ARMADA HAS FALLEN') : 'THE ARMADA PREVAILS. RIDE AGAIN.', 500, 582);
     if (t > 65) {
         ctx.fillStyle = win ? '#ffd39c' : '#be8bad';
         ctx.font = '16px "Press Start 2P", monospace';

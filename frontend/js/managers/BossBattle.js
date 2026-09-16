@@ -7,6 +7,7 @@ export function startBossBattle(game) {
     game.nestTransition = null;
     game.scrollFactor = 1;
     game.boss = new KrakenBoss(game.canvas);
+    game.boss.name = game.levelManager.getCurrentChapter().bossName;
     game.enemies = [];
     game.obstacles = [];
     game.projectiles = [];
@@ -19,7 +20,7 @@ export function startBossBattle(game) {
     game.player.direction = 1;
     game.player.standingOnObstacle = null;
     game.player.webSlowTicks = 0;
-    game.levelDisplay.textContent = 'Krakenarachnid';
+    game.levelDisplay.textContent = game.boss.name;
     game.levelAnnouncement.hidden = true;
 }
 

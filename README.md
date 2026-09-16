@@ -38,7 +38,17 @@ Each level has one nest encounter near its midpoint. The nest enters with the sc
 
 ## Boss battle: Krakenarachnid
 
-Level three ends in a stationary boss arena. Defeat the Krakenarachnid to finish the mission and earn 2,500 points.
+The draft campaign has three equally paced chapters, each with three 5,000-pixel levels, the existing nest encounters, and a stationary boss arena:
+
+| Chapter | Levels | Boss |
+| --- | --- | --- |
+| First Contact | Training Grounds → Urban Assault → Cephalopod Stronghold | Krakenarachnid |
+| Neon Undertow | Neon Outskirts → Midnight Crossfire → Undertow Citadel | Neon Widow |
+| Last Transmission | Signal Wastes → Blackout Boulevard → Armada Nexus | Signal Reaper |
+
+Each boss awards 2,500 points. After the six-second victory sequence, chapters one and two continue automatically; defeating the third boss finishes the mission. Score, health, weapons, and special tokens carry forward. Each chapter restarts the original speed ramp. Restart returns to level one.
+
+The new chapters reuse the original enemy roster, nest mechanics, and boss behavior. Neon Undertow uses rising stepping platforms and alternating flight heights; Last Transmission uses broad, separated platforms and earlier armored formations. All six new levels have authored obstacle positions and enemy arrival orders in `frontend/js/levels/ChapterLayouts.js`. Platform routes repeat with their spacing and heights intact. `CHAPTERS` in `frontend/js/levels/LevelManager.js` defines the names and campaign order; every generated level receives its own element objects for later customization.
 
 - Active eyes take full damage. Every projectile impact briefly blinks one random active eye. One eye permanently switches off for each 100 HP lost (500, 400, 300, 200, 100, then 0 HP), briefly stunning the boss and exposing its armored body.
 - Three health phases increase attack pressure.
@@ -47,6 +57,8 @@ Level three ends in a stationary boss arena. Defeat the Krakenarachnid to finish
 - After each randomly sampled 20–30% of maximum health lost, the boss telegraphs a high jump to the opposite side and turns to face the arena. Its attacks reverse direction too.
 - Landing shakes the ground and kicks up dust. A direct landing on the horse deals 40 HP damage and knocks it toward the center; dodge the marked landing zone to avoid it.
 - Pause freezes the encounter, jumps and shake, and restart clears all boss hazards.
+
+**Chapter shortcut: Ctrl+N** jumps to the start of the next chapter, wrapping from chapter three to chapter one. It works from menus, gameplay, pause, and boss encounters. During a live run it keeps score, health, and equipment; from results it starts a fresh run in the next chapter.
 
 **Secret testing shortcut: Ctrl+Shift+B** starts a fresh boss fight from the menu, gameplay, pause, or results screen, with full health and three special tokens. It resets the current run. Normal movement, shooting, weapon switching, and special abilities work in the arena.
 

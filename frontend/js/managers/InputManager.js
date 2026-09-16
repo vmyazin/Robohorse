@@ -39,6 +39,11 @@ class InputManager {
     }
     
     handleKeyDown(e) {
+        if (e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.code === 'KeyN') {
+            e.preventDefault();
+            if (!e.repeat) this.game.goToNextChapter();
+            return;
+        }
         if (e.ctrlKey && e.shiftKey && e.code === 'KeyB') {
             e.preventDefault();
             if (!e.repeat) this.game.startBossTest();

@@ -225,7 +225,7 @@ export default class KrakenBoss {
         ctx.save();
         ctx.fillStyle = 'rgba(9,17,29,.92)'; ctx.fillRect(230, 100, 540, 76);
         ctx.textAlign = 'center'; ctx.font = 'bold 16px monospace'; ctx.fillStyle = '#e1efff';
-        ctx.fillText(`KRAKENARACHNID · PHASE ${this.phase}`, 500, 121);
+        ctx.fillText(`${(this.name || 'Krakenarachnid').toUpperCase()} · PHASE ${this.phase}`, 500, 121);
         ctx.fillStyle = '#35445b'; ctx.fillRect(250, 131, 500, 9);
         ctx.fillStyle = '#ff657c'; ctx.fillRect(250, 131, 500 * this.health / this.maxHealth, 9);
         ctx.font = '12px monospace'; ctx.fillStyle = '#ffcc91'; ctx.fillText(this.warning, 500, 160);

@@ -632,7 +632,7 @@ export function updateWorld(game, timeScale = 1) {
         game.effectsManager.update();
         
         // Increase game speed over time - but more gradually
-        if (game.frameCount % 1000 === 0) {
+        if (game.frameCount > game.chapterStartFrame && (game.frameCount - game.chapterStartFrame) % 1000 === 0) {
             game.gameSpeed += 0.05; // Reduced from 0.1 to make the speed increase more gradual
         }
         
@@ -673,45 +673,18 @@ export function updateWorld(game, timeScale = 1) {
                 platform.height = 50 - heightVariation;
             }
             
-            // If a shelf/pillar moves off-screen, reposition it to the right
-            if ((platform.type === 'shelf' || platform.type === 'pillar') && platform.x + platform.width < -200) {
-                // Find all shelves
-                const shelves = [];
-                for (let j = 0; j < game.platforms.length; j++) {
-                    if (game.platforms[j].type === 'shelf') {
-                        shelves.push(game.platforms[j]);
-                    }
-                }
-                
-                // Find the rightmost shelf
-                let rightmostShelf = { x: 0 };
-                for (let j = 0; j < shelves.length; j++) {
-                    if (shelves[j].x > rightmostShelf.x) {
-                        rightmostShelf = shelves[j];
-                    }
-                }
-                
-                if (platform.type === 'shelf') {
-                    // Position this shelf after the rightmost one
-                    platform.x = rightmostShelf.x + 400;
-                    
-                    // Vary the height
-                    const baseY = game.canvas.height - 50;
-                    const shelfIndex = shelves.indexOf(platform);
-                    platform.y = baseY - 100 - (shelfIndex % 3) * 50;
-                    
-                    // Find and update the associated pillar
-                    for (let j = 0; j < game.platforms.length; j++) {
-                        const p = game.platforms[j];
-                        if (p.type === 'pillar' && Math.abs(p.x - (platform.x + 65)) < 20) {
-                            p.x = platform.x + 65;
-                            p.y = platform.y + 20;
-                            p.height = baseY - platform.y - 20;
-                            break;
-                        }
-                    }
-                }
+            // Repeat the authored spacing and height instead of reverting to a uniform route.
+            if (platform.type === 'shelf' && platform.x + platform.width < -200) {
+                platform.x += platform.cycleLength;
             }
+        }
+        // Sync after all movement so a recycled shelf never loses its supporting pillar.
+        for (const pillar of game.platforms.filter(platform => platform.type === 'pillar')) {
+            const shelf = game.platforms.find(platform => platform.type === 'shelf' && platform.shelfId === pillar.shelfId);
+            if (!shelf) continue;
+            pillar.x = shelf.x + (shelf.width - pillar.width) / 2;
+            pillar.y = shelf.y + shelf.height;
+            pillar.height = game.canvas.height - 50 - pillar.y;
         }
         
         // Check if it's time to play police radio sound
