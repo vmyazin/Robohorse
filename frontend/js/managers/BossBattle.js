@@ -8,6 +8,7 @@ export function startBossBattle(game) {
     game.scrollFactor = 1;
     game.boss = new KrakenBoss(game.canvas);
     game.boss.name = game.levelManager.getCurrentChapter().bossName;
+    game.soundManager.playBackgroundMusic('bossMusic');
     game.enemies = [];
     game.obstacles = [];
     game.projectiles = [];

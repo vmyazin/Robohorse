@@ -35,11 +35,13 @@ class SoundManager {
         }
         
         // Set up background music
-        if (this.sounds.backgroundMusic) {
-            this.backgroundMusic = this.sounds.backgroundMusic;
-            this.backgroundMusic.loop = true;
-            this.backgroundMusic.volume = 0.3;
+        for (const key of ['backgroundMusic', 'bossMusic']) {
+            if (this.sounds[key]) {
+                this.sounds[key].loop = true;
+                this.sounds[key].volume = 0.3;
+            }
         }
+        this.backgroundMusic = this.sounds.backgroundMusic;
         
         // Set up police radio sounds
         if (this.sounds.policeRadio1 && this.sounds.policeRadio2) {
@@ -117,7 +119,13 @@ class SoundManager {
         this.voicePool.play(soundKey, this.sounds[soundKey], volume);
     }
 
-    playBackgroundMusic() {
+    playBackgroundMusic(key = 'backgroundMusic') {
+        const music = this.sounds[key];
+        if (!music) return;
+        if (this.backgroundMusic !== music) {
+            this.stopBackgroundMusic();
+            this.backgroundMusic = music;
+        }
         if (!this.soundEnabled || !this.backgroundMusic) return;
         
         try {
@@ -181,4 +189,4 @@ class SoundManager {
     }
 }
 
-export default SoundManager; 
+export default SoundManager;

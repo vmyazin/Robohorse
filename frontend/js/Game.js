@@ -146,6 +146,7 @@ class Game {
             alienWhisper2: 'audio/alien_whisper_2.mp3',
             alienWhisper3: 'audio/alien_whisper_3.mp3',
             backgroundMusic: 'audio/soundtrack_1.mp3',
+            bossMusic: 'audio/soundtrack_2.mp3',
             policeRadio1: 'audio/police_radio_1.mp3',
             policeRadio2: 'audio/police_radio_2.mp3'
         };
